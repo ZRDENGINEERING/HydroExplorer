@@ -1,18 +1,6 @@
 # HydroExplorer
 
 
-<!-- Improved compatibility of back to top link: See: https://github.com/othneildrew/Best-README-Template/pull/73 -->
-<a id="readme-top"></a>
-<!--
-*** Thanks for checking out the Best-README-Template. If you have a suggestion
-*** that would make this better, please fork the repo and create a pull request
-*** or simply open an issue with the tag "enhancement".
-*** Don't forget to give the project a star!
-*** Thanks again! Now go create something AMAZING! :D
--->
-
-
-
 <!-- PROJECT SHIELDS -->
 <!--
 *** I'm using markdown "reference style" links for readability.
@@ -28,13 +16,14 @@
 [![MIT][license-shield]][license-url]
 [![LinkedIn][linkedin-shield]][linkedin-url]
 
+[![logo-shield]][logo-url]
 
 
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <a href="https://github.com/desrochsesf/HydroExplorer">
-    <img src="Images/logo.png" alt="Logo" width="80" height="80">
+  <a href="https://github.com/desrochesf/HydroExplorer">
+    <img src="https://github.com/desrochesf/HydroExplorer/blob/master/Images/logo.jpg" alt="Logo" width="80" height="80">
   </a>
 
 <h3 align="center">HydroExplorer</h3>
@@ -42,14 +31,14 @@
   <p align="center">
     Data explorer for hydrologic and hydraulic models
     <br />
-    <a href="https://github.com/desrochsesf/HydroExplorer"><strong>Explore the docs »</strong></a>
+    <a href="https://github.com/desrochesf/HydroExplorer"><strong>Explore the docs »</strong></a>
     <br />
     <br />
-    <a href="https://github.com/desrochsesf/HydroExplorer">View Demo</a>
+    <a href="https://github.com/desrochesf/HydroExplorer">View Demo</a>
     &middot;
-    <a href="https://github.com/desrochsesf/HydroExplorer/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
+    <a href="https://github.com/desrochesf/HydroExplorer/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
     &middot;
-    <a href="https://github.com/desrochsesf/HydroExplorer/issues/new?labels=enhancement&template=feature-request---.md">Request Feature</a>
+    <a href="https://github.com/desrochesf/HydroExplorer/issues/new?labels=enhancement&template=feature-request---.md">Request Feature</a>
   </p>
 </div>
 
@@ -98,15 +87,8 @@
 ### Built With
 
 
-* [![Next][Next.js]][Next-url]
-* ![WPF](https://img.shields.io)
-* [![React][React.js]][React-url]
-* [![Vue][Vue.js]][Vue-url]
-* [![Angular][Angular.io]][Angular-url]
-* [![Svelte][Svelte.dev]][Svelte-url]
-* [![Laravel][Laravel.com]][Laravel-url]
-* [![Bootstrap][Bootstrap.com]][Bootstrap-url]
-* [![JQuery][JQuery.com]][JQuery-url]
+* C#
+* WPF
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -128,25 +110,14 @@ This is an example of how to list things you need to use the software and how to
 
 ### Installation
 
-1. Get a free API Key at [https://example.com](https://example.com)
-2. Clone the repo
+1. Clone the repo
    ```sh
-   git clone https://github.com/desrochsesf/HydroExplorer.git
-   ```
-3. Install NPM packages
-   ```sh
-   npm install
-   ```
-4. Enter your API in `config.js`
-   ```js
-   const API_KEY = 'ENTER YOUR API';
-   ```
-5. Change git remote url to avoid accidental pushes to base project
-   ```sh
-   git remote set-url origin desrochsesf/HydroExplorer
-   git remote -v # confirm the changes
-   ```
+   git clone https://github.com/desrochesf/HydroExplorer.git
+2.    ```
+3.    ```
+4.    ```
 
+   1. 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
@@ -170,7 +141,7 @@ _For more examples, please refer to the [Documentation](https://example.com)_
 - [ ] Feature 3
     - [ ] Nested Feature
 
-See the [open issues](https://github.com/desrochsesf/HydroExplorer/issues) for a full list of proposed features (and known issues).
+See the [open issues](https://github.com/desrochesf/HydroExplorer/issues) for a full list of proposed features (and known issues).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -194,8 +165,8 @@ Don't forget to give the project a star! Thanks again!
 
 ### Top contributors:
 
-<a href="https://github.com/desrochsesf/HydroExplorer/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=desrochsesf/HydroExplorer" alt="contrib.rocks image" />
+<a href="https://github.com/desrochesf/HydroExplorer/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=desrochesf/HydroExplorer" alt="contrib.rocks image" />
 </a>
 
 
@@ -203,7 +174,9 @@ Don't forget to give the project a star! Thanks again!
 <!-- LICENSE -->
 ## License
 
-Distributed under the MIT. See `LICENSE.txt` for more information.
+Distributed under the MIT. 
+
+See `LICENSE.txt` for more information.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -212,9 +185,11 @@ Distributed under the MIT. See `LICENSE.txt` for more information.
 <!-- CONTACT -->
 ## Contact
 
-Your Name - [@twitter_handle](https://twitter.com/twitter_handle) - frankd@zrdeng.com@frankd@zrdeng.com.com
+frankd@zrdeng.com
 
-Project Link: [https://github.com/desrochsesf/HydroExplorer](https://github.com/desrochsesf/HydroExplorer)
+zrdeng.com
+
+Project Link: [https://github.com/desrochesf/HydroExplorer](https://github.com/desrochesf/HydroExplorer)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -233,16 +208,17 @@ Project Link: [https://github.com/desrochsesf/HydroExplorer](https://github.com/
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[contributors-shield]: https://img.shields.io/github/contributors/desrochsesf/HydroExplorer.svg?style=for-the-badge
-[contributors-url]: https://github.com/desrochsesf/HydroExplorer/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/desrochsesf/HydroExplorer.svg?style=for-the-badge
-[forks-url]: https://github.com/desrochsesf/HydroExplorer/network/members
-[stars-shield]: https://img.shields.io/github/stars/desrochsesf/HydroExplorer.svg?style=for-the-badge
-[stars-url]: https://github.com/desrochsesf/HydroExplorer/stargazers
-[issues-shield]: https://img.shields.io/github/issues/desrochsesf/HydroExplorer.svg?style=for-the-badge
-[issues-url]: https://github.com/desrochsesf/HydroExplorer/issues
-[license-shield]: https://img.shields.io/github/license/desrochsesf/HydroExplorer.svg?style=for-the-badge
-[license-url]: https://github.com/desrochsesf/HydroExplorer/blob/master/LICENSE.txt
+[logo-shield]: https://github.com/desrochesf/HydroExplorer/blob/master/Images/logo.jpg
+[contributors-shield]: https://img.shields.io/github/contributors/desrochesf/HydroExplorer.svg?style=for-the-badge
+[contributors-url]: https://github.com/desrochesf/HydroExplorer/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/desrochesf/HydroExplorer.svg?style=for-the-badge
+[forks-url]: https://github.com/desrochesf/HydroExplorer/network/members
+[stars-shield]: https://img.shields.io/github/stars/desrochesf/HydroExplorer.svg?style=for-the-badge
+[stars-url]: https://github.com/desrochesf/HydroExplorer/stargazers
+[issues-shield]: https://img.shields.io/github/issues/desrochesf/HydroExplorer.svg?style=for-the-badge
+[issues-url]: https://github.com/desrochesf/HydroExplorer/issues
+[license-shield]: https://img.shields.io/github/license/desrochesf/HydroExplorer.svg?style=for-the-badge
+[license-url]: https://github.com/desrochesf/HydroExplorer/blob/master/LICENSE.txt
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 [linkedin-url]: https://linkedin.com/in/frank-desroches-p-e-cfm-b5762722
 [product-screenshot]: images/screenshot.png
