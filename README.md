@@ -111,11 +111,10 @@ This is an example of how to list things you need to use the software and how to
 1. Clone the repo
    ```sh
    git clone https://github.com/desrochesf/HydroExplorer.git
-2.    ```
-3.    ```
-4.    ```
+2. ....   
+3. ....   
 
-   1. 
+   
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
