@@ -20,7 +20,7 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <a href="https://github.com/desrochesf/HydroExplorer">
+  <a href="http://zrdeng.com">
     <img src="https://github.com/desrochesf/HydroExplorer/blob/master/Images/logo.png" alt="Logo" width="80" height="80">
   </a>
 
