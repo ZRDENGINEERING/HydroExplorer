@@ -1,0 +1,48 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Images\drive.png" />
+    <None Remove="Images\file.png" />
+    <None Remove="Images\folder_closed.png" />
+    <None Remove="Images\folder_open.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Images\drive.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Images\file.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Images\folder_closed.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Images\folder_open.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Layer\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DotSpatial.Projections" Version="4.0.656" />
+    <PackageReference Include="DotSpatial.Projections.Forms" Version="4.0.656" />
+    <PackageReference Include="DotSpatial.Projections.NetStandard" Version="1.0.0" />
+    <PackageReference Include="DotSpatial.Serialization" Version="4.0.656" />
+    <PackageReference Include="Mapsui.Extensions" Version="5.0.2" />
+    <PackageReference Include="Mapsui.Wpf" Version="5.1.0-beta.1" />
+    <PackageReference Include="PureHDF" Version="2.1.1" />
+    <PackageReference Include="SkiaSharp.Views.WPF" Version="3.119.2" />
+  </ItemGroup>
+
+</Project>
