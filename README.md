@@ -16,14 +16,12 @@
 [![MIT][license-shield]][license-url]
 [![LinkedIn][linkedin-shield]][linkedin-url]
 
-[![logo-shield]][logo-url]
-
 
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
   <a href="https://github.com/desrochesf/HydroExplorer">
-    <img src="https://github.com/desrochesf/HydroExplorer/blob/master/Images/logo.jpg" alt="Logo" width="80" height="80">
+    <img src="https://github.com/desrochesf/HydroExplorer/blob/master/Images/logo.png" alt="Logo" width="80" height="80">
   </a>
 
 <h3 align="center">HydroExplorer</h3>
@@ -208,7 +206,7 @@ Project Link: [https://github.com/desrochesf/HydroExplorer](https://github.com/d
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[logo-shield]: https://github.com/desrochesf/HydroExplorer/blob/master/Images/logo.jpg
+[logo-shield]: https://github.com/desrochesf/HydroExplorer/blob/master/Images/logo.png
 [contributors-shield]: https://img.shields.io/github/contributors/desrochesf/HydroExplorer.svg?style=for-the-badge
 [contributors-url]: https://github.com/desrochesf/HydroExplorer/graphs/contributors
 [forks-shield]: https://img.shields.io/github/forks/desrochesf/HydroExplorer.svg?style=for-the-badge
