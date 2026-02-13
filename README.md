@@ -40,7 +40,7 @@
 <h3 align="center">HydroExplorer</h3>
 
   <p align="center">
-    project_description
+    Data explorer for hydrologic and hydraulic models
     <br />
     <a href="https://github.com/desrochsesf/HydroExplorer"><strong>Explore the docs »</strong></a>
     <br />
@@ -88,7 +88,7 @@
 
 [![Product Name Screen Shot][product-screenshot]](https://example.com)
 
-Here's a blank template to get started. To avoid retyping too much info, do a search and replace with your text editor for the following: `desrochsesf`, `HydroExplorer`, `twitter_handle`, `frank-desroches-p-e-cfm-b5762722`, `frankd@zrdeng.com`, `frankd@zrdeng.com`, `HydroExplorer`, `project_description`, `MIT`
+Here's a blank template to get started. To avoid retyping too much info, do a search and replace with your text editor for the following: `desrochsesf`, `HydroExplorer`, `twitter_handle`, `frank-desroches-p-e-cfm-b5762722`, `frankd@zrdeng.com`, `frankd@zrdeng.com`, `HydroExplorer`, `Data explorer for hydrologic and hydraulic models`, `MIT`
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
