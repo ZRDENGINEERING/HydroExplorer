@@ -10,7 +10,6 @@ namespace HydroExplorer.MVVM.ViewModel
 {
     internal class HomeViewModel : ObservableObject
     {
-
         public ObservableCollection<HomeViewModel> UserInputs { get; set; }
 
         private string _userInput;

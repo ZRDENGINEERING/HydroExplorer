@@ -12,10 +12,10 @@ namespace HydroExplorer
     ///  Converts full path to image type of a drive, folder or file
     /// </summary>
     [ValueConversion(typeof(string), typeof(BitmapImage))]
-    public class HeaderToImageConverter : IValueConverter
+    public class HeaderToImageConv : IValueConverter
     {
 
-        public static HeaderToImageConverter Instance = new HeaderToImageConverter();
+        public static HeaderToImageConv Instance = new HeaderToImageConv();
 
         public object? Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
@@ -34,9 +34,8 @@ namespace HydroExplorer
             else if (new FileInfo(path).Attributes.HasFlag(FileAttributes.Directory))
                 image = "/Images/folder_closed.png";
 
-            BitmapImage myImage = new BitmapImage(new Uri("Z:/10 DEV/hydroExplorer/Images/folder_closed.png"));
-
-            //BitmapImage myImage = new BitmapImage(new Uri($"pack://application:,,,{image}"));
+            //BitmapImage myImage = new BitmapImage(new Uri("Z:/10 DEV/hydroExplorer/Images/folder_closed.png"));
+            BitmapImage myImage = new BitmapImage(new Uri($"pack://application:,,,{image}"));
             return myImage;
         }
 

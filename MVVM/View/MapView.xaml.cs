@@ -1,7 +1,5 @@
 ﻿using Mapsui;
-using Mapsui.Animations;
 using Mapsui.Extensions;
-using Mapsui.Features;
 using Mapsui.Layers;
 using Mapsui.Nts;
 using Mapsui.Nts.Providers;
@@ -9,37 +7,18 @@ using Mapsui.Nts.Providers.Shapefile;
 using Mapsui.Nts.Widgets;
 using Mapsui.Projections;
 using Mapsui.Providers;
-using Mapsui.Providers.Wfs;
 using Mapsui.Providers.Wms;
-using Mapsui.Rendering;
-using Mapsui.Rendering.Skia;
-using Mapsui.Rendering.Skia.SkiaStyles;
 using Mapsui.Styles;
 using Mapsui.Styles.Thematics;
-using Mapsui.Tiling;
 using Mapsui.Tiling.Layers;
-using Mapsui.UI;
 using Mapsui.UI.Wpf;
-using Mapsui.Utilities;
-using Mapsui.Widgets;
-using Mapsui.Widgets.BoxWidgets;
 using Mapsui.Widgets.ButtonWidgets;
 using Mapsui.Widgets.InfoWidgets;
 using NetTopologySuite.Geometries;
 using NetTopologySuite.IO;
-using NetTopologySuite.Shape.Random;
-using System;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Controls;
-using System.Windows.Input;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.ListView;
-
-
+using System.Windows.Media.TextFormatting;
+using System.Xml.Linq;
 
 
 
@@ -51,13 +30,9 @@ namespace HydroExplorer.MVVM.View
     }
     public partial class MapView : UserControl
     {
-        private const string _mapInfoLayerName = "_infoLayerName";
-
-        
-
-
+        //private const string _mapInfoLayerName = "_infoLayerName";
         private EditingWidget? _editingWidget;
-        private WritableLayer? _targetLayer;
+        //private WritableLayer? _targetLayer;
 
         public MapView()
         {
@@ -65,7 +40,6 @@ namespace HydroExplorer.MVVM.View
 
             var mapControl = new Mapsui.UI.Wpf.MapControl();
             //mapControl.Map?.Layers.Add(Mapsui.Tiling.OpenStreetMap.CreateTileLayer());
-
             var map = new Map { CRS = "EPSG:3857" };
 
             //var source = KnownTileSources.Create(KnownTileSource.BingAerial);
@@ -76,18 +50,6 @@ namespace HydroExplorer.MVVM.View
             map.Layers.Add(Mapsui.Tiling.OpenStreetMap.CreateTileLayer());
             mapControl.Map = map;
 
-            map.Tapped += (s, e) =>
-            {
-                // Animate to the new center:
-                //e.Map.Navigator.CenterOn(e.WorldPosition, 500, Easing.CubicOut);
-                e.Handled = true;
-
-                MapTapped(map, e);
-
-                System.Diagnostics.Debug.WriteLine("TAPPPED");
-            };
-
-
             //SATX
             //var (x, y) = SphericalMercator.FromLonLat(-98.4936, 29.4241);
             //TX
@@ -95,64 +57,71 @@ namespace HydroExplorer.MVVM.View
             map.Navigator.CenterOn(x, y);
 
             InitLayers(map);
-            InitEditWidgets(map);
-
-            
+            InitInfoWidgets(map);
 
             Content = mapControl;
             map.Navigator.ZoomTo(3000);
 
-            //CreateLayerAsync(mapControl);
-
-            //var layv = new Layer("_infoLayerName") { Tag = new LayerData { IsMapInfoLayer = true } };
-
-            //UtilInfo(map);
+            map.Tapped += (s, e) =>
+            { 
+                // Animate to the new center:
+                //e.Map.Navigator.CenterOn(e.WorldPosition, 500, Easing.CubicOut);
+                
+                UtilInfo(map);
+                e.Handled = true;
+            };
         }
 
 
 
-
-
-
-
-        private void MapTapped(object? s, MapEventArgs e)
-        {
-            var mapInfo = e.GetMapInfo(e.Map.Layers.Where(l => l.Tag is LayerData { IsMapInfoLayer: true }));
-
-
-            System.Diagnostics.Debug.WriteLine($"mapInfo: {mapInfo}");
-        }
-
-        private void UtilInfo(Map map)
+        private static void UtilInfo(Map map)
         {
             var wList = map.Widgets.ToList();
-            var wLay = map.Widgets.GetType();
+            var widG = wList.ElementAt(2);
+            var infoText = ((Mapsui.Widgets.BoxWidgets.TextBoxWidget)widG).Text;
 
-            var _infoLayer = map.Layers.FindLayer("_infoLayerName");
-            var _infoLay = map.Layers.Last();
-            var _infoList = map.Layers.ToList();
-            //var _infoListM = map.Layers.;
+            if (!string.IsNullOrEmpty(infoText))
+            {
+                char sep = '|';
+                List<string> valueList = infoText.Split(sep).ToList();
 
-            //var mapInfo = e.GetMapInfo(e.Map.Layers.Where(l => l.Tag is LayerData { IsMapInfoLayer: true }));
+                string rawRiver = valueList.Where(x => x.Contains("River")).ElementAt(0);
+                string valRiver = rawRiver.Split(':').ElementAt(1);
+                System.Diagnostics.Debug.WriteLine($"RIVER: { valRiver }");
 
+                string rawReach = valueList.Where(x => x.Contains("Reach")).ElementAt(0);
+                string valReach = rawReach.Split(':').ElementAt(1);
+                System.Diagnostics.Debug.WriteLine($"REACH: { valReach }");
 
-            System.Diagnostics.Debug.WriteLine($"_infoLayer: {_infoLayer}");
-            System.Diagnostics.Debug.WriteLine("END UtilInfo!! ");
+                string rawRiverStati = valueList.Where(x => x.Contains("RiverStati")).ElementAt(0);
+                string valRiverStati = rawRiverStati.Split(':').ElementAt(1);
+                System.Diagnostics.Debug.WriteLine($"STA: { valRiverStati } \n");
+
+                UtilInfoTextBox(valRiverStati);
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("END UtilInfo!! \n");
+            }
         }
 
 
+        private static void UtilInfoTextBox(string infoText)
+        {
+            System.Diagnostics.Debug.WriteLine($"infoText: {infoText} \n");
+        }
 
-        private void InitEditWidgets(Map map)
+
+        private void InitInfoWidgets(Map map)
         {
             //var infoLayer = map.Layers.OfType<MemoryLayer>().FirstOrDefault(l => l.infoLayer);
             //_targetLayer = map.Layers.FirstOrDefault(f => f.Name == "Layer 3") as WritableLayer;
             //_editingWidget = map.Widgets.OfType<EditingWidget>().Single();
+            //map.Widgets.Add(new MapInfoWidget(map, [map.Layers.Last()]));
 
-            map.Widgets.Add(new MapInfoWidget(map, [map.Layers.Last()]));
-            //map.Widgets.Add(new MapInfoWidget(map, map.Layers.FindLayer("XS")));
-            //map.Widgets.Add(new MapInfoWidget(map, l => l.Name == _mapInfoLayerName));
+            map.Widgets.Add(new MapInfoWidget(map, map.Layers.FindLayer("XS")));
 
-            map.Widgets.Add(CreateSelectButton());
+            //map.Widgets.Add(CreateSelectButton());
 
             map.Widgets.Add(new MouseCoordinatesWidget());
 
@@ -248,12 +217,14 @@ namespace HydroExplorer.MVVM.View
             var dataSource = new ProjectingProvider(shapeFileProvider) { CRS = "EPSG:3857" };
             var shapefileLayer = new Layer("ZRD")
             {
-                Name = "PROJECTS",
+                Name = "CONFIG",
                 DataSource = dataSource,
+                Tag = new LayerData { IsMapInfoLayer = true },
                 Style = CreateThemeZRD()
             };
             map.Layers.Add(shapefileLayer);
         }
+
 
 
         private static void AddShapefileLayerZRD_TX(Map map)
@@ -275,6 +246,7 @@ namespace HydroExplorer.MVVM.View
             {
                 Name = "XS",
                 DataSource = dataSource,
+                Tag = new LayerData { IsMapInfoLayer = true },
                 Style = CreateThemeXS()
             };
             map.Layers.Add(shapefileLayer);
@@ -560,9 +532,10 @@ namespace HydroExplorer.MVVM.View
 
 
 
-
-
-
+        public class LayerData
+        {
+            public bool IsMapInfoLayer { get; set; }
+        }
 
 
 

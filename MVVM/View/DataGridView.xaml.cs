@@ -1,20 +1,10 @@
-﻿using DotSpatial.Projections.Transforms;
-using HydroExplorer.Utils;
+﻿using HydroExplorer.Utils;
 using Microsoft.VisualBasic.FileIO;
-using OpenTK.Graphics.ES10;
 using PureHDF;
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Data;
 using System.IO;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows;
 using System.Windows.Controls;
 
 
@@ -40,11 +30,28 @@ namespace HydroExplorer.MVVM.View
             dgWselProfile2.ItemsSource = _reader.ReadProfileSummary("C:/Temp/TAN_Main_SG.p05.hdf");
 
             //dgCompare.ItemsSource = _reader.ReadProfileSummary("C:/Temp/TAN_Main_SG.p01.hdf");
-            dgCompare.ItemsSource = CalcCompare();
+            List<HecRasProfileWselResult> calcComp = CalcCompare();
+            dgCompare.ItemsSource = calcComp;
+            
+            var staInfo = getStaInfo(calcComp, "19673");
+
+
             //dgCompare.ItemsSource = _reader.ReadProfileWsel("C:/Temp/TAN_Main_SG.p02.hdf");
+            System.Diagnostics.Debug.WriteLine($"dgCompare.ItemsSource : {dgCompare.ItemsSource}");
+            System.Diagnostics.Debug.WriteLine($"dgCompare.ItemsSource : {dgCompare.ItemsSource}");
         }
 
 
+        public HecRasProfileWselResult getStaInfo(List<HecRasProfileWselResult> calcComp, string riverSta)
+        {
+            HecRasProfileWselResult result = calcComp.ElementAt(11);
+            var tst = result.WSElev;
+            
+            System.Diagnostics.Debug.WriteLine($"\n result.WSElev: {tst}");
+            System.Diagnostics.Debug.WriteLine($"result.RiverSta: {result.RiverSta} \n");
+
+            return result;
+        }
 
 
         public List<HecRasProfileWselResult> CalcCompare()
@@ -137,11 +144,12 @@ namespace HydroExplorer.MVVM.View
                         });
                     }
                 }
-
             return results;
-
         }
     }
+
+
+
 
 
 

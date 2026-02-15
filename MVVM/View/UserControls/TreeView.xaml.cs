@@ -5,27 +5,14 @@ using System.Windows.Controls;
 
 namespace HydroExplorer.MVVM.View.UserControls
 {
-    /// <summary>
-    /// Interaction logic for TreeView.xaml
-    /// </summary>
     public partial class TreeView : UserControl
     {
-        #region Constructor
-
         public TreeView()
         {
             InitializeComponent();
-
         }
 
-        #endregion
 
-        #region On Loaded
-        /// <summary>
-        /// When the application first opens
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             foreach (var drive in Directory.GetLogicalDrives())
@@ -37,33 +24,21 @@ namespace HydroExplorer.MVVM.View.UserControls
                 };
 
                 item.Items.Add(null);
-
                 item.Expanded += Folder_Expanded;
-
                 FolderView.Items.Add(item);
             }
         }
-        #endregion
 
-        #region Folder Expanded
+
         private void Folder_Expanded(object sender, RoutedEventArgs e)
         {
-            #region Initial Checks
             var item = (TreeViewItem)sender;
-
             if (item.Items.Count != 1 || item.Items[0] != null)
                 return;
 
             item.Items.Clear();
-
             var fullPath = (string)item.Tag;
-
-
-            #endregion
-
-            #region Get Folders
             var directories = new List<string>();
-
             try
             {
                 var dirs = Directory.GetDirectories(fullPath);
@@ -88,11 +63,8 @@ namespace HydroExplorer.MVVM.View.UserControls
 
                 item.Items.Add(subItem);
             });
-            #endregion
-
-            #region Get Files
+            
             var files = new List<string>();
-
             try
             {
                 var fs = Directory.GetFiles(fullPath);
@@ -111,13 +83,9 @@ namespace HydroExplorer.MVVM.View.UserControls
                 };
                 item.Items.Add(subItem);
             });
-
-            #endregion
         }
-        #endregion
-
-
-        #region Helpers
+        
+        
         public static string GetFileFolderName(string path)
         {
             if (string.IsNullOrEmpty(path))
@@ -132,7 +100,5 @@ namespace HydroExplorer.MVVM.View.UserControls
 
             return path.Substring(lastIndex);
         }
-        #endregion
-
     }
 }
