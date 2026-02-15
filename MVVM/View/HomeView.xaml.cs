@@ -9,19 +9,16 @@ namespace HydroExplorer.MVVM.View
     {
         private Configuration AppConfig = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
 
-
         readonly string ProjPath = new("C:/");
         readonly string ProjName = new("199805001 Test Project");
 
         readonly string PlanName = new("EXST");
         readonly int PlanID = 0;
-        readonly string 
-            ProName = new("Q100");
+
+        readonly string ProName = new("Q100");
         readonly int ProID = 0;
 
-
         readonly string[] Languages = ["English", "French", "Spanish", "Chinese"];
-
 
 
         public HomeView()
@@ -31,11 +28,8 @@ namespace HydroExplorer.MVVM.View
             cboxLanguage.ItemsSource = Languages;
             projPath.Text = ProjPath;
             projName.Text = ProjName;
-
             planName.Text = PlanName;
             proName.Text = ProName;
-
-
 
             if (AppConfig.Sections["UISettings"] is null)
             {
@@ -43,10 +37,8 @@ namespace HydroExplorer.MVVM.View
             }
 
             var UISettingSection = AppConfig.GetSection("UISettings");
-
             this.DataContext = UISettingSection;
-
-            }
+        }
 
         private void cbAllFeatures_CheckedChanged(object sender, RoutedEventArgs e)
         {
@@ -65,17 +57,11 @@ namespace HydroExplorer.MVVM.View
             if ((cbFeatureAbc.IsChecked == false) && (cbFeatureXyz.IsChecked == false) && (cbFeatureWww.IsChecked == false))
                 cbFeatureAbc.IsChecked = false;
         }
-
         private void Button_Click(object sender, RoutedEventArgs e)
         {
             System.Diagnostics.Debug.WriteLine("settings saved");
 
             AppConfig.Save(); 
         }
-
-
-
-
-
     }
 }
