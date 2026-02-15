@@ -13,6 +13,7 @@ namespace HydroExplorer.MVVM.View.UserControls
         }
 
 
+
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             foreach (var drive in Directory.GetLogicalDrives())
