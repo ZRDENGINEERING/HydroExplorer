@@ -63,16 +63,21 @@ namespace HydroExplorer.MVVM.View.UserControls
 
                 item.Items.Add(subItem);
             });
-            
+
             var files = new List<string>();
+            //string[] extensions = { ".jpg", ".png", ".gif" };
+            string[] extensions = { ".hdf" };
             try
             {
-                var fs = Directory.GetFiles(fullPath);
-                if (fs.Length > 0)
-                    files.AddRange(fs);
+                var fs = Directory.GetFiles(fullPath)
+                    .Where(file => extensions.Any(ext => Path.GetExtension(file).Equals(ext, StringComparison.OrdinalIgnoreCase)))
+                    .ToList();
 
+                if (fs.Count > 0)
+                    files.AddRange(fs);
             }
             catch { }
+            
 
             files.ForEach(filePath =>
             {
