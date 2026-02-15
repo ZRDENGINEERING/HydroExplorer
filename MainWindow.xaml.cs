@@ -1,7 +1,6 @@
 ﻿using HydroExplorer.MVVM.ViewModel;
 using System.Windows;
 using System.Windows.Input;
-using System.Configuration;
 
 
 namespace HydroExplorer

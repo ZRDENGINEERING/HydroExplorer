@@ -1,8 +1,4 @@
-﻿using HydroExplorer.Core;
-using System.Collections.ObjectModel;
-using System.ComponentModel.DataAnnotations;
-using System.Windows;
-using System.Configuration;
+﻿using System.Configuration;
 
 
 namespace HydroExplorer
@@ -16,6 +12,7 @@ namespace HydroExplorer
             get { return (string)this["projPath"]; }
             set { this["projPath"] = value; }
         }
+
         [ConfigurationProperty("projName", DefaultValue = "199805001 Test Project")]
         public string ProjName
         {
@@ -30,6 +27,7 @@ namespace HydroExplorer
             get { return (string)this["planName"]; }
             set { this["planName"] = value; }
         }
+
         [ConfigurationProperty("planID", DefaultValue = 0)]
         public int PlanID
         {
@@ -44,14 +42,13 @@ namespace HydroExplorer
             get { return (string)this["proName"]; }
             set { this["proName"] = value; }
         }
+
         [ConfigurationProperty("proID", DefaultValue = 0)]
         public int ProID
         {
             get { return (int)this["proID"]; }
             set { this["proID"] = value; }
         }
-
-
 
 
 

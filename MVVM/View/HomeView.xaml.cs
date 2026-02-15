@@ -1,4 +1,6 @@
-﻿using System.Configuration;
+﻿using System.ComponentModel;
+using System.Configuration;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -9,7 +11,7 @@ namespace HydroExplorer.MVVM.View
     {
         private Configuration AppConfig = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
 
-        readonly string ProjPath = new("C:/");
+        string ProjPath = new("C:/");
         readonly string ProjName = new("199805001 Test Project");
 
         readonly string PlanName = new("EXST");
@@ -19,7 +21,6 @@ namespace HydroExplorer.MVVM.View
         readonly int ProID = 0;
 
         readonly string[] Languages = ["English", "French", "Spanish", "Chinese"];
-
 
         public HomeView()
         {
@@ -40,6 +41,9 @@ namespace HydroExplorer.MVVM.View
             this.DataContext = UISettingSection;
         }
 
+
+
+
         private void cbAllFeatures_CheckedChanged(object sender, RoutedEventArgs e)
         {
             bool newVal = (cbFeatureXyz.IsChecked == true);
@@ -57,11 +61,24 @@ namespace HydroExplorer.MVVM.View
             if ((cbFeatureAbc.IsChecked == false) && (cbFeatureXyz.IsChecked == false) && (cbFeatureWww.IsChecked == false))
                 cbFeatureAbc.IsChecked = false;
         }
+
         private void Button_Click(object sender, RoutedEventArgs e)
         {
             System.Diagnostics.Debug.WriteLine("settings saved");
-
             AppConfig.Save(); 
         }
+
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string name = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+            System.Diagnostics.Debug.WriteLine($"HomeView name : {name} \n");
+        }
+
+
+
+
     }
 }

@@ -9,7 +9,6 @@
              d:DesignHeight="450" d:DesignWidth="800">
 
 
-
     <Grid Background="#1c1c1c">
         <Grid.RowDefinitions>
             <RowDefinition Height="40"/>
@@ -29,7 +28,6 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-
         <!--
         <DockPanel Grid.Row="1">
                 <Button DockPanel.Dock="Left">Left</Button>
@@ -41,11 +39,12 @@
         -->
 
 
-        <Label Name="projPathLbl" Grid.Column="0" Grid.Row="1" Foreground="LightGray" 
-       VerticalAlignment="Center" FontSize="10">Project Path:</Label>
+
+       <Label Name="projPathLbl" Grid.Column="0" Grid.Row="1" Foreground="LightGray" 
+              VerticalAlignment="Center" FontSize="10">Project Path:</Label>
 
         <TextBox Name="projPath" Grid.Column="1" Grid.Row="1" MinWidth="250" Background="DarkGoldenrod"
-         VerticalAlignment="Center" FontSize="10"
+                 VerticalAlignment="Center" FontSize="10"
                  Text="{Binding ProjPath, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}"
                  ></TextBox>
 
@@ -89,34 +88,29 @@
         </Button>
 
 
-
         <TextBlock Text="Model Monitor"
                    Grid.ColumnSpan="2"
-                       Foreground="LightGray"
-                       FontSize="14"
-                       HorizontalAlignment="Left"
-                       Margin="10,0,0,20"/>
+                   Foreground="LightGray"
+                   FontSize="14"
+                   HorizontalAlignment="Left"
+                   Margin="10,0,0,20"/>
 
         <StackPanel Orientation="Horizontal">
-
-
             <StackPanel Orientation="Horizontal"
-                            VerticalAlignment="Top"
-                            Height="30">
+                        VerticalAlignment="Top"
+                        Height="30">
 
                 <TextBlock Text="From UMP Endpoint / Device"
-                               Foreground="LightGray"
-                               Width="150"
-                               FontSize="10"
-                               Margin="100,0,0,0"
-                                       />
+                           Foreground="LightGray"
+                           Width="150"
+                           FontSize="10"
+                           Margin="100,0,0,0"/>
+                                       
                 <TextBlock Text="Timestamp"
-                               Foreground="LightGray"
-                               Width="150"
-                               FontSize="10"
-                               Margin="200,0,0,0"
-                                       />
-
+                           Foreground="LightGray"
+                           Width="150"
+                           FontSize="10"
+                           Margin="200,0,0,0"/>
             </StackPanel>
         </StackPanel>
 
