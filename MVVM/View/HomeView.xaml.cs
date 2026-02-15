@@ -22,6 +22,19 @@ namespace HydroExplorer.MVVM.View
 
         readonly string[] Languages = ["English", "French", "Spanish", "Chinese"];
 
+        private HydroExplorer.MVVM.View.UserControls.TreeView _treeView;
+
+
+        //private Form1 _instance; using below:::::::::
+        //private TreeView _instance;
+        private HydroExplorer.MVVM.View.UserControls.TreeView _instance;
+
+        public HomeView(HydroExplorer.MVVM.View.UserControls.TreeView instance)
+        {
+            _instance = instance;
+            System.Diagnostics.Debug.WriteLine("HomeView.............................................");
+        }
+
         public HomeView()
         {
             InitializeComponent();
@@ -40,8 +53,6 @@ namespace HydroExplorer.MVVM.View
             var UISettingSection = AppConfig.GetSection("UISettings");
             this.DataContext = UISettingSection;
         }
-
-
 
 
         private void cbAllFeatures_CheckedChanged(object sender, RoutedEventArgs e)
@@ -69,13 +80,17 @@ namespace HydroExplorer.MVVM.View
         }
 
 
-        public event PropertyChangedEventHandler PropertyChanged;
-        protected void OnPropertyChanged([CallerMemberName] string name = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        //public event PropertyChangedEventHandler PropertyChanged;
+        //protected void OnPropertyChanged([CallerMemberName] string name = null)
+        //{
+        //    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
-            System.Diagnostics.Debug.WriteLine($"HomeView name : {name} \n");
-        }
+        //    //var TreeView = new UserControls.TreeView();
+        //    var tView = _treeView;
+        //    //_treeView.
+
+        //    System.Diagnostics.Debug.WriteLine($"HomeView name : {name} \n");
+        //}
 
 
 

@@ -33,8 +33,6 @@
                 <view:MapView/>
             </DataTemplate>
 
-
-
         </ResourceDictionary>
 
     </Application.Resources>

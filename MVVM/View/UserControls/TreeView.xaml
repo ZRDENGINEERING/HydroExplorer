@@ -8,8 +8,7 @@
              xmlns:userControls="clr-namespace:HydroExplorer.MVVM.View.UserControls"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="150"
-             Loaded="Window_Loaded"
-             >
+             Loaded="Window_Loaded">
 
 
         <Grid>

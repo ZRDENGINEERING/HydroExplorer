@@ -7,15 +7,36 @@ using System.Windows.Controls;
 using System.Windows.Media;
 
 
-
 namespace HydroExplorer.MVVM.View.UserControls
 {
+    
     public partial class TreeView : UserControl
     {
+        //public HomeView _viewModel;
+        public string textBox1 = "";
+
         public TreeView()
         {
             InitializeComponent();
+            //_viewModel = viewModel;
         }
+
+        public string ComboBox1Text
+        {
+            //get { return comboBox1.Text; }
+            get { return "comboBox1.Text"; }
+        }
+
+        public string TextBox1Text
+        {
+            get { return textBox1; }
+            set { textBox1 = value; }
+
+            //get { return textBox1.Text; }
+            //set { textBox1.Text = value; }
+        }
+
+
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
@@ -31,6 +52,7 @@ namespace HydroExplorer.MVVM.View.UserControls
                 item.Expanded += Folder_Expanded;
                 FolderView.Items.Add(item);
             }
+            OnPropertyChanged();
         }
 
 
@@ -64,7 +86,6 @@ namespace HydroExplorer.MVVM.View.UserControls
 
                 subItem.Items.Add(null);
                 subItem.Expanded += Folder_Expanded;
-
                 item.Items.Add(subItem);
             });
 
@@ -81,7 +102,6 @@ namespace HydroExplorer.MVVM.View.UserControls
                     files.AddRange(fs);
             }
             catch { }
-            
 
             files.ForEach(filePath =>
             {
@@ -144,32 +164,20 @@ namespace HydroExplorer.MVVM.View.UserControls
                 parent = VisualTreeHelper.GetParent(parent);
             }
 
-
             OnPropertyChanged(path.ToString());
-
             //System.Diagnostics.Debug.WriteLine($"\n path : {path}");
             //System.Diagnostics.Debug.WriteLine($" parent : {parent} \n");
-
             return path.ToString();
         }
 
 
-
-        // INotifyPropertyChanged implementation
         public event PropertyChangedEventHandler PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string name = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-
             System.Diagnostics.Debug.WriteLine($"TreeView name : {name} \n");
+
+            //projPath.Text = "updatetext";
         }
-
-
-
-
-
-
-
-
     }
 }
