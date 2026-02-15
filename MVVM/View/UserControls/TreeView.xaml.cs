@@ -1,6 +1,9 @@
 ﻿using System.IO;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
+
 
 
 namespace HydroExplorer.MVVM.View.UserControls
@@ -11,7 +14,6 @@ namespace HydroExplorer.MVVM.View.UserControls
         {
             InitializeComponent();
         }
-
 
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -106,5 +108,61 @@ namespace HydroExplorer.MVVM.View.UserControls
 
             return path.Substring(lastIndex);
         }
+
+
+
+        private void TreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+        {
+
+            //FolderView
+            object slctdItem = e.NewValue;
+
+            //System.Diagnostics.Debug.WriteLine($"selectedItem : {e}");
+            var slctdVar = e.NewValue.ToString();
+            var slctdFile = slctdVar.Split(':').ElementAt(1).Split(' ').ElementAt(0);
+
+            System.Diagnostics.Debug.WriteLine($"slctdVar : {slctdVar}");
+            //System.Diagnostics.Debug.WriteLine($"slctdVar.GetType() : {slctdVar.GetType()}");
+
+
+            TreeViewItem? selectedItem = e.NewValue as TreeViewItem;
+            if (selectedItem != null)
+            {
+                string path = GetFullPath(selectedItem);
+                // Use the path (e.g., display in a TextBox)
+                MessageBox.Show(path);
+            }
+        }
+
+
+        private string GetFullPath(TreeViewItem item)
+        {
+            StringBuilder path = new StringBuilder();
+            // Start with the current item's header
+            path.Insert(0, item.Header.ToString());
+
+            // Loop up the visual or logical tree to find parent TreeViewItems
+            DependencyObject parent = VisualTreeHelper.GetParent(item); // Or LogicalTreeHelper
+            while (parent != null && parent is not TreeView)
+            {
+                TreeViewItem? parentItem = parent as TreeViewItem;
+                if (parentItem != null)
+                {
+                    path.Insert(0, parentItem.Header.ToString() + "\\"); // Use appropriate separator
+                }
+                parent = VisualTreeHelper.GetParent(parent);
+            }
+
+            System.Diagnostics.Debug.WriteLine($"path : {path}");
+            System.Diagnostics.Debug.WriteLine($"parent : {parent}");
+
+            return path.ToString();
+        }
+
+
+
+
+
+
     }
 }

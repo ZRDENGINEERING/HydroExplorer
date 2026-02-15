@@ -15,10 +15,10 @@
         <Grid>
             <TreeView x:Name="FolderView" 
                   Background="#262626"
-                      BorderBrush="#1f1f1f">
+                      BorderBrush="#1f1f1f"
+                      SelectedItemChanged="TreeView_SelectedItemChanged">
 
-
-                <TreeView.Resources>
+            <TreeView.Resources>
 
                     <Style TargetType="{x:Type TreeViewItem}">
 

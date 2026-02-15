@@ -1,9 +1,7 @@
 ﻿
 using HydroExplorer.Core;
 using System.Collections.ObjectModel;
-using System.ComponentModel.DataAnnotations;
 using System.Windows;
-using System.Configuration;
 
 
 namespace HydroExplorer.MVVM.ViewModel

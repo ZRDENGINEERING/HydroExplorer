@@ -1,15 +1,10 @@
-﻿using System.Collections.ObjectModel;
-using System.Configuration;
+﻿using System.Configuration;
 using System.Windows;
 using System.Windows.Controls;
 
+
 namespace HydroExplorer.MVVM.View
 {
-
-    
-    /// <summary>
-    /// Interaction logic for HomeView.xaml
-    /// </summary>
     public partial class HomeView : UserControl
     {
         private Configuration AppConfig = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
