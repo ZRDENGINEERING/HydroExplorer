@@ -1,5 +1,4 @@
-﻿
-using HydroExplorer.Core;
+﻿using HydroExplorer.Core;
 using System.Collections.ObjectModel;
 using System.Windows;
 
@@ -9,11 +8,9 @@ namespace HydroExplorer.MVVM.ViewModel
     internal class HomeViewModel : ObservableObject
     {
         public ObservableCollection<HomeViewModel> UserInputs { get; set; }
-
         private string _userInput;
         public string UserInput
         {
-
             get { return _userInput; }
             set
             {

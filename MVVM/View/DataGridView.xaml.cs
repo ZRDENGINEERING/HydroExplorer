@@ -8,18 +8,15 @@ using System.Runtime.CompilerServices;
 using System.Windows.Controls;
 
 
-
 namespace HydroExplorer.MVVM.View
 {
     public partial class DataGridView : UserControl
     {
         public string filePath = "C:/Temp/TAN_Main_SG.p01.hdf";
-
         private readonly HecRasHdfReader _reader = new();
 
         private List<HecRasProfileWselResult> itemsSource1 = [];
         private List<HecRasProfileWselResult> itemsSource2 = [];
-        private List<HecRasProfileWselResult> itemsSourceComp = [];
 
         public DataGridView()
         {
@@ -35,7 +32,6 @@ namespace HydroExplorer.MVVM.View
             
             var staInfo = getStaInfo(calcComp, "19673");
 
-
             //dgCompare.ItemsSource = _reader.ReadProfileWsel("C:/Temp/TAN_Main_SG.p02.hdf");
             System.Diagnostics.Debug.WriteLine($"dgCompare.ItemsSource : {dgCompare.ItemsSource}");
             System.Diagnostics.Debug.WriteLine($"dgCompare.ItemsSource : {dgCompare.ItemsSource}");
@@ -49,7 +45,6 @@ namespace HydroExplorer.MVVM.View
             
             System.Diagnostics.Debug.WriteLine($"\n result.WSElev: {tst}");
             System.Diagnostics.Debug.WriteLine($"result.RiverSta: {result.RiverSta} \n");
-
             return result;
         }
 
@@ -166,7 +161,6 @@ namespace HydroExplorer.MVVM.View
 
             DataTable dataTable = new DataTable();
             TextFieldParser parser = new TextFieldParser(path);
-
             parser.SetDelimiters(",");
 
             if (parser.EndOfData)
@@ -184,20 +178,14 @@ namespace HydroExplorer.MVVM.View
                 var row = parser.ReadFields();
                 dataTable.Rows.Add(row);
             }
-
             return dataTable.DefaultView;
         }
     }
 
 
-
-
-
-
     public class LoadHDF
     {
         public string Reach { get; set; }
-
         public static void MainLoadHDF()
         {
             string filePath = "C:/Temp/TAN_Main_SG.p01.hdf";
@@ -262,7 +250,6 @@ namespace HydroExplorer.MVVM.View
     }
 
 
-
     public class HecRasProfileWselResult : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
@@ -271,10 +258,5 @@ namespace HydroExplorer.MVVM.View
 
         public string RiverSta { get; set; }
         public double WSElev { get; set; }
-
     }
-
-
-
-
 }

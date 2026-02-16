@@ -1,6 +1,4 @@
-﻿using System.ComponentModel;
-using System.Configuration;
-using System.Runtime.CompilerServices;
+﻿using System.Configuration;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -12,7 +10,7 @@ namespace HydroExplorer.MVVM.View
         private Configuration AppConfig = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
 
         string ProjPath = new("C:/");
-        readonly string ProjName = new("199805001 Test Project");
+        string ProjName = new("199805001 Test Project");
 
         readonly string PlanName = new("EXST");
         readonly int PlanID = 0;
@@ -21,19 +19,7 @@ namespace HydroExplorer.MVVM.View
         readonly int ProID = 0;
 
         readonly string[] Languages = ["English", "French", "Spanish", "Chinese"];
-
-        private HydroExplorer.MVVM.View.UserControls.TreeView _treeView;
-
-
-        //private Form1 _instance; using below:::::::::
-        //private TreeView _instance;
-        private HydroExplorer.MVVM.View.UserControls.TreeView _instance;
-
-        public HomeView(HydroExplorer.MVVM.View.UserControls.TreeView instance)
-        {
-            _instance = instance;
-            System.Diagnostics.Debug.WriteLine("HomeView.............................................");
-        }
+        
 
         public HomeView()
         {
@@ -54,7 +40,6 @@ namespace HydroExplorer.MVVM.View
             this.DataContext = UISettingSection;
         }
 
-
         private void cbAllFeatures_CheckedChanged(object sender, RoutedEventArgs e)
         {
             bool newVal = (cbFeatureXyz.IsChecked == true);
@@ -63,7 +48,7 @@ namespace HydroExplorer.MVVM.View
             cbFeatureWww.IsChecked = newVal;
         }
 
-        private void cbFeature_CheckedChanged(object sender, RoutedEventArgs e)
+        internal void cbFeature_CheckedChanged(object sender, RoutedEventArgs e)
         {
             cbFeatureAbc.IsChecked = null;
             if ((cbFeatureAbc.IsChecked == true) && (cbFeatureXyz.IsChecked == true) && (cbFeatureWww.IsChecked == true))
@@ -75,25 +60,8 @@ namespace HydroExplorer.MVVM.View
 
         private void Button_Click(object sender, RoutedEventArgs e)
         {
-            System.Diagnostics.Debug.WriteLine("settings saved");
+            System.Diagnostics.Debug.WriteLine("\nSETTINGS SAVED....\n");
             AppConfig.Save(); 
         }
-
-
-        //public event PropertyChangedEventHandler PropertyChanged;
-        //protected void OnPropertyChanged([CallerMemberName] string name = null)
-        //{
-        //    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-
-        //    //var TreeView = new UserControls.TreeView();
-        //    var tView = _treeView;
-        //    //_treeView.
-
-        //    System.Diagnostics.Debug.WriteLine($"HomeView name : {name} \n");
-        //}
-
-
-
-
     }
 }

@@ -5,7 +5,6 @@ namespace HydroExplorer
 {
     internal class UISettings : ConfigurationSection
     {
-
         [ConfigurationProperty("projPath", DefaultValue = "C:/")]
         public string ProjPath
         {
@@ -53,8 +52,6 @@ namespace HydroExplorer
 
 
 
-
-
         [ConfigurationProperty("theme", DefaultValue = "Dark")]
         public string Theme
         {
@@ -82,7 +79,7 @@ namespace HydroExplorer
         {
             get { return (string)this["language"]; }
             set { this["language"] = value; }
-            }
         }
-    
+    }
+
 }

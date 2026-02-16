@@ -1,5 +1,6 @@
 ﻿using HydroExplorer.Core;
 
+
 namespace HydroExplorer.MVVM.ViewModel
 {
     class MainViewModel : ObservableObject
@@ -8,7 +9,6 @@ namespace HydroExplorer.MVVM.ViewModel
         public DiscoveryViewModel DiscoveryVM { get; set; }
         public DataGridViewModel DataGridVM { get; set; }
         public MapViewModel MapVM { get; set; }
-
 
         private object _currentView;
 

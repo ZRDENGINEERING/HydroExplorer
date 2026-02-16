@@ -18,16 +18,6 @@ namespace HydroExplorer.Core
             }
         }
 
-
-
         // Implement INotifyPropertyChanged interface details here...
-        
-
-
-
-
-
-
-
     }
 }

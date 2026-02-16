@@ -9,7 +9,6 @@ using System.Windows.Media;
 
 namespace HydroExplorer.MVVM.View.UserControls
 {
-    
     public partial class TreeView : UserControl
     {
         //public HomeView _viewModel;
@@ -19,24 +18,9 @@ namespace HydroExplorer.MVVM.View.UserControls
         {
             InitializeComponent();
             //_viewModel = viewModel;
+
+            System.Diagnostics.Debug.WriteLine($"TreeView LOADED....");
         }
-
-        public string ComboBox1Text
-        {
-            //get { return comboBox1.Text; }
-            get { return "comboBox1.Text"; }
-        }
-
-        public string TextBox1Text
-        {
-            get { return textBox1; }
-            set { textBox1 = value; }
-
-            //get { return textBox1.Text; }
-            //set { textBox1.Text = value; }
-        }
-
-
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
@@ -113,8 +97,8 @@ namespace HydroExplorer.MVVM.View.UserControls
                 item.Items.Add(subItem);
             });
         }
-        
-        
+
+
         public static string GetFileFolderName(string path)
         {
             if (string.IsNullOrEmpty(path))
@@ -131,12 +115,11 @@ namespace HydroExplorer.MVVM.View.UserControls
         }
 
 
-
         private void TreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
-            object slctdItem = e.NewValue;
-            var slctdVar = e.NewValue.ToString();
-            var slctdFile = slctdVar.Split(':').ElementAt(1).Split(' ').ElementAt(0);
+            //object slctdItem = e.NewValue;
+            //var slctdVar = e.NewValue.ToString();
+            //var slctdFile = slctdVar.Split(':').ElementAt(1).Split(' ').ElementAt(0);
 
             TreeViewItem? selectedItem = e.NewValue as TreeViewItem;
             if (selectedItem != null)
@@ -172,12 +155,25 @@ namespace HydroExplorer.MVVM.View.UserControls
 
 
         public event PropertyChangedEventHandler PropertyChanged;
-        protected void OnPropertyChanged([CallerMemberName] string name = null)
+        protected void OnPropertyChanged([CallerMemberName] string? name = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
-            System.Diagnostics.Debug.WriteLine($"TreeView name : {name} \n");
 
-            //projPath.Text = "updatetext";
+            UISettings _uiSettings = new();
+            HomeView _hView = new();
+
+            string _uiProjName;
+            if (_uiSettings != null)
+            {
+                _hView.projName.Text = "fuckyeaaaaaaaaah";
+
+                _uiProjName = _uiSettings.ProjName;
+                System.Diagnostics.Debug.WriteLine($"TreeView _uiProjName : {_uiProjName} \n");
+                System.Diagnostics.Debug.WriteLine($"TreeView name : {name} \n");
+
+            }
+
+            System.Diagnostics.Debug.WriteLine($"TreeView name : {name} \n");
         }
     }
 }
