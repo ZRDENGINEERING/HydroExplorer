@@ -42,11 +42,14 @@
        <Label Name="projPathLbl" Grid.Column="0" Grid.Row="1" Foreground="LightGray" 
               VerticalAlignment="Center" FontSize="10">Project Path:</Label>
 
-        <TextBox Name="projPath" Grid.Column="1" Grid.Row="1" MinWidth="250" Background="DarkGoldenrod"
+        <TextBox Name="projTest" Grid.Column="1" Grid.Row="1" MinWidth="250" Background="DarkGoldenrod"
                  VerticalAlignment="Center" FontSize="10"
-                 Text="{Binding ProjPath, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}"
+                 Text="{Binding ProjTest, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}"
                  ></TextBox>
 
+        
+        
+        
         <Label Name="projNameLbl" Grid.Column="0" Grid.Row="2" Foreground="LightGray" 
                VerticalAlignment="Center" FontSize="10">Project Name:</Label>
 
@@ -54,6 +57,11 @@
                  VerticalAlignment="Center" FontSize="10"
                  Text="{Binding ProjName, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}"
                  ></TextBox>
+        
+        
+        
+        
+        
 
         <Label Name="planNameLbl" Grid.Column="0" Grid.Row="3" Foreground="LightGray" 
                VerticalAlignment="Center" FontSize="10">Plan Name:</Label>

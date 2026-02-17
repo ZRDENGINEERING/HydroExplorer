@@ -24,7 +24,7 @@ namespace HydroExplorer
             if (path == null)
                 return null;
 
-            var name = TreeView.GetFileFolderName(path);
+            var name = TreeViewHdf.GetFileFolderName(path);
             
             var image = "/Images/file.png";
 

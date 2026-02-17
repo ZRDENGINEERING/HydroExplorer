@@ -9,17 +9,12 @@ using System.Windows.Media;
 
 namespace HydroExplorer.MVVM.View.UserControls
 {
-    public partial class TreeView : UserControl
+    public partial class TreeViewHdf : UserControl
     {
-        //public HomeView _viewModel;
-        public string textBox1 = "";
-
-        public TreeView()
+        public TreeViewHdf()
         {
             InitializeComponent();
-            //_viewModel = viewModel;
-
-            System.Diagnostics.Debug.WriteLine($"TreeView LOADED....");
+            System.Diagnostics.Debug.WriteLine($"TreeViewHdf LOADED....");
         }
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -31,7 +26,6 @@ namespace HydroExplorer.MVVM.View.UserControls
                     Header = drive,
                     Tag = drive
                 };
-
                 item.Items.Add(null);
                 item.Expanded += Folder_Expanded;
                 FolderView.Items.Add(item);
@@ -105,12 +99,10 @@ namespace HydroExplorer.MVVM.View.UserControls
                 return string.Empty;
 
             var normalizedPath = path.Replace('/', '\\');
-
             var lastIndex = normalizedPath.LastIndexOf('\\');
 
             if (lastIndex <= 0)
                 return path;
-
             return path.Substring(lastIndex);
         }
 
@@ -137,7 +129,7 @@ namespace HydroExplorer.MVVM.View.UserControls
             path.Insert(0, item.Header.ToString());
 
             DependencyObject parent = VisualTreeHelper.GetParent(item);
-            while (parent != null && parent is not TreeView)
+            while (parent != null && parent is not TreeViewHdf)
             {
                 TreeViewItem? parentItem = parent as TreeViewItem;
                 if (parentItem != null)
@@ -163,17 +155,20 @@ namespace HydroExplorer.MVVM.View.UserControls
             HomeView _hView = new();
 
             string _uiProjName;
-            if (_uiSettings != null)
-            {
-                _hView.projName.Text = "fuckyeaaaaaaaaah";
 
-                _uiProjName = _uiSettings.ProjName;
-                System.Diagnostics.Debug.WriteLine($"TreeView _uiProjName : {_uiProjName} \n");
-                System.Diagnostics.Debug.WriteLine($"TreeView name : {name} \n");
+            //if (_uiSettings != null)
+            //{
+            //    //_hView.projName.Text = "fuckyeaaaaaaaaah";
 
-            }
+            //    //_uiProjName = _uiSettings.ProjPath;
+            //    //_uiProjName = _hView.projName.Text;
 
-            System.Diagnostics.Debug.WriteLine($"TreeView name : {name} \n");
+            //    //System.Diagnostics.Debug.WriteLine($"TreeViewHdf _uiProjName : {_uiProjName} \n");
+            //    System.Diagnostics.Debug.WriteLine($"TreeViewHdf name : {name} \n");
+
+            //}
+
+            System.Diagnostics.Debug.WriteLine($"TreeViewHdf name : {name} \n");
         }
     }
 }

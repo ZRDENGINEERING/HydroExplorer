@@ -1,22 +1,36 @@
-﻿using System.Configuration;
+﻿using System.ComponentModel;
+using System.Configuration;
+using System.Runtime.CompilerServices;
 
 
 namespace HydroExplorer
 {
-    internal class UISettings : ConfigurationSection
+    public class UISettings : ConfigurationSection
     {
+        //public event PropertyChangedEventHandler PropertyChanged;
+        //private void OnPropertyChanged([CallerMemberName] String propertyName = "")
+        //{
+        //    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        //}
+
         [ConfigurationProperty("projPath", DefaultValue = "C:/")]
         public string ProjPath
         {
             get { return (string)this["projPath"]; }
-            set { this["projPath"] = value; }
+            set
+            {
+                this["projPath"] = value;
+            }
         }
 
         [ConfigurationProperty("projName", DefaultValue = "199805001 Test Project")]
         public string ProjName
         {
             get { return (string)this["projName"]; }
-            set { this["projName"] = value; }
+            set
+            {
+                this["projName"] = value;
+            }
         }
 
 
@@ -81,5 +95,4 @@ namespace HydroExplorer
             set { this["language"] = value; }
         }
     }
-
 }

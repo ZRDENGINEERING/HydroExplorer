@@ -54,7 +54,7 @@
 
             <!-- Right Pane -->
             <!-- <Rectangle Grid.Column="2" Fill="#1a1a1a"/> -->
-            <userControls:TreeView x:Name="TreeView"
+            <userControls:TreeViewHdf x:Name="TreeView"
                                    Grid.Column="2"/>
             
 

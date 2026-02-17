@@ -43,12 +43,6 @@ namespace HydroExplorer.MVVM.ViewModel
         {
             UserInputs = new ObservableCollection<HomeViewModel>();
         }
-        
-
-
-
-
-
 
     }
 }
