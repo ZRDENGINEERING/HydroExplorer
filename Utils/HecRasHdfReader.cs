@@ -2,8 +2,6 @@
 using PureHDF;
 using PureHDF.VOL.Native;
 using System.Runtime.InteropServices;
-using System.Text.RegularExpressions;
-
 
 
 namespace HydroExplorer.Utils

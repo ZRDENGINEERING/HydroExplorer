@@ -45,4 +45,10 @@
     <PackageReference Include="SkiaSharp.Views.WPF" Version="3.119.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Update="Core\ObservableObject.cs">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Compile>
+  </ItemGroup>
+
 </Project>

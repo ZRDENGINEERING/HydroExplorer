@@ -6,7 +6,7 @@
              xmlns:local="clr-namespace:HydroExplorer.MVVM.View"
              xmlns:HydroExplorer="clr-namespace:HydroExplorer;assembly=HydroExplorer"
              xmlns:userControls="clr-namespace:HydroExplorer.MVVM.View.UserControls"
-             xmlns:viewModel="clr-namespace:HydroExplorer.MVVM.ViewModel" 
+             xmlns:viewModel="clr-namespace:HydroExplorer.MVVM.ViewModels" 
              xmlns:utils="clr-namespace:HydroExplorer.Utils"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="150">

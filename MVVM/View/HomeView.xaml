@@ -3,11 +3,14 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             xmlns:local="clr-namespace:HydroExplorer.MVVM.View"
-             xmlns:viewModel="clr-namespace:HydroExplorer.MVVM.ViewModel"
+             xmlns:vm="clr-namespace:HydroExplorer.MVVM.ViewModels" 
+             xmlns:views="clr-namespace:HydroExplorer.MVVM.ViewModels" 
+             xmlns:behaviors="clr-namespace:HydroExplorer.MVVM.Behaviors"
+             d:DataContext="{d:DesignInstance Type=views:MainViewModel}"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
 
+    
 
     <Grid Background="#1c1c1c">
         <Grid.RowDefinitions>
@@ -42,14 +45,19 @@
        <Label Name="projPathLbl" Grid.Column="0" Grid.Row="1" Foreground="LightGray" 
               VerticalAlignment="Center" FontSize="10">Project Path:</Label>
 
-        <TextBox Name="projTest" Grid.Column="1" Grid.Row="1" MinWidth="250" Background="DarkGoldenrod"
+        <TextBox Name="projPath" Grid.Column="1" Grid.Row="1" MinWidth="250" Background="DarkGoldenrod"
                  VerticalAlignment="Center" FontSize="10"
-                 Text="{Binding ProjTest, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}"
+                 Text="{Binding ProjPath, UpdateSourceTrigger=PropertyChanged, ValidatesOnExceptions=True}"
                  ></TextBox>
 
-        
-        
-        
+        <!-- TextBox shows selected item detail -->
+        <TextBox Text="{Binding SelectedDetail, Mode=OneWay}" 
+                 IsReadOnly="True"
+                 Grid.Row="1"
+                 Margin="0,8,0,0"
+                 />
+
+
         <Label Name="projNameLbl" Grid.Column="0" Grid.Row="2" Foreground="LightGray" 
                VerticalAlignment="Center" FontSize="10">Project Name:</Label>
 

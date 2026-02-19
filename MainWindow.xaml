@@ -3,23 +3,19 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:HydroExplorer"
-        xmlns:view="clr-namespace:HydroExplorer.MVVM.View"
-        xmlns:HydroExplorer="clr-namespace:HydroExplorer;assembly=HydroExplorer"
-        xmlns:viewModel="clr-namespace:HydroExplorer.MVVM.ViewModel"
-        xmlns:utils="clr-namespace:HydroExplorer.Utils"
-        xmlns:theme="clr-namespace:HydroExplorer.Theme"
+        xmlns:views="clr-namespace:HydroExplorer.MVVM.View"
+        xmlns:vm="clr-namespace:HydroExplorer.MVVM.ViewModels"
+        xmlns:models="clr-namespace:HydroExplorer.MVVM.Models"
         xmlns:userControls="clr-namespace:HydroExplorer.MVVM.View.UserControls"
-        mc:Ignorable="d"
+        xmlns:behaviors="clr-namespace:HydroExplorer.MVVM.Behaviors"
+        mc:Ignorable="d" 
         Height="768" Width="1024"
         Title="Hydro Explorer">
 
 
     <Window.DataContext>
-        <viewModel:MainViewModel/>
+        <vm:MainViewModel/>
     </Window.DataContext>
-
-
 
     
 
@@ -43,8 +39,7 @@
             </Grid.ColumnDefinitions>
 
             <!-- Left Pane -->
-            <userControls:ViewButtons x:Name="ViewButtons"
-                                   Grid.Column="0"/>
+            <userControls:ViewButtons x:Name="ViewButtons" Grid.Column="0"/>
 
             <!-- Center Pane -->
             <ContentControl
@@ -54,8 +49,8 @@
 
             <!-- Right Pane -->
             <!-- <Rectangle Grid.Column="2" Fill="#1a1a1a"/> -->
-            <userControls:TreeViewHdf x:Name="TreeView"
-                                   Grid.Column="2"/>
+            <views:TreeViewControl x:Name="TreeView"
+                Grid.Column="2"/>
             
 
         </Grid>

@@ -1,21 +1,21 @@
-﻿using HydroExplorer.MVVM.View.UserControls;
-using System.Drawing;
+﻿using HydroExplorer.MVVM.ViewModels;
+//using HydroExplorer.MVVM.Models;
 using System.Globalization;
 using System.IO;
 using System.Windows.Data;
+//using System.Windows.Forms;
 using System.Windows.Media.Imaging;
 
 
 namespace HydroExplorer
 {
-    /// <summary>
-    ///  Converts full path to image type of a drive, folder or file
-    /// </summary>
     [ValueConversion(typeof(string), typeof(BitmapImage))]
     public class HeaderToImageConv : IValueConverter
     {
 
         public static HeaderToImageConv Instance = new HeaderToImageConv();
+
+        //TreeNode _treeNode = new();
 
         public object? Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
@@ -24,8 +24,8 @@ namespace HydroExplorer
             if (path == null)
                 return null;
 
-            var name = TreeViewHdf.GetFileFolderName(path);
-            
+            var name = MainViewModel.GetFileFolderName(path);
+
             var image = "/Images/file.png";
 
             if (string.IsNullOrEmpty(name))

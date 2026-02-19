@@ -1,8 +1,11 @@
 ﻿using System.ComponentModel;
 using System.Configuration;
-using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
+using HydroExplorer.MVVM.Behaviors;
+using HydroExplorer.MVVM.ViewModels;
+
+
 
 
 namespace HydroExplorer.MVVM.View
@@ -11,15 +14,15 @@ namespace HydroExplorer.MVVM.View
     {
         private Configuration AppConfig = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        //public event PropertyChangedEventHandler PropertyChanged;
+        string ProjName = new("199805001 Test Project");
 
-
-        //string ProjName = new("199805001 Test Project");
-
+        
         //private TreeViewHdf _instance;
         ////private TreeViewHdf.ProjPathText _intance;
 
-        string projPathText = new("C:/");
+
+        readonly string ProjPath = new("projTest");
 
         readonly string PlanName = new("EXST");
         readonly int PlanID = 0;
@@ -30,57 +33,79 @@ namespace HydroExplorer.MVVM.View
         readonly string[] Languages = ["English", "French", "Spanish", "Chinese"];
 
 
+        public string Header { get; set; }
+        public string Tag { get; set; }
+
+
+        BaseViewModel _baseVM = new();
+
+        private HomeView _selectedNode;
+        public HomeView SelectedNode
+        {
+            get => _selectedNode;
+            set
+            {
+                _baseVM.SetField(ref _selectedNode, value);
+                _baseVM.OnPropertyChanged(nameof(SelectedDetail));
+
+                System.Diagnostics.Debug.WriteLine($"SelectedNode SelectedNode....");
+            }
+        }
+
+        //--- What shows in the TextBox ---
+        public string SelectedDetail => SelectedNode != null
+            ? $"{SelectedNode.Header}: {SelectedNode.Tag}"
+            : "No item selected.";
+
+
+
+
         public HomeView()
         {
             InitializeComponent();
 
+            //TreeNode();
+
             cboxLanguage.ItemsSource = Languages;
 
-            //projPath.Text = ProjPath;
-            ////projName.Text = ProjName;
-            //planName.Text = PlanName;
-            //proName.Text = ProName;
+            //projTest.Text = ProjTest;
 
-            //if (AppConfig.Sections["UISettings"] is null)
-            //{
-            //    AppConfig.Sections.Add("UISettings", new UISettings());
-            //}
+            projPath.Text = ProjPath;
+            projName.Text = ProjName;
+            planName.Text = PlanName;
+            proName.Text = ProName;
 
-            //var UISettingSection = AppConfig.GetSection("UISettings");
-            //this.DataContext = UISettingSection;
+            if (AppConfig.Sections["UISettings"] is null)
+            {
+                AppConfig.Sections.Add("UISettings", new UISettings());
+            }
+
+            var UISettingSection = AppConfig.GetSection("UISettings");
+            this.DataContext = UISettingSection;
         }
 
 
-        private void demoTreeView_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+
+
+        //private void OnPropertyChanged([CallerMemberName] string? n = null)
+        //    => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n));
+
+        
+
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        internal void OnPropertyChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
-            //projTest.Text = e.NewValue.ToString();
-            
-            System.Diagnostics.Debug.WriteLine("\ndemoTreeView_SelectedItemChanged....\n");
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs("name"));
+
+            projPath.Text = "testeestest";
+
+            projPath.Text = e.NewValue.ToString();
+
+
+            System.Diagnostics.Debug.WriteLine($"OnPropertyTestFunc....{e.NewValue.ToString()}");
 
         }
-
-
-
-
-
-    
-
-
-        //public class HomeViewVars
-        //{
-        //    string projTest;
-
-        //    public string ProjTest
-        //    {
-        //        get { return projTest; }
-        //        set
-        //        {
-        //            projTest = value;
-        //        }
-
-        //    }
-        //}
-
 
 
 
@@ -109,6 +134,7 @@ namespace HydroExplorer.MVVM.View
             AppConfig.Save(); 
         }
     }
+
 
 
 }

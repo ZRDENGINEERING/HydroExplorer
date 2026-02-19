@@ -1,45 +1,16 @@
-﻿using HydroExplorer.MVVM.ViewModel;
+﻿using HydroExplorer.MVVM.ViewModels;
 using System.Windows;
 using System.Windows.Input;
 
 
 namespace HydroExplorer
 {
-    /// <summary>
-    /// Interaction logic for MainWindow.xaml
-    /// </summary>
-    /// 
-    
     public partial class MainWindow : Window
     {
-
-        private readonly DataGridViewModel _vm = new();
-
-        
-
         public MainWindow()
         {
             InitializeComponent();
-
-            //DataContext = _vm;
-            //_ = _vm.LoadAsync("C:/Temp/TAN_Main_SG.p01.hdf");
-
         }
-
-        //protected override void OnStart()
-        //{
-        //    // Handle when your app starts
-        //}
-
-        //protected override void OnSleep()
-        //{
-        //    // Handle when your app sleeps
-        //}
-
-        //protected override void OnResume()
-        //{
-        //    // Handle when your app resumes
-        //}
 
 
         private void Window_MouseDown(object sender, MouseButtonEventArgs e)
@@ -49,7 +20,6 @@ namespace HydroExplorer
                 this.DragMove();
             }
         }
-
 
         private void ButtonMinimize_Click(object send, RoutedEventArgs e)
         {
@@ -67,7 +37,20 @@ namespace HydroExplorer
             }
         }
 
+        //protected override void OnStart()
+        //{
+        //    // Handle when your app starts
+        //}
 
+        //protected override void OnSleep()
+        //{
+        //    // Handle when your app sleeps
+        //}
+
+        //protected override void OnResume()
+        //{
+        //    // Handle when your app resumes
+        //}
     }
 
 }

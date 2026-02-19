@@ -1,17 +1,36 @@
-﻿using System.ComponentModel;
+﻿using HydroExplorer.MVVM.View;
+using System.ComponentModel;
 using System.Configuration;
 using System.Runtime.CompilerServices;
+using static System.ComponentModel.Design.ObjectSelectorEditor;
 
 
 namespace HydroExplorer
 {
     public class UISettings : ConfigurationSection
     {
-        //public event PropertyChangedEventHandler PropertyChanged;
-        //private void OnPropertyChanged([CallerMemberName] String propertyName = "")
-        //{
-        //    PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        //}
+
+        [ConfigurationProperty("selectedDetail", DefaultValue = "selecteddetail")]
+        public string SelectedDetail
+        {
+            get { return (string)this["selectedDetail"]; }
+            set
+            {
+                this["selectedDetail"] = value;
+            }
+        }
+
+
+        [ConfigurationProperty("projTest", DefaultValue = "projtest")]
+        public string ProjTest
+        {
+            get { return (string)this["projTest"]; }
+            set
+            {
+                this["projTest"] = value;
+            }
+        }
+
 
         [ConfigurationProperty("projPath", DefaultValue = "C:/")]
         public string ProjPath
