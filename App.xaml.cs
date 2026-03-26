@@ -1,14 +1,32 @@
-﻿using System.Configuration;
-using System.Data;
-using System.Windows;
+﻿using System.Windows;
 
 namespace HydroExplorer
 {
-    /// <summary>
-    /// Interaction logic for App.xaml
-    /// </summary>
     public partial class App : Application
     {
+
+
+        //public App()
+        //{
+        //    this.DispatcherUnhandledException += App_DispatcherUnhandledException;
+        //    AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+        //    TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
+        //}
+
+        //private void App_DispatcherUnhandledException(object sender,
+        //    System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+        //{
+        //    // Catches exceptions on the UI thread
+        //    MessageBox.Show(e.Exception.Message);
+        //    e.Handled = true;
+        //}
+
+
+
     }
+
+
+
+
 
 }

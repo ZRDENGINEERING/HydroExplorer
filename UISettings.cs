@@ -1,15 +1,9 @@
-﻿using HydroExplorer.MVVM.View;
-using System.ComponentModel;
-using System.Configuration;
-using System.Runtime.CompilerServices;
-using static System.ComponentModel.Design.ObjectSelectorEditor;
-
+﻿using System.Configuration;
 
 namespace HydroExplorer
 {
     public class UISettings : ConfigurationSection
     {
-
         [ConfigurationProperty("selectedDetail", DefaultValue = "selecteddetail")]
         public string SelectedDetail
         {
@@ -19,18 +13,6 @@ namespace HydroExplorer
                 this["selectedDetail"] = value;
             }
         }
-
-
-        [ConfigurationProperty("projTest", DefaultValue = "projtest")]
-        public string ProjTest
-        {
-            get { return (string)this["projTest"]; }
-            set
-            {
-                this["projTest"] = value;
-            }
-        }
-
 
         [ConfigurationProperty("projPath", DefaultValue = "C:/")]
         public string ProjPath

@@ -1,12 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data;
-using System.IO;
-using System.Text;
-
-namespace HydroExplorer.Utils
+﻿namespace HydroExplorer.Utils
 {
-    internal class UserData
+    public class UserData
     {
         public string UserName { get; set; }
         public bool IsDarkModeEnables { get; set; }
@@ -31,39 +25,39 @@ namespace HydroExplorer.Utils
     //    chkDarkMode.IsChecked = userData.IsDarkModeEnabled;
     //}
 
-        //SaveFileDialog sfd = new SaveFileDialog();
-        //sfd.Filter = "XML-File|*.xml";
-        //sfd.Title = "Save Char-Information";
-        //sfd.ShowDialog();
+    //SaveFileDialog sfd = new SaveFileDialog();
+    //sfd.Filter = "XML-File|*.xml";
+    //sfd.Title = "Save Char-Information";
+    //sfd.ShowDialog();
 
-        //if (sfd.FileName != "")
-        //{
-        //    System.IO.FileStream fs = (System.IO.FileStream)sfd.OpenFile();
+    //if (sfd.FileName != "")
+    //{
+    //    System.IO.FileStream fs = (System.IO.FileStream)sfd.OpenFile();
 
-        //    switch (sfd.FilterIndex)
-        //    {
-        //        case 1: dataset.WriteXml(fs, XmlWriteMode.WriteSchema);                   
-        //    }
+    //    switch (sfd.FilterIndex)
+    //    {
+    //        case 1: dataset.WriteXml(fs, XmlWriteMode.WriteSchema);                   
+    //    }
 
-        //    fs.Close();
-        //}
+    //    fs.Close();
+    //}
 
 
 
-        //OpenFileDialog ofd = new OpenFileDialog();
-        //ofd.Filter = "XML-File|*.xml";
-        //ofd.Title = "Open Char-Information";
-        //ofd.ShowDialog();
+    //OpenFileDialog ofd = new OpenFileDialog();
+    //ofd.Filter = "XML-File|*.xml";
+    //ofd.Title = "Open Char-Information";
+    //ofd.ShowDialog();
 
-        //if (ofd.FileName != "")
-        //{
-        //    System.IO.FileStream fs = (System.IO.FileStream)ofd.OpenFile();
+    //if (ofd.FileName != "")
+    //{
+    //    System.IO.FileStream fs = (System.IO.FileStream)ofd.OpenFile();
 
-        //    switch (ofd.FilterIndex)
-        //    {
-        //        case 1: dataset.ReadXml(fs.Name, XmlReadMode.Auto);
-        //    }
-        //    fs.Close();
+    //    switch (ofd.FilterIndex)
+    //    {
+    //        case 1: dataset.ReadXml(fs.Name, XmlReadMode.Auto);
+    //    }
+    //    fs.Close();
 
 
 

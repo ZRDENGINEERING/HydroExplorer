@@ -3,7 +3,7 @@
 
 namespace HydroExplorer.Core
 {
-    internal class RelayCommand : ICommand
+    public class RelayCommand : ICommand
     {
         private readonly Action<object> _execute = null!;
         private readonly Func<object, bool> _canExecute = null!;
@@ -24,8 +24,8 @@ namespace HydroExplorer.Core
 
         public event EventHandler? CanExecuteChanged
         {
-            add => CommandManager.RequerySuggested += value; 
-            remove => CommandManager.RequerySuggested -= value; 
+            add => CommandManager.RequerySuggested += value;
+            remove => CommandManager.RequerySuggested -= value;
         }
 
         public bool CanExecute(object parameter)

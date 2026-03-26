@@ -11,8 +11,8 @@
   <ItemGroup>
     <None Remove="Images\drive.png" />
     <None Remove="Images\file.png" />
-    <None Remove="Images\folder_closed.png" />
-    <None Remove="Images\folder_open.png" />
+    <None Remove="Images\folder_closed.ico" />
+    <None Remove="Images\folder_open.ico" />
   </ItemGroup>
 
   <ItemGroup>
@@ -22,16 +22,17 @@
     <Content Include="Images\file.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Images\folder_closed.png">
+    <Content Include="Images\folder_closed.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Images\folder_open.png">
+    <Content Include="Images\folder_open.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Layer\" />
+    <Folder Include="NewFolder\" />
   </ItemGroup>
 
   <ItemGroup>
@@ -41,6 +42,11 @@
     <PackageReference Include="DotSpatial.Serialization" Version="4.0.656" />
     <PackageReference Include="Mapsui.Extensions" Version="5.0.2" />
     <PackageReference Include="Mapsui.Wpf" Version="5.1.0-beta.1" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="5.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.3" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.3" />
+    <PackageReference Include="OxyPlot.Wpf" Version="2.2.0" />
     <PackageReference Include="PureHDF" Version="2.1.1" />
     <PackageReference Include="SkiaSharp.Views.WPF" Version="3.119.2" />
   </ItemGroup>
@@ -48,6 +54,18 @@
   <ItemGroup>
     <Compile Update="Core\ObservableObject.cs">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Compile>
+    <Compile Update="Theme\ColourfulDarkTheme.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="Theme\ColourfulLightTheme.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="Theme\LightTheme.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="View\TabItem\TabHomeView.xaml.cs">
+      <SubType>Code</SubType>
     </Compile>
   </ItemGroup>
 

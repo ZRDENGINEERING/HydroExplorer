@@ -1,7 +1,8 @@
-﻿using HydroExplorer.MVVM.View;
+﻿using HydroExplorer.View;
 using PureHDF;
 using PureHDF.VOL.Native;
 using System.Runtime.InteropServices;
+
 
 
 namespace HydroExplorer.Utils
@@ -11,7 +12,7 @@ namespace HydroExplorer.Utils
         private const string BasePath =
        "/Results/Steady/Output/Output Blocks/Base Output/Steady Profiles/Cross Sections/";
 
-        private const string BasePathAV = 
+        private const string BasePathAV =
             "/Results/Steady/Output/Output Blocks/Base Output/Steady Profiles/Cross Sections/Additional Variables/";
 
 
@@ -21,7 +22,7 @@ namespace HydroExplorer.Utils
 
             var riverSta = ReadCrossSectionAttrStation(file);
             var wsElev = file.Dataset(BasePath + "Water Surface").Read<float[,]>();
-            
+
             //System.Diagnostics.Debug.WriteLine($"minChEl........................: {minChEl[0,0]}");
 
             int proN = 5;
@@ -124,7 +125,7 @@ namespace HydroExplorer.Utils
 
 
 
-        
+
 
         private static string[] ReadCrossSectionAttrRiver(NativeFile file)
         {
@@ -209,17 +210,17 @@ namespace HydroExplorer.Utils
             System.Diagnostics.Debug.WriteLine($"staElev........................: {raw[0, 0]}");
 
             // Initialize min value with the first element of the array
-            var minValue = raw[0,1];
+            var minValue = raw[0, 1];
             int rows = raw.GetLength(0);
 
             var minValues = new float[rows];
             // Loop through the array starting from the second element
             for (int i = 0; i < rows; i++)
             {
-                if (raw[i,1] < minValue)
+                if (raw[i, 1] < minValue)
                 {
                     // Update minValue if the current element is smaller
-                    minValue = raw[i,1];
+                    minValue = raw[i, 1];
                     minValues[i] = minValue;
                 }
             }
@@ -257,7 +258,7 @@ namespace HydroExplorer.Utils
         private static float[,] CalcCrossSectionMinElev(string proFile, float[,] wsEls, float[,] maxDepths)
         {
             int proFileID = 1;
-            
+
             var minValue = wsEls[0, proFileID] - maxDepths[0, proFileID];
 
             int rows = wsEls.GetLength(0);
@@ -312,7 +313,7 @@ namespace HydroExplorer.Utils
         {
             CrossSectionAttr attr = new CrossSectionAttr();
             attr.River = attrString;
-            
+
             var group = file.Group("Results/Steady/Output/Geometry Info");
             System.Diagnostics.Debug.WriteLine($"group........................: {group}");
 
@@ -361,7 +362,7 @@ namespace HydroExplorer.Utils
             //var raw = file.Dataset(path).Read<byte[,]>();
             var group = file.Group("Results/Steady/Output/Geometry Info");
             System.Diagnostics.Debug.WriteLine($"group........................: {group}");
-            
+
             //var commitedDataType = file.Group("/Results/Steady/Output/Geometry Info/Cross Section Attributes");
             //var unknownObject = file.Get("/Results/Steady/Output/Geometry Info/Cross Section Attributes");
 

@@ -218,7 +218,7 @@ Project Link: [https://github.com/desrochesf/HydroExplorer](https://github.com/d
 [license-url]: https://github.com/desrochesf/HydroExplorer/blob/master/LICENSE.txt
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 [linkedin-url]: https://linkedin.com/in/frank-desroches-p-e-cfm-b5762722
-[product-screenshot]: images/screenshot.png
+[product-screenshot]: Images/screenshot.png
 <!-- Shields.io badges. You can a comprehensive list with many more badges at: https://github.com/inttter/md-badges -->
 [Next.js]: https://img.shields.io/badge/next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white
 [Next-url]: https://nextjs.org/

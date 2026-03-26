@@ -3,60 +3,106 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:views="clr-namespace:HydroExplorer.MVVM.View"
-        xmlns:vm="clr-namespace:HydroExplorer.MVVM.ViewModels"
-        xmlns:models="clr-namespace:HydroExplorer.MVVM.Models"
-        xmlns:userControls="clr-namespace:HydroExplorer.MVVM.View.UserControls"
-        xmlns:behaviors="clr-namespace:HydroExplorer.MVVM.Behaviors"
+        xmlns:local="clr-namespace:HydroExplorer"
+        xmlns:views="clr-namespace:HydroExplorer.View"
+        xmlns:vm="clr-namespace:HydroExplorer.ViewModel"
+        xmlns:models="clr-namespace:HydroExplorer.Models"
+        xmlns:userControls="clr-namespace:HydroExplorer.View.UserControls"
         mc:Ignorable="d" 
-        Height="768" Width="1024"
-        Title="Hydro Explorer">
-
-
+        Height="900" Width="1333"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        ResizeMode="CanResizeWithGrip"
+        Background="Black">
+    
+    
     <Window.DataContext>
-        <vm:MainViewModel/>
+        <vm:MainWindowViewModel/>
     </Window.DataContext>
 
-    
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="70"/>
-            <RowDefinition/>
-            <RowDefinition Height="20"/>
+            <RowDefinition Height="25"/>
+            <!-- Menu Bar -->
+            <RowDefinition Height="40"/>
+            <!-- Toolbar -->
+            <RowDefinition Height="0.5"/>
+            <RowDefinition Height="1*"/>
+            <RowDefinition Height="1*"/>
+            <RowDefinition Height="1*"/>
+            <!-- Content -->
+            <RowDefinition Height="25"/>
+            <!-- Footer -->
         </Grid.RowDefinitions>
 
+        
+
+            <!-- Custom Title Bar -->
+        <Grid Height="25"
+              Background="{StaticResource BackgroundBrushLight}"
+              VerticalAlignment="Top" 
+              MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+
+            <TextBlock Text="HydroExplorer" 
+                       Foreground="Gray"
+                       VerticalAlignment="Center"
+                       Margin="10,0"/>
+
+            <!-- Close Button -->
+            <Button Content="X" Width="20"
+                    Background="Transparent"
+                    Foreground="{StaticResource ForegroundBrush}"
+                    HorizontalAlignment="Right"
+                    Click="CloseButton_Click"/>
+        </Grid>
+
+
         <!-- Menu Bar -->
-        <userControls:MenuBar/>
+        <userControls:MenuBar Grid.Row="1" Margin="0,0,0,5" Background="{StaticResource BackgroundBrushDark}" Foreground="{StaticResource ForegroundBrush}"/>
+
+        <!-- Toolbar -->
+        <Border Grid.Row="2" Background="{StaticResource BackgroundBrushDark}">
+            <userControls:ToolbarControl Grid.Row="2" DataContext="{Binding}"/>
+        </Border>
 
 
         <!-- Content Pane -->
-        <Grid Grid.Row="1">
+        <Grid Grid.Row="2" Grid.RowSpan="5">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="150"/>
-                <ColumnDefinition Width="100*"/>
-                <ColumnDefinition Width="250"/>
-            </Grid.ColumnDefinitions>
+                <ColumnDefinition Width="200" MinWidth="50"/>
+                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="100*"  MinWidth="50"/>
+                <ColumnDefinition Width="5"/>
+                <ColumnDefinition Width="200" MinWidth="150"/>
+        </Grid.ColumnDefinitions>
 
             <!-- Left Pane -->
-            <userControls:ViewButtons x:Name="ViewButtons" Grid.Column="0"/>
+            <views:TreeViewControl x:Name="MyTreeViewControl" Grid.Column="0" Background="{StaticResource BackgroundBrushDark}"/>
+
+            <!-- Splitter -->
+            <GridSplitter Grid.Column="1" Width="5" 
+                          HorizontalAlignment="Stretch" 
+                          Background="{StaticResource DividerBrush}"
+                          ShowsPreview="True"/>
 
             <!-- Center Pane -->
-            <ContentControl
-               Grid.Column="1"
-               Content="{Binding CurrentView}"/>
+            <ContentControl Grid.Column="2" Content="{Binding CurrentView}" Background="{StaticResource BackgroundBrushDark}"/>
 
+            <!-- Splitter -->
+            <GridSplitter Grid.Column="3" Width="5" 
+                          HorizontalAlignment="Stretch" 
+                          Background="{StaticResource DividerBrush}"
+                          ShowsPreview="True"/>
 
             <!-- Right Pane -->
-            <!-- <Rectangle Grid.Column="2" Fill="#1a1a1a"/> -->
-            <views:TreeViewControl x:Name="TreeView"
-                Grid.Column="2"/>
+                <userControls:ViewButtons x:Name="ViewButtons" Grid.Column="4" Background="{StaticResource BackgroundBrushDark}"/>
+        </Grid>
             
 
-        </Grid>
 
         <!-- Footer -->
-        <Rectangle Grid.Row="2" Fill="DarkRed"/>
+        <Rectangle Grid.Row="7" Fill="DarkRed"/>
 
     </Grid>
 </Window>
