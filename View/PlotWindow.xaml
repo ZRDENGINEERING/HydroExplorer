@@ -16,8 +16,12 @@
             <RowDefinition Height="40"/>
         </Grid.RowDefinitions>
 
-        <!-- Plot -->
+        <!-- Plot 
         <oxy:PlotView Grid.Row="0" Model="{Binding PlotModel}" />
+-->
+        <oxy:PlotView Model="{Binding vm.PlotModel}" />
+
+
 
         <!-- Optional close button -->
         <Button Grid.Row="1" Content="Close" Width="80"

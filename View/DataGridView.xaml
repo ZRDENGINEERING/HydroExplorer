@@ -4,68 +4,94 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:HydroExplorer.View"
-             xmlns:bhv="clr-namespace:HydroExplorer.Behaviors"
-             xmlns:viewModel="clr-namespace:HydroExplorer.ViewModel" 
-             xmlns:system="clr-namespace:System;assembly=mscorlib" 
+             xmlns:hlp="clr-namespace:HydroExplorer.Helpers"
+             xmlns:utils="clr-namespace:HydroExplorer.Utils" 
+             d:DataContext="{d:DesignInstance Type=local:HecRasProfileResult}"
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
 
 
 
-    <Grid Background="#181818">
+    <UserControl.Resources>
+        <hlp:ValueToColorConverter x:Key="ValueToColorConverter"/>
+    </UserControl.Resources>
+
+    <Grid Background="#181818" HorizontalAlignment="Left">
         <Grid.RowDefinitions>
-            <RowDefinition Height="50*"/>
-            <RowDefinition Height="50*"/>
+            <RowDefinition Height="30"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="50*"/>
-            <ColumnDefinition Width="50*"/>
+            <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
+        <DataGrid
+            Grid.Row="0"
+            AutoGenerateColumns="False"
+            CanUserAddRows="False">
+
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="" Binding="{Binding Name}" Width="318"/>
+                <DataGridTextColumn Header="EXST" Width="137"/>
+                <DataGridTextColumn Header="PROP" Width="153"/>
 
 
-                <DataGrid x:Name="dgSimple"
-                   Grid.Column="1"
-                   ItemsSource="{Binding HecRasProfileResult}"
-                   AutoGenerateColumns="True">
-                </DataGrid>
+                <DataGridTextColumn Header="" Binding="{Binding Name}" Width="67"/>
+            </DataGrid.Columns>
+        </DataGrid>
+        
+        
+        
 
-
-
-
-
-        <!--
         <DataGrid x:Name="dgSimple"
-                                  Style="{StaticResource DarkDataGrid}"
-            AutoGenerateColumns="True">
-            </DataGrid>
+          Grid.Row="1"
+          AutoGenerateColumns="False"
+          CanUserAddRows="False"
+          Grid.RowSpan="2"
+          SelectionChanged="dgSimple_SelectionChanged">
+            
+            
 
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="River" Binding="{Binding River}" Foreground="Gray"
+                                                        ElementStyle="{StaticResource CenterStyle}"/>
 
+                <DataGridTextColumn Header="Reach" Binding="{Binding Reach}" Foreground="Gray"
+                                                        ElementStyle="{StaticResource CenterStyle}"/>
 
-        <DataGrid x:Name="dgWselProfile2"
-                  Grid.Row="1"
-                  Style="{StaticResource DarkDataGrid}"
+                <DataGridTextColumn Header="RiverSta" Binding="{Binding RiverSta}"
+                                                        ElementStyle="{StaticResource CenterStyle}"/>
+                
+                <DataGridTextColumn Header="Profile" Binding="{Binding Profile}" Foreground="Gray"
+                                                        ElementStyle="{StaticResource CenterStyle}"/>
 
-                    AutoGenerateColumns="True">
+                <DataGridTextColumn Header="QTotal" Binding="{Binding QTotal}" Foreground="Gray"
+                                                        ElementStyle="{StaticResource CenterStyle}"/>
+
+                <DataGridTextColumn Header="WSElevA" Binding="{Binding WSElevA}"
+                                                        ElementStyle="{StaticResource CenterStyle}"/>
+
+                <DataGridTextColumn Header="QTotalB" Binding="{Binding QTotalB}" Foreground="Gray"
+                                                        ElementStyle="{StaticResource CenterStyle}"/>
+
+                <DataGridTextColumn Header="WSElevB" Binding="{Binding WSElevB}"
+                                                        ElementStyle="{StaticResource CenterStyle}"/>
+
+                <DataGridTextColumn Header="DELTA" Binding="{Binding DELTA}">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Center"/>
+                            <Setter Property="TextAlignment" Value="Center"/>
+                            <Setter Property="Foreground"
+                                Value="{Binding DELTA,
+                                Converter={StaticResource ValueToColorConverter}}"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+
+                </DataGridTextColumn>
+            </DataGrid.Columns>
         </DataGrid>
-
-        <DataGrid x:Name="dgCompare"
-                      Grid.Column="1"
-                      Style="{StaticResource DarkDataGrid}"
-                   ItemsSource="{Binding HecRasProfileWselResult}"
-                              AutoGenerateColumns="True">
-        </DataGrid>
--->
-
     </Grid>
 </UserControl>
-
-
-
-
-
-
-
-
-

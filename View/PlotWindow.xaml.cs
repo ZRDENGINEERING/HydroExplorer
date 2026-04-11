@@ -1,25 +1,26 @@
 ﻿using HydroExplorer.ViewModel;
 using System.Windows;
 
-
 namespace HydroExplorer.View
 {
     public partial class PlotWindow : Window
     {
+        private readonly PlotViewModel _vm;
+
         public PlotWindow()
         {
             InitializeComponent();
+            _vm = (PlotViewModel)DataContext; // reuse the XAML-created instance
         }
 
-
-        // Optional: open with specific data
-        public PlotWindow(List<(double x, double y)> data)
+        public async Task LoadDataAsync()
         {
-            InitializeComponent();
-            (DataContext as PlotViewModel)?.UpdatePlot(data);
+            await _vm.LoadDataAsync();
         }
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)
-            => Close();
+        {
+            Close();
+        }
     }
 }

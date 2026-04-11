@@ -1,5 +1,5 @@
 ﻿using System.Windows.Controls;
-
+using System.Windows.Input;
 
 
 namespace HydroExplorer.View.UserControls
@@ -8,7 +8,12 @@ namespace HydroExplorer.View.UserControls
     {
         public ToolbarControl()
         {
-            //InitializeComponent();
+            InitializeComponent();
+        }
+
+        private void CommonCommandBinding_CanExecute(object sender, CanExecuteRoutedEventArgs e)
+        {
+            e.CanExecute = true;
         }
     }
 }

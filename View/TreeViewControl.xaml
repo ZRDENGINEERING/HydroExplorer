@@ -5,17 +5,32 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:HydroExplorer"
              xmlns:core="clr-namespace:HydroExplorer.Core" 
-             xmlns:models="clr-namespace:HydroExplorer.Models" 
              xmlns:vm="clr-namespace:HydroExplorer.ViewModel" 
              mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="150" Loaded="Window_Loaded">
+             Loaded="UserControl_Loaded"
+             d:DesignHeight="450" d:DesignWidth="150">
 
-    
-    
+
+
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="3*"/>
+            <RowDefinition Height="4"/>
+            <RowDefinition Height="370" MinHeight="32"/>
+        </Grid.RowDefinitions>
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" MinWidth="50"/>
+        </Grid.ColumnDefinitions>
+
+
+
         <TreeView x:Name="foldersItem"
+                  Grid.Row="0"
                   SelectedItemChanged="FoldersItem_SelectedItemChanged"
-                    Background="{StaticResource BackgroundBrush}">
+                  Background="{StaticResource BackgroundBrush}"
+                  BorderBrush="{StaticResource Button.Disabled.Border}" 
+                  BorderThickness="0.8">
 
             <TreeView.Resources>
                 <Style TargetType="{x:Type TreeViewItem}">
@@ -36,11 +51,63 @@
                             </DataTemplate>
                         </Setter.Value>
                     </Setter>
-
                 </Style>
             </TreeView.Resources>
-
         </TreeView>
+
+
+        <!-- Splitter -->
+        <GridSplitter Grid.Row="1" Width="400"
+                      ResizeDirection="Rows"
+                      Background="{StaticResource DividerBrush}"
+                      ShowsPreview="False"/>
+
+
+
+        <!-- Project Path Selections -->
+        <GroupBox Header="Project Paths" Grid.Row="2" Grid.Column="0" Margin="0,0,0,0"
+                  Background="{StaticResource DividerBrush}"
+                        BorderThickness="0.8">
+            <StackPanel>
+                
+                <TextBox Name="txtBoxProjPathLbl" FontSize="10">Proj Path:</TextBox>
+                <TextBox Name="txtBoxProjPath" FontSize="10" 
+                         Foreground="{StaticResource ForegroundBrushDark}"
+                             Margin="15,0,0,0"/>
+                <TextBox Name="cboxHdfPathLblA" FontSize="10">HDF Path A:</TextBox>
+                <ComboBox Name="cboxHdfPathA" FontSize="10" Background="#543d05" 
+                          Foreground="{StaticResource ForegroundBrushDark}"
+                              Margin="15,0,0,0"/>
+                <TextBox Name="txtBoxPlanNameLblA" FontSize="10">Plan Name A:</TextBox>
+                <TextBox Name="txtBoxPlanNameA" FontSize="10" 
+                         Foreground="{StaticResource ForegroundBrushDark}"
+                             Margin="15,0,0,0"/>
+                <TextBox Name="txtBoxHeadLblB" FontSize="10"></TextBox>
+                <TextBox Name="txtBoxHeadB" FontSize="10" 
+                         Foreground="{StaticResource ForegroundBrushDark}"
+                             Margin="15,0,0,0"/>
+                <TextBox Name="cboxHdfPathLblB" FontSize="10">HDF Path B:</TextBox>
+                <ComboBox Name="cboxHdfPathB" FontSize="10" Background="#543d05" 
+                          Foreground="{StaticResource ForegroundBrushDark}"
+                              Margin="15,0,0,0"/>
+                <TextBox Name="txtBoxPlanNameLblB" FontSize="10">Plan Name B:</TextBox>
+                <TextBox Name="txtBoxPlanNameB" FontSize="10" 
+                         Foreground="{StaticResource ForegroundBrushDark}"
+                             Margin="15,0,0,0"/>
+                <TextBox Name="cboxProNameLbl" FontSize="10">Pro Name:</TextBox>
+                <ComboBox Name="cboxProfiles" FontSize="10" Background="#543d05" 
+                          Foreground="{StaticResource ForegroundBrushDark}"
+                              Margin="15,0,0,0"/>
+                <TextBox Name="txtBoxHeadHMS" FontSize="10" 
+                         Foreground="{StaticResource ForegroundBrushDark}"
+                             Margin="15,0,0,0"/>
+                <TextBox Name="txtBoxHmsPathLbl" FontSize="10">HMS Path:</TextBox>
+                <TextBox Name="txtBoxHmsPath" FontSize="10" IsReadOnly="True" 
+                         Foreground="{StaticResource ForegroundBrushDark}"
+                             Margin="15,0,0,0"/>
+            </StackPanel>
+        </GroupBox>
+
 
     </Grid>
 

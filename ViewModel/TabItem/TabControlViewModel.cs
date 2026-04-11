@@ -1,4 +1,5 @@
-﻿using System.Collections.ObjectModel;
+﻿using HydroExplorer.View.TabItem;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 
 
@@ -23,7 +24,10 @@ namespace HydroExplorer.ViewModel.TabItem
         {
             Tabs = new ObservableCollection<TabItemViewModel>
         {
-            new TabItemViewModel { Header = "Home", Content = new TabHomeViewModel() },
+            new TabItemViewModel { Header = "Info", Content = new TabInfoViewModel() },
+            new TabItemViewModel { Header = "Main", Content = new TabMainViewModel() },
+            new TabItemViewModel { Header = "Charts", Content = new TabChartViewModel() },
+            new TabItemViewModel { Header = "Markup & Printing", Content = new TabPrintViewModel() },
             new TabItemViewModel { Header = "Settings", Content = new TabSettingsViewModel() }
         };
 

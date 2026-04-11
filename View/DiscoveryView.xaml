@@ -25,8 +25,8 @@
 
                 <Border.Background>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="1,2">
-                        <GradientStop Color="red" Offset="0.0"/>
-                        <GradientStop Color="red" Offset="1"/>
+                        <GradientStop Color="DarkBlue" Offset="0.0"/>
+                        <GradientStop Color="DarkBlue" Offset="1"/>
                     </LinearGradientBrush>
                 </Border.Background>
                 <Border.Clip>

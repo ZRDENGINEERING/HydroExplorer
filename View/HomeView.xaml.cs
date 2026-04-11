@@ -2,7 +2,6 @@
 {
     public partial class HomeView
     {
-
         public HomeView()
         {
             InitializeComponent();
@@ -14,7 +13,6 @@
             //}
 
             //var UISettingSection = AppConfig.GetSection("UISettings");
-            //this.DataContext = UISettingSection;
         }
 
     }

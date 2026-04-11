@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿using HydroExplorer.View;
+using System.Globalization;
 using System.IO;
 using System.Windows.Data;
 using System.Windows.Media.Imaging;
@@ -13,6 +14,7 @@ namespace HydroExplorer
         public static HeaderToImageConv Instance = new HeaderToImageConv();
 
 
+
         public object? Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
             var path = (string)value;
@@ -20,7 +22,7 @@ namespace HydroExplorer
             if (path == null)
                 return null;
 
-            var name = MainWindow.GetFileFolderName(path);
+            var name = TreeViewControl.GetFileFolderName(path);
 
             var image = "/Images/file.png";
 

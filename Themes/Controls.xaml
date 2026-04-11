@@ -3,8 +3,11 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:themes="clr-namespace:Microsoft.Windows.Themes;assembly=PresentationFramework.Aero2"
                     xmlns:a="clr-namespace:HydroExplorer.Themes.Attached"
+                    xmlns:oxy="http://oxyplot.org/wpf"
                     xmlns:local="clr-namespace:HydroExplorer.Themes">
-    
+
+
+
     <PopupAnimation x:Key="{x:Static SystemParameters.MenuPopupAnimationKey}">Fade</PopupAnimation>
     <BorderGapMaskConverter x:Key="BorderGapMaskConverter"/>
     <Style x:Key="FocusVisual">
@@ -49,7 +52,7 @@
     </Style>
     <ControlTemplate x:Key="TextBoxErrorTemplate">
         <DockPanel IsHitTestVisible="False" Width="{Binding ElementName=AdornerPlaceholder, Path=ActualWidth}">
-            <Border BorderBrush="#FFF01428" BorderThickness="1"
+            <Border BorderBrush="DarkBlue" BorderThickness="1"
                     DockPanel.Dock="Top">
                 <AdornedElementPlaceholder x:Name="AdornerPlaceholder"/>
             </Border>
@@ -60,7 +63,7 @@
                             BorderBrush="{DynamicResource ABrush.Tone5.Border.Static}"
                             BorderThickness="1" CornerRadius="3" Opacity="1"/>
                     <TextBlock Text="{Binding [0].ErrorContent}"
-                               Foreground="Red"
+                               Foreground="Blue"
                                Margin="5,1,1,1"
                                Padding="5"
                                ToolTip="{Binding RelativeSource={RelativeSource Mode=Self}, Path=Text}"
@@ -1057,7 +1060,7 @@
         <Setter Property="Stylus.IsFlicksEnabled" Value="false"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderBrush" Value="Transparent"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="BorderThickness" Value="0,0"/>
         <Setter Property="Width" Value="{DynamicResource {x:Static SystemParameters.VerticalScrollBarWidthKey}}"/>
         <Setter Property="MinWidth" Value="{DynamicResource {x:Static SystemParameters.VerticalScrollBarWidthKey}}"/>
@@ -1079,7 +1082,7 @@
         <Setter Property="Stylus.IsFlicksEnabled" Value="false"/>
         <Setter Property="Background" Value="{DynamicResource ScrollBar.Static.Background}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource ScrollBar.Static.Border}"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="BorderThickness" Value="1,0"/>
         <Setter Property="Width" Value="{DynamicResource {x:Static SystemParameters.VerticalScrollBarWidthKey}}"/>
         <Setter Property="MinWidth" Value="{DynamicResource {x:Static SystemParameters.VerticalScrollBarWidthKey}}"/>
@@ -1185,7 +1188,7 @@
     </Style>
 
     <Style TargetType="{x:Type GridSplitter}">
-        <Setter Property="Background" Value="{DynamicResource ABrush.Tone5.Border.Static}"/>
+        <Setter Property="Background" Value="{DynamicResource ABrush.Tone5.BackGround.Static}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type GridSplitter}">
@@ -1259,7 +1262,7 @@
     <Style TargetType="{x:Type ToolTip}">
         <Setter Property="Background" Value="{DynamicResource Popup.Static.Background}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource Popup.Static.Border}"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="FontFamily" Value="Segoe UI"/>
         <Setter Property="FontSize" Value="12"/>
         <Setter Property="FontWeight" Value="Normal"/>
@@ -1284,7 +1287,7 @@
                                         <Setter Property="TextWrapping" Value="Wrap"/>
                                         <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
                                         <Setter Property="TextAlignment" Value="Left"/>
-                                        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+                                        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
                                     </Style>
                                 </ContentPresenter.Resources>
                             </ContentPresenter>
@@ -1344,7 +1347,7 @@
         <Setter Property="Background" Value="{DynamicResource StatusBar.Static.Background}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource StatusBar.Static.Border}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="FontFamily" Value="{DynamicResource {x:Static SystemFonts.StatusFontFamilyKey}}"/>
         <Setter Property="FontSize" Value="{DynamicResource {x:Static SystemFonts.StatusFontSizeKey}}"/>
         <Setter Property="FontStyle" Value="{DynamicResource {x:Static SystemFonts.StatusFontStyleKey}}"/>
@@ -1368,7 +1371,7 @@
         <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}"/>
         <Setter Property="Background" Value="{DynamicResource OptionMark.Static.Background}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource OptionMark.Static.Border}"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="BorderThickness" Value="1"/>
@@ -1430,7 +1433,7 @@
         <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}"/>
         <Setter Property="Background" Value="{DynamicResource RadioButton.Static.Background}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource RadioButton.Static.Border}"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="a:CornerRadiusHelper.Value" Value="100"/>
@@ -1481,7 +1484,7 @@
     </Style>
 
     <Style TargetType="{x:Type TextElement}">
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="RenderOptions.EdgeMode" Value="Unspecified"/>
         <Setter Property="TextOptions.TextRenderingMode" Value="ClearType"/>
         <Setter Property="TextOptions.TextFormattingMode" Value="Ideal"/>
@@ -1489,7 +1492,7 @@
 
     <Style TargetType="{x:Type TextBlock}">
         <Setter Property="TextAlignment" Value="Left"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="RenderOptions.EdgeMode" Value="Unspecified"/>
         <Setter Property="TextOptions.TextRenderingMode" Value="ClearType"/>
         <Setter Property="TextOptions.TextFormattingMode" Value="Ideal"/>
@@ -1501,7 +1504,7 @@
     </Style>
 
     <Style TargetType="{x:Type Label}">
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Padding" Value="5"/>
         <Setter Property="HorizontalContentAlignment" Value="Left"/>
@@ -1538,7 +1541,7 @@
     <Style x:Key="{x:Type TextBoxBase}" TargetType="{x:Type TextBoxBase}">
         <Setter Property="Background" Value="{DynamicResource TextBox.Static.Background}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource TextBox.Static.Border}"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="CaretBrush" Value="{DynamicResource ABrush.Glyph.Static}"/>
         <Setter Property="SelectionBrush" Value="{DynamicResource TextBox.Selection}"/>
         <Setter Property="BorderThickness" Value="1"/>
@@ -1582,7 +1585,7 @@
     </Style>
 
     <Style x:Key="{x:Type Hyperlink}" TargetType="{x:Type Hyperlink}">
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="TextDecorations" Value="Underline"/>
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="true">
@@ -1627,9 +1630,10 @@
         <Setter Property="Validation.ErrorTemplate" Value="{StaticResource TextBoxErrorTemplate}"/>
         <Setter Property="Background" Value="{DynamicResource TextBox.Static.Background}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource TextBox.Static.Border}"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="CaretBrush" Value="{DynamicResource ABrush.Glyph.Static}"/>
         <Setter Property="SelectionBrush" Value="{DynamicResource TextBox.Selection}"/>
+        <Setter Property="Height" Value="18"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="KeyboardNavigation.TabNavigation" Value="None"/>
         <Setter Property="HorizontalContentAlignment" Value="Left"/>
@@ -1673,7 +1677,7 @@
         <Setter Property="Validation.ErrorTemplate" Value="{StaticResource TextBoxErrorTemplate}"/>
         <Setter Property="Background" Value="{DynamicResource TextBox.Static.Background}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource TextBox.Static.Border}"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="CaretBrush" Value="{DynamicResource ABrush.Glyph.Static}"/>
         <Setter Property="SelectionBrush" Value="{DynamicResource TextBox.Selection}"/>
         <Setter Property="BorderThickness" Value="1"/>
@@ -1750,7 +1754,7 @@
         <Setter Property="PasswordChar" Value="●"/>
         <Setter Property="Background" Value="{DynamicResource TextBox.Static.Background}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource TextBox.Static.Border}"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="KeyboardNavigation.TabNavigation" Value="None"/>
         <Setter Property="HorizontalContentAlignment" Value="Left"/>
@@ -1826,7 +1830,7 @@
         <Setter Property="PasswordChar" Value="●"/>
         <Setter Property="Background" Value="{DynamicResource TextBox.Static.Background}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource TextBox.Static.Border}"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="KeyboardNavigation.TabNavigation" Value="None"/>
         <Setter Property="HorizontalContentAlignment" Value="Left"/>
@@ -2063,7 +2067,7 @@
     </Style>
 
     <Style TargetType="{x:Type Expander}">
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
         <Setter Property="VerticalContentAlignment" Value="Stretch"/>
@@ -2074,7 +2078,12 @@
                 <ControlTemplate TargetType="{x:Type Expander}">
                     <Border BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Background="{TemplateBinding Background}" CornerRadius="3" SnapsToDevicePixels="true">
                         <DockPanel>
-                            <ToggleButton x:Name="HeaderSite" ContentTemplate="{TemplateBinding HeaderTemplate}" ContentTemplateSelector="{TemplateBinding HeaderTemplateSelector}" Content="{TemplateBinding Header}" DockPanel.Dock="Top" Foreground="{TemplateBinding Foreground}" FontWeight="{TemplateBinding FontWeight}" FocusVisualStyle="{StaticResource ExpanderHeaderFocusVisual}" FontStyle="{TemplateBinding FontStyle}" FontStretch="{TemplateBinding FontStretch}" FontSize="{TemplateBinding FontSize}" FontFamily="{TemplateBinding FontFamily}" HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" IsChecked="{Binding IsExpanded, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" Margin="1" MinWidth="0" MinHeight="0" Padding="{TemplateBinding Padding}" Style="{StaticResource ExpanderDownHeaderStyle}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                            <ToggleButton x:Name="HeaderSite" ContentTemplate="{TemplateBinding HeaderTemplate}" ContentTemplateSelector="{TemplateBinding HeaderTemplateSelector}" 
+                                          Content="{TemplateBinding Header}" DockPanel.Dock="Top" Foreground="{TemplateBinding Foreground}" FontWeight="{TemplateBinding FontWeight}" 
+                                          FocusVisualStyle="{StaticResource ExpanderHeaderFocusVisual}" FontStyle="{TemplateBinding FontStyle}" FontStretch="{TemplateBinding FontStretch}" 
+                                          FontSize="{TemplateBinding FontSize}" FontFamily="{TemplateBinding FontFamily}" HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" 
+                                          IsChecked="{Binding IsExpanded, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" Margin="1" MinWidth="0" MinHeight="0" Padding="{TemplateBinding Padding}" 
+                                          Style="{StaticResource ExpanderDownHeaderStyle}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"/>
                             <ContentPresenter x:Name="ExpandSite" DockPanel.Dock="Bottom" Focusable="false" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" Margin="{TemplateBinding Padding}" Visibility="Collapsed" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
                         </DockPanel>
                     </Border>
@@ -2107,12 +2116,12 @@
     </Style>
 
     <Style x:Key="ComboBoxEditableTextBox" TargetType="{x:Type TextBox}">
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="CaretBrush" Value="{DynamicResource ABrush.Glyph.Static}"/>
         <Setter Property="OverridesDefaultStyle" Value="true"/>
         <Setter Property="AllowDrop" Value="true"/>
         <Setter Property="MinWidth" Value="0"/>
-        <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="MinHeight" Value="18"/>
         <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
         <Setter Property="ScrollViewer.PanningMode" Value="VerticalFirst"/>
         <Setter Property="Stylus.IsFlicksEnabled" Value="False"/>
@@ -2133,9 +2142,12 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type ToggleButton}">
-                    <Border x:Name="templateRoot" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Background="{TemplateBinding Background}" SnapsToDevicePixels="true">
-                        <Border x:Name="splitBorder" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1,0,0,0" HorizontalAlignment="Right" Margin="0" SnapsToDevicePixels="true" Width="{DynamicResource {x:Static SystemParameters.VerticalScrollBarWidthKey}}">
-                            <Path x:Name="arrow" Data="F1 M 0,0 L 2.667,2.66665 L 5.3334,0 L 5.3334,-1.78168 L 2.6667,0.88501 L0,-1.78168 L0,0 Z" Fill="{DynamicResource ComboBox.Static.Glyph}" HorizontalAlignment="Center" Margin="0 3 0 0" VerticalAlignment="Center"/>
+                    <Border x:Name="templateRoot" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" 
+                            Background="{TemplateBinding Background}" SnapsToDevicePixels="true">
+                        <Border x:Name="splitBorder" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1,0,0,0" HorizontalAlignment="Right" 
+                                Margin="0" SnapsToDevicePixels="true" Width="{DynamicResource {x:Static SystemParameters.VerticalScrollBarWidthKey}}">
+                            <Path x:Name="arrow" Data="F1 M 0,0 L 2.667,2.66665 L 5.3334,0 L 5.3334,-1.78168 L 2.6667,0.88501 L0,-1.78168 L0,0 Z" 
+                                  Fill="{DynamicResource ComboBox.Static.Glyph}" HorizontalAlignment="Center" Margin="0 3 0 0" VerticalAlignment="Center"/>
                         </Border>
                     </Border>
                     <ControlTemplate.Triggers>
@@ -2335,8 +2347,10 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type ComboBoxItem}">
-                    <Border x:Name="Bd" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="true">
-                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                    <Border x:Name="Bd" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" 
+                            Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="true">
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" 
+                                          SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsEnabled" Value="False">
@@ -2454,13 +2468,14 @@
                         </DockPanel>
                         <ScrollBar Name="PART_HorizontalScrollBar" Orientation="Horizontal" Grid.Row="1" Maximum="{TemplateBinding ScrollableWidth}" ViewportSize="{TemplateBinding ViewportWidth}" Value="{TemplateBinding HorizontalOffset}" Visibility="{TemplateBinding ComputedHorizontalScrollBarVisibility}"/>
                         <ScrollBar Name="PART_VerticalScrollBar" Grid.Column="1" Maximum="{TemplateBinding ScrollableHeight}" ViewportSize="{TemplateBinding ViewportHeight}" Value="{TemplateBinding VerticalOffset}" Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}"/>
-
                     </Grid>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
     </Style>
 
+    
+    
     <Style x:Key="GridViewColumnHeaderGripper" TargetType="{x:Type Thumb}">
         <Setter Property="Width" Value="18"/>
         <Setter Property="Template">
@@ -2477,7 +2492,7 @@
     <Style x:Key="{x:Type GridViewColumnHeader}" TargetType="{x:Type GridViewColumnHeader}">
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="HorizontalContentAlignment" Value="Left"/>
         <Setter Property="Padding" Value="5,2,0,2"/>
         <Setter Property="Template">
@@ -2570,7 +2585,7 @@
 
     <Style TargetType="{x:Type DataGridColumnHeadersPresenter}">
         <Setter Property="Background" Value="{DynamicResource DataGrid.HeaderItem.Static.Background}"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type DataGridColumnHeadersPresenter}">
@@ -2590,7 +2605,7 @@
     </Style>
 
     <Style x:Key="ColumnHeaderGripperStyle" TargetType="{x:Type Thumb}">
-        <Setter Property="Width" Value="8"/>
+        <Setter Property="Width" Value="10"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Cursor" Value="SizeWE"/>
         <Setter Property="Template">
@@ -2607,13 +2622,16 @@
         <Setter Property="Background" Value="{DynamicResource DataGrid.HeaderItem.Static.Background}"/>
         <Setter Property="BorderBrush" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="SeparatorBrush" Value="{DynamicResource DataGrid.VerticalSeparatorBrush}"/>
+        <Setter Property="SeparatorBrush" Value="{DynamicResource DataGrid.HorizontalSeparatorBrush}"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
-        <Setter Property="Padding" Value="4,2"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="Padding" Value="15,7"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type DataGridColumnHeader}">
                     <Grid>
+                        
+                        
                         <!--
                         <Themes:DataGridHeaderBorder BorderThickness="{TemplateBinding BorderThickness}"
                                                      IsClickable="{TemplateBinding CanUserSort}"
@@ -2647,16 +2665,17 @@
             </Setter.Value>
         </Setter>
     </Style>
+    
 
     <Style TargetType="{x:Type DataGridRow}">
-        <Setter Property="FontSize" Value="10" />
+        <Setter Property="FontSize" Value="10"/>
         <Setter Property="Background" Value="{Binding Background, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type DataGrid}}}"/>
         <Setter Property="SnapsToDevicePixels" Value="true"/>
         <Setter Property="Validation.ErrorTemplate" Value="{x:Null}"/>
         <Setter Property="ValidationErrorTemplate">
             <Setter.Value>
                 <ControlTemplate>
-                    <TextBlock Foreground="Red" Margin="2,0,0,0" Text="!" VerticalAlignment="Center"/>
+                    <TextBlock Foreground="DarkBlue" Margin="2,0,0,0" Text="!" VerticalAlignment="Center"/>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
@@ -2674,8 +2693,13 @@
                                 <RowDefinition Height="Auto"/>
                             </SelectiveScrollingGrid.RowDefinitions>
                             <DataGridCellsPresenter Grid.Column="1" ItemsPanel="{TemplateBinding ItemsPanel}" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
-                            <DataGridDetailsPresenter Grid.Column="1" Grid.Row="1" SelectiveScrollingGrid.SelectiveScrollingOrientation="{Binding AreRowDetailsFrozen, ConverterParameter={x:Static SelectiveScrollingOrientation.Vertical}, Converter={x:Static DataGrid.RowDetailsScrollingConverter}, RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}}" Visibility="{TemplateBinding DetailsVisibility}"/>
-                            <DataGridRowHeader Grid.RowSpan="2" SelectiveScrollingGrid.SelectiveScrollingOrientation="Vertical" Visibility="{Binding HeadersVisibility, ConverterParameter={x:Static DataGridHeadersVisibility.Row}, Converter={x:Static DataGrid.HeadersVisibilityConverter}, RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}}"/>
+                            <DataGridDetailsPresenter Grid.Column="1" Grid.Row="1" SelectiveScrollingGrid.SelectiveScrollingOrientation="{Binding AreRowDetailsFrozen, 
+                                ConverterParameter={x:Static SelectiveScrollingOrientation.Vertical}, Converter={x:Static DataGrid.RowDetailsScrollingConverter}, 
+                                RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}}" Visibility="{TemplateBinding DetailsVisibility}"/>
+                            
+                            <DataGridRowHeader Grid.RowSpan="1" SelectiveScrollingGrid.SelectiveScrollingOrientation="Vertical" 
+                                               Visibility="{Binding HeadersVisibility,ConverterParameter={x:Static DataGridHeadersVisibility.Row}, Converter={x:Static DataGrid.HeadersVisibilityConverter}, 
+                                RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}}"/>
                         </SelectiveScrollingGrid>
                     </Border>
                 </ControlTemplate>
@@ -2704,14 +2728,19 @@
 
     <Style TargetType="{x:Type DataGridRowHeader}">
         <Setter Property="Background" Value="{DynamicResource DataGrid.RowHeader.Static.Background}"/>
-        <Setter Property="Template">
+        <!--<Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type DataGridRowHeader}">
-                    <Grid>
-                        <themes:DataGridHeaderBorder BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Background="{TemplateBinding Background}" IsPressed="{TemplateBinding IsPressed}" IsHovered="{TemplateBinding IsMouseOver}" IsSelected="{TemplateBinding IsRowSelected}" Orientation="Horizontal" Padding="{TemplateBinding Padding}" SeparatorBrush="{TemplateBinding SeparatorBrush}" SeparatorVisibility="{TemplateBinding SeparatorVisibility}">
+                        <Grid>
+                        <themes:DataGridHeaderBorder BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                                                     Background="{TemplateBinding Background}" IsPressed="{TemplateBinding IsPressed}" IsHovered="{TemplateBinding IsMouseOver}" 
+                                                     IsSelected="{TemplateBinding IsRowSelected}" Orientation="Horizontal" Padding="{TemplateBinding Padding}" 
+                                                     SeparatorBrush="{TemplateBinding SeparatorBrush}" SeparatorVisibility="{TemplateBinding SeparatorVisibility}">
+
                             <StackPanel Orientation="Horizontal">
                                 <ContentPresenter RecognizesAccessKey="True" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" VerticalAlignment="Center"/>
-                                <Control SnapsToDevicePixels="false" Template="{Binding ValidationErrorTemplate, RelativeSource={RelativeSource AncestorType={x:Type DataGridRow}}}" Visibility="{Binding (Validation.HasError), Converter={StaticResource B2VConverter}, RelativeSource={RelativeSource AncestorType={x:Type DataGridRow}}}"/>
+                                <Control SnapsToDevicePixels="false" Template="{Binding ValidationErrorTemplate, RelativeSource={RelativeSource AncestorType={x:Type DataGridRow}}}" 
+                                         Visibility="{Binding (Validation.HasError), Converter={StaticResource B2VConverter}, RelativeSource={RelativeSource AncestorType={x:Type DataGridRow}}}"/>
                             </StackPanel>
                         </themes:DataGridHeaderBorder>
                         <Thumb x:Name="PART_TopHeaderGripper" Style="{StaticResource RowHeaderGripperStyle}" VerticalAlignment="Top"/>
@@ -2719,8 +2748,10 @@
                     </Grid>
                 </ControlTemplate>
             </Setter.Value>
-        </Setter>
+           </Setter>
+    -->    
     </Style>
+
 
     <Style TargetType="{x:Type DataGridCell}">
         <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
@@ -2743,6 +2774,11 @@
         </Setter>
     </Style>
 
+    <Style x:Key="CenterStyle" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="TextAlignment" Value="Center"/>
+    </Style>
+
     <Style x:Key="DataGridTextColumnElementStyle" TargetType="{x:Type TextBlock}" BasedOn="{StaticResource {x:Type TextBlock}}"/>
     <Style x:Key="DataGridTextColumnEditingElementStyle" TargetType="{x:Type TextBox}" BasedOn="{StaticResource {x:Type TextBox}}">
         <Setter Property="BorderThickness" Value="0"/>
@@ -2759,9 +2795,10 @@
     <Style x:Key="DataGridCheckBoxColumnEditingElementStyle" TargetType="{x:Type CheckBox}" BasedOn="{StaticResource DataGridCheckBoxColumnElementStyle}"/>
 
     <Style TargetType="{x:Type DataGrid}">
+        <Setter Property="FontFamily" Value="Arial"/>
         <Setter Property="Background" Value="{DynamicResource DataGrid.Static.Background}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource DataGrid.Static.Border}"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="VerticalGridLinesBrush" Value="{DynamicResource DataGrid.VerticalSeparatorBrush}"/>
         <Setter Property="HorizontalGridLinesBrush" Value="{DynamicResource DataGrid.HorizontalSeparatorBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
@@ -2788,9 +2825,11 @@
                                             <RowDefinition Height="Auto"/>
                                         </Grid.RowDefinitions>
                                         <Button Command="{x:Static DataGrid.SelectAllCommand}" Focusable="false" Style="{DynamicResource {ComponentResourceKey ResourceId=DataGridSelectAllButtonStyle, TypeInTargetAssembly={x:Type DataGrid}}}"
-                                                Visibility="{Binding HeadersVisibility, ConverterParameter={x:Static DataGridHeadersVisibility.All}, Converter={x:Static DataGrid.HeadersVisibilityConverter}, RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}}"
+                                                Visibility="{Binding HeadersVisibility, ConverterParameter={x:Static DataGridHeadersVisibility.All}, 
+                                                    Converter={x:Static DataGrid.HeadersVisibilityConverter}, RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}}"
                                                 Width="{Binding CellsPanelHorizontalOffset, RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}}"/>
-                                        <DataGridColumnHeadersPresenter x:Name="PART_ColumnHeadersPresenter" Grid.Column="1" Visibility="{Binding HeadersVisibility, ConverterParameter={x:Static DataGridHeadersVisibility.Column}, Converter={x:Static DataGrid.HeadersVisibilityConverter}, RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}}"/>
+                                        <DataGridColumnHeadersPresenter x:Name="PART_ColumnHeadersPresenter" Grid.Column="1" Visibility="{Binding HeadersVisibility, 
+                                                    ConverterParameter={x:Static DataGridHeadersVisibility.Column}, Converter={x:Static DataGrid.HeadersVisibilityConverter}, RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}}"/>
                                         <ScrollContentPresenter x:Name="PART_ScrollContentPresenter" CanContentScroll="{TemplateBinding CanContentScroll}" Grid.ColumnSpan="2" Grid.Row="1"/>
                                         <ScrollBar x:Name="PART_VerticalScrollBar" Grid.Column="2" Maximum="{TemplateBinding ScrollableHeight}" Orientation="Vertical" Grid.Row="1" Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}" Value="{Binding VerticalOffset, Mode=OneWay, RelativeSource={RelativeSource TemplatedParent}}" ViewportSize="{TemplateBinding ViewportHeight}"/>
                                         <Grid Grid.Column="1" Grid.Row="2">
@@ -2819,7 +2858,6 @@
             </MultiTrigger>
         </Style.Triggers>
     </Style>
-
     <Style TargetType="{x:Type ListBoxItem}">
         <Setter Property="SnapsToDevicePixels" Value="True"/>
         <Setter Property="Padding" Value="4,1"/>
@@ -2874,6 +2912,7 @@
         </Setter>
     </Style>
 
+
     <Style x:Key="ListBoxItemNoBorder" TargetType="{x:Type ListBoxItem}" BasedOn="{StaticResource {x:Type ListBoxItem}}">
         <Setter Property="BorderThickness" Value="0"/>
     </Style>
@@ -2881,7 +2920,7 @@
     <Style TargetType="{x:Type ListBox}">
         <Setter Property="Background" Value="{DynamicResource ListBox.Static.Background}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource ListBox.Static.Border}"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto"/>
         <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
@@ -2968,7 +3007,7 @@
     <Style TargetType="{x:Type ListView}">
         <Setter Property="Background" Value="{DynamicResource ListView.Static.Background}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource ListView.Static.Border}"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto"/>
         <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
@@ -3161,7 +3200,7 @@
         <Setter Property="Background" Value="{DynamicResource ToolBarHorizontalBackground}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource ToolBarHorizontalBorder}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="Padding" Value="2,1,1,1"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -3240,8 +3279,9 @@
     </Style>
 
     <Style TargetType="{x:Type TabItem}">
+        <Setter Property="Header" Value="{Binding Header}"/>
         <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="Background" Value="{DynamicResource TabItem.Static.Background}"/>
         <Setter Property="BorderBrush" Value="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=TabControl}, Path=BorderBrush}"/>
         <Setter Property="Margin" Value="0"/>
@@ -3253,9 +3293,12 @@
                 <ControlTemplate TargetType="{x:Type TabItem}">
                     <Grid x:Name="templateRoot" SnapsToDevicePixels="true">
                         <Border x:Name="mainBorder" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1,1,1,0" Background="{TemplateBinding Background}" Margin="0">
-                            <Border x:Name="innerBorder" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1,1,1,0" Background="{Binding Background, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type TabControl}}}" Margin="-1" Opacity="0"/>
+                            <Border x:Name="innerBorder" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1,1,1,0" 
+                                    Background="{Binding Background, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type TabControl}}}" Margin="-1" Opacity="0"/>
                         </Border>
-                        <ContentPresenter x:Name="contentPresenter" ContentSource="Header" Focusable="False" HorizontalAlignment="{Binding HorizontalContentAlignment, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}" Margin="{TemplateBinding Padding}" RecognizesAccessKey="True" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" VerticalAlignment="{Binding VerticalContentAlignment, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"/>
+                        <ContentPresenter x:Name="contentPresenter" ContentSource="Header" Focusable="False" HorizontalAlignment="{Binding HorizontalContentAlignment, 
+                            RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}" Margin="{TemplateBinding Padding}" RecognizesAccessKey="True" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" 
+                                          VerticalAlignment="{Binding VerticalContentAlignment, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"/>
                     </Grid>
                     <ControlTemplate.Triggers>
                         <MultiDataTrigger>
@@ -3966,7 +4009,7 @@
         <Setter Property="Background" Value="{DynamicResource TabItem.Selected.Background}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource TabItem.Selected.Border}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type TabControl}">
@@ -4027,7 +4070,7 @@
         <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}"/>
         <Setter Property="Background" Value="{DynamicResource ABrush.Tone3.Background.Static}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderBrush}"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="Padding" Value="0"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
@@ -4096,7 +4139,7 @@
         <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}"/>
         <Setter Property="Background" Value="{DynamicResource ABrush.Tone3.Background.Static}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderBrush}"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="Padding" Value="0"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
@@ -4153,7 +4196,7 @@
     <Style TargetType="{x:Type GroupBox}">
         <Setter Property="Background" Value="{DynamicResource GroupBox.Header.Static.Background}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource GroupBox.Static.Border}"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -4190,7 +4233,7 @@
     <Style x:Key="NoBorderGroupBox" TargetType="{x:Type GroupBox}">
         <Setter Property="Background" Value="{DynamicResource GroupBox.Header.Static.Background}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource GroupBox.Static.Border}"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="BorderThickness" Value="0"/>
@@ -4226,7 +4269,7 @@
     <Style x:Key="ThinGroupBox" TargetType="{x:Type GroupBox}">
         <Setter Property="Background" Value="{DynamicResource GroupBox.Static.Background}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource GroupBox.Static.Border}"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -4263,7 +4306,7 @@
     <Style x:Key="SquaredGroupBox" TargetType="{x:Type GroupBox}">
         <Setter Property="BorderBrush" Value="{DynamicResource GroupBox.Static.Border}"/>
         <Setter Property="Background" Value="{DynamicResource GroupBox.Static.Background}"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -4304,7 +4347,7 @@
     <Style x:Key="DefaultGroupbox" TargetType="{x:Type GroupBox}">
         <Setter Property="BorderBrush" Value="{DynamicResource GroupBox.Static.Border}"/>
         <Setter Property="Background" Value="{DynamicResource GroupBox.Static.Background}"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -4574,7 +4617,7 @@
         <Setter Property="FontSize" Value="{DynamicResource {x:Static SystemFonts.MenuFontSizeKey}}"/>
         <Setter Property="FontStyle" Value="{DynamicResource {x:Static SystemFonts.MenuFontStyleKey}}"/>
         <Setter Property="FontWeight" Value="{DynamicResource {x:Static SystemFonts.MenuFontWeightKey}}"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -4594,7 +4637,7 @@
     <Style TargetType="{x:Type ContextMenu}">
         <Setter Property="Background" Value="{DynamicResource Popup.Static.Background}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource Popup.Static.Border}"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="SnapsToDevicePixels" Value="True"/>
         <Setter Property="OverridesDefaultStyle" Value="True"/>
@@ -4639,7 +4682,7 @@
                                        Stroke="{DynamicResource TreeViewItem.TreeArrow.Static.Stroke}"
                                        StrokeDashArray="2,2"
                                        StrokeThickness="1" SnapsToDevicePixels="True"/>
-                            <Label x:Name="ExpandText" FontSize="14" Margin="1,-2,0,0" Content="+" Padding="0" VerticalAlignment="Top" HorizontalAlignment="Center" Foreground="{DynamicResource ABrush.Foreground.Static}" FontFamily="Consolas"/>
+                            <Label x:Name="ExpandText" FontSize="10" Margin="1,-2,0,0" Content="+" Padding="0" VerticalAlignment="Top" HorizontalAlignment="Center" Foreground="{StaticResource ABrush.Foreground.Static}" FontFamily="Consolas"/>
                         </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
@@ -4679,7 +4722,7 @@
         <Setter Property="HorizontalContentAlignment" Value="{Binding HorizontalContentAlignment, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"/>
         <Setter Property="VerticalContentAlignment" Value="{Binding VerticalContentAlignment, RelativeSource={RelativeSource AncestorType={x:Type ItemsControl}}}"/>
         <Setter Property="Padding" Value="1,0,0,0"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="FocusVisualStyle" Value="{StaticResource TreeViewItemFocusVisual}"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -4864,7 +4907,7 @@
         <Setter Property="BorderBrush" Value="{DynamicResource TreeView.Static.Border}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Padding" Value="1"/>
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto"/>
         <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
         <Setter Property="ScrollViewer.PanningMode" Value="Both"/>
@@ -4912,7 +4955,7 @@
     </Style>
 
     <Style TargetType="{x:Type Calendar}">
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource ABrush.Tone8.Border.Static}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Template">
@@ -5091,7 +5134,7 @@
     </Style>
 
     <Style TargetType="{x:Type DatePickerTextBox}">
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="Background" Value="{DynamicResource ABrush.Tone4.Background.Static}"/>
         <Setter Property="BorderBrush" Value="Transparent"/>
         <Setter Property="ScrollViewer.PanningMode" Value="VerticalFirst"/>
@@ -5155,7 +5198,7 @@
     </Style>
 
     <Style TargetType="{x:Type DatePicker}">
-        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+        <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="IsTodayHighlighted" Value="True"/>
         <Setter Property="SelectedDateFormat" Value="Short"/>
         <Setter Property="Background" Value="{DynamicResource ABrush.Tone5.Background.Static}"/>

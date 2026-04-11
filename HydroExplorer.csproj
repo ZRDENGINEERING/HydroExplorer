@@ -31,23 +31,20 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Layer\" />
-    <Folder Include="NewFolder\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="DotSpatial.Projections" Version="4.0.656" />
     <PackageReference Include="DotSpatial.Projections.Forms" Version="4.0.656" />
     <PackageReference Include="DotSpatial.Projections.NetStandard" Version="1.0.0" />
     <PackageReference Include="DotSpatial.Serialization" Version="4.0.656" />
-    <PackageReference Include="Mapsui.Extensions" Version="5.0.2" />
-    <PackageReference Include="Mapsui.Wpf" Version="5.1.0-beta.1" />
-    <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="5.0.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.3" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.3" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.3" />
+    <PackageReference Include="Mapsui.Extensions" Version="5.1.0-beta.5" />
+    <PackageReference Include="Mapsui.Wpf" Version="5.1.0-beta.5" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="5.3.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.5" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.5" />
+    <PackageReference Include="NetTopologySuite.IO.ShapeFile" Version="2.1.0" />
     <PackageReference Include="OxyPlot.Wpf" Version="2.2.0" />
-    <PackageReference Include="PureHDF" Version="2.1.1" />
+    <PackageReference Include="ProjNET" Version="2.1.0" />
+    <PackageReference Include="PureHDF" Version="2.1.2" />
     <PackageReference Include="SkiaSharp.Views.WPF" Version="3.119.2" />
   </ItemGroup>
 
@@ -64,9 +61,22 @@
     <Compile Update="Theme\LightTheme.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Update="View\TabItem\TabHomeView.xaml.cs">
+    <Compile Update="View\TabItem\TabInfoView.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Update="View\TabItem\TabMainView.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="View\TabItem\TabChartView.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Update="View\TabItem\TabPrintView.xaml.cs">
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Properties\" />
   </ItemGroup>
 
 </Project>

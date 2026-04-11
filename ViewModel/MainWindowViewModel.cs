@@ -1,9 +1,12 @@
 ﻿using HydroExplorer.Core;
+using HydroExplorer.Helpers;
+
 
 
 
 namespace HydroExplorer.ViewModel
 {
+
     public class MainWindowViewModel : BaseViewModel
     {
         public HomeViewModel HomeVM { get; set; }
@@ -30,10 +33,12 @@ namespace HydroExplorer.ViewModel
         public RelayCommand MapViewCommand { get; set; }
 
 
+        private readonly IUserSettingsRepo _settingsRepo;
 
-
-        public MainWindowViewModel()
+        public MainWindowViewModel(IUserSettingsRepo settingsRepo)
         {
+            _settingsRepo = settingsRepo;
+
             HomeVM = new HomeViewModel();
             DiscoveryVM = new DiscoveryViewModel();
             DataGridVM = new DataGridViewModel();
@@ -46,11 +51,8 @@ namespace HydroExplorer.ViewModel
             DataGridViewCommand = new RelayCommand(o => { CurrentView = DataGridVM; }, canExecute: o => true);
             MapViewCommand = new RelayCommand(o => { CurrentView = MapVM; }, canExecute: o => true);
 
-
-           
         }
-
-
+      
 
         public string _selectedImagePath;
         public string SelectedImagePath

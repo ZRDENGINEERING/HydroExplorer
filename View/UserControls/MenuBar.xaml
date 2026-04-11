@@ -15,6 +15,7 @@
                 <RowDefinition Height="30"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
+        
         <Menu Background="{StaticResource BackgroundBrush}" Foreground="LightGray">
             <MenuItem Header="File"
                       VerticalAlignment="Center"

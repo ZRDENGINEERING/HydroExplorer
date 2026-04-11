@@ -1,15 +1,14 @@
-﻿using HydroExplorer.Utils;
+﻿using HydroExplorer.Helpers;
+using HydroExplorer.Utils;
+using HydroExplorer.ViewModel;
+using HydroExplorer.View;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.VisualBasic.FileIO;
-using PureHDF;
 using System.ComponentModel;
 using System.Data;
-using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
-using System.Windows.Media;
-
 
 
 
@@ -17,30 +16,92 @@ namespace HydroExplorer.View
 {
     public partial class DataGridView : UserControl
     {
-        public string filePath = "C:/Temp/TAN_Main_SG.p01.hdf";
+        private IUserSettingsRepo? _settingsRepo;
+        public Dictionary<string, ProjectSettings> projSettings { get; set; } = new();
+        public PlotViewModel PlotVm { get; } = new PlotViewModel();
+        private SelectionViewModel _selectionVm;
+
+        
+
+
+        public string? projDir = string.Empty;
+        public string? projPath = string.Empty;
+        public string? hdfPathA = string.Empty;
+        public string? hdfPathB = string.Empty;
+        public string? planNameA = string.Empty;
+        public string? planNameB = string.Empty;
+        public string? proName = string.Empty;
+
+        //public string filePath = "C:/Temp/TAN_Main_SG.p01.hdf";
+        public string filePath = string.Empty;
+
         private readonly HecRasHdfReader _reader = new();
 
         private List<HecRasProfileWselResult> itemsSource1 = [];
         private List<HecRasProfileWselResult> itemsSource2 = [];
 
+        private PlotViewModel _plotVm;
+
+
         public DataGridView()
         {
             InitializeComponent();
 
-            //TODO BIND HDF PATH TO APPCONFIG
-            dgSimple.ItemsSource = _reader.ReadProfileSummary("C:/Temp/TAN_Main_SG.p01.hdf");
-            //dgWselProfile2.ItemsSource = _reader.ReadProfileSummary("C:/Temp/TAN_Main_SG.p05.hdf");
-
-            //dgCompare.ItemsSource = _reader.ReadProfileSummary("C:/Temp/TAN_Main_SG.p01.hdf");
-            List<HecRasProfileWselResult> calcComp = CalcCompare();
-            //dgCompare.ItemsSource = calcComp;
-
-            var staInfo = getStaInfo(calcComp, "19673");
+            _selectionVm = App.ServiceProvider.GetRequiredService<SelectionViewModel>();
+            _selectionVm.PropertyChanged += OnSelectionChanged;
 
 
-            //dgCompare.ItemsSource = _reader.ReadProfileWsel("C:/Temp/TAN_Main_SG.p02.hdf");
-            //System.Diagnostics.Debug.WriteLine($"dgCompare.ItemsSource : {dgCompare.ItemsSource}");
-            //System.Diagnostics.Debug.WriteLine($"dgCompare.ItemsSource : {dgCompare.ItemsSource}");
+            Loaded += async (s, e) =>
+            {
+                await LoadSettingsDataGrid(); // fine here — this IS DataGridView
+
+                _plotVm = App.ServiceProvider.GetRequiredService<PlotViewModel>();
+
+
+                var wselDataOxy = _reader.ReadWSELTableOxy(hdfPathA, hdfPathB, proName);
+
+                dgSimple.ItemsSource = wselDataOxy;
+                PlotVm.LoadFromWSELTable(wselDataOxy);
+            };
+        }
+
+        private void OnSelectionChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName != nameof(SelectionViewModel.SelectedRiverSta)) return;
+
+            var rs = _selectionVm.SelectedRiverSta;
+            if (string.IsNullOrEmpty(rs)) return;
+
+            var item = dgSimple.Items
+                .OfType<WSELTableOxy>()
+                .FirstOrDefault(x => x.RiverSta?.Trim() == rs.Trim());
+
+            if (item == null) return;
+
+            dgSimple.Dispatcher.Invoke(() =>
+            {
+                dgSimple.SelectedItem = item;
+                dgSimple.ScrollIntoView(item);
+            });
+        }
+
+
+
+        private async Task LoadSettingsDataGrid()
+        {
+            _settingsRepo = App.ServiceProvider.GetRequiredService<IUserSettingsRepo>();
+            var settings = await _settingsRepo.GetSettings();
+
+            projPath = settings.ProjPath;
+            projDir = settings.ProjDir;
+
+            var _projects = settings.Projects[projPath];
+
+            hdfPathA = _projects.HdfPathA;
+            hdfPathB = _projects.HdfPathB;
+            planNameA = _projects.PlanNameA;
+            planNameB = _projects.PlanNameB;
+            proName = _projects.ProName;
         }
 
 
@@ -49,8 +110,9 @@ namespace HydroExplorer.View
             HecRasProfileWselResult result = calcComp.ElementAt(11);
             var tst = result.WSElev;
 
-            System.Diagnostics.Debug.WriteLine($"\n result.WSElev: {tst}");
-            System.Diagnostics.Debug.WriteLine($"result.RiverSta: {result.RiverSta} \n");
+
+            //System.Diagnostics.Debug.WriteLine($"\n result.WSElev: {tst}");
+            //System.Diagnostics.Debug.WriteLine($"result.RiverSta: {result.RiverSta} \n");
             return result;
         }
 
@@ -103,8 +165,8 @@ namespace HydroExplorer.View
                         {
 
                             //System.Diagnostics.Debug.WriteLine($"rsta: {rsta}");
-                            System.Diagnostics.Debug.WriteLine($"i: {idx1}");
-                            System.Diagnostics.Debug.WriteLine($"idx: {idx2}");
+                            //System.Diagnostics.Debug.WriteLine($"i: {idx1}");
+                            //System.Diagnostics.Debug.WriteLine($"idx: {idx2}");
                             //System.Diagnostics.Debug.WriteLine($"itemsSource1[i].RiverSta: {itemsSource1[idx1].RiverSta}");
                             //System.Diagnostics.Debug.WriteLine($"itemsSource1[idx].RiverSta: {itemsSource2[idx2].RiverSta}");
                             //System.Diagnostics.Debug.WriteLine($"zzzzzzzzz");
@@ -119,16 +181,18 @@ namespace HydroExplorer.View
                     else
                     {
                         wselsub = 0;
-                        System.Diagnostics.Debug.WriteLine($"itemsSource1[i].RiverSta: {idx1}");
-                        System.Diagnostics.Debug.WriteLine($"itemsSource1[i].RiverSta: {itemsSource1[i].RiverSta}");
-                        System.Diagnostics.Debug.WriteLine($"itemsSource1[idx].RiverSta: {idx2}");
-                        System.Diagnostics.Debug.WriteLine($"itemsSource1[i].RiverSta: {itemsSource2[i].RiverSta}");
-                        System.Diagnostics.Debug.WriteLine($" ");
+                        //System.Diagnostics.Debug.WriteLine($"itemsSource1[i].RiverSta: {idx1}");
+                        //System.Diagnostics.Debug.WriteLine($"itemsSource1[i].RiverSta: {itemsSource1[i].RiverSta}");
+                        //System.Diagnostics.Debug.WriteLine($"itemsSource1[idx].RiverSta: {idx2}");
+                        //System.Diagnostics.Debug.WriteLine($"itemsSource1[i].RiverSta: {itemsSource2[i].RiverSta}");
+                        //System.Diagnostics.Debug.WriteLine($" ");
                     }
                     results.Add(new HecRasProfileWselResult
                     {
                         RiverSta = rsta,
-                        WSElev = Math.Round(wselsub, 2)
+                        WSElev = Math.Round(wselsub, 2),
+                        DELTA = Math.Round(wselsub, 2)
+
                         //WSElev = itemsSource2[i].WSElev - itemsSource1[i].WSElev,
                     });
                 }
@@ -145,10 +209,9 @@ namespace HydroExplorer.View
                     });
                 }
             }
+            //System.Diagnostics.Debug.WriteLine(results);
             return results;
         }
-
-
 
         private void Click_Me(object sender, RoutedEventArgs e)
         {
@@ -160,10 +223,18 @@ namespace HydroExplorer.View
 
 
 
+        private void dgSimple_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (dgSimple.SelectedItem is WSELTableOxy row) // ✅ changed to WSELTableOxy
+            {
+                _selectionVm.SelectedRiverSta = row.RiverSta;
+                _selectionVm.SelectedDelta = row.DELTA;
+            }
+        }
+
+
+
     }
-
-
-
 
 
     public class LoadCSV
@@ -193,47 +264,6 @@ namespace HydroExplorer.View
         }
     }
 
-
-    public class LoadHDF
-    {
-        public string Reach { get; set; }
-        public static void MainLoadHDF()
-        {
-            string filePath = "C:/Temp/TAN_Main_SG.p01.hdf";
-            try
-            {
-                using var file = H5File.OpenRead(filePath);
-                var group = file.Group("Results/Steady/Output/Output Blocks/Base Output/Steady Profiles/Cross Sections");
-
-                var dataset = group.Dataset("/Results/Steady/Output/Output Blocks/Base Output/Steady Profiles/Cross Sections/Water Surface");
-
-                float[,] dataArray = dataset.Read<float[,]>();
-
-                List<List<float>> listOfLists = [];
-                int rows = dataArray.GetLength(0);
-                int cols = dataArray.GetLength(1);
-
-                List<float> rowX = [];
-
-                for (int j = 0; j < cols; j++)
-                {
-                    rowX.Add(dataArray[5, j]);
-                }
-                listOfLists.Add(rowX);
-
-                System.Diagnostics.Debug.WriteLine($"Attribute value: {group.Name}");
-                System.Diagnostics.Debug.WriteLine("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ: ");
-            }
-            catch (IOException ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error accessing file: {ex.Message}");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"An error occurred: {ex.Message}");
-            }
-        }
-    }
 
 
 
@@ -266,15 +296,50 @@ namespace HydroExplorer.View
         public event PropertyChangedEventHandler PropertyChanged;
         private void OnPropertyChanged([CallerMemberName] string? n = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n));
-
         public string RiverSta { get; set; }
         public double WSElev { get; set; }
+        public double DELTA { get; set; }
     }
 
 
 
+    public class WSELTable : INotifyPropertyChanged
+    {
+        public event PropertyChangedEventHandler PropertyChanged;
+        private void OnPropertyChanged([CallerMemberName] string? n = null)
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n));
+
+        public string River { get; set; }
+        public string Reach { get; set; }
+        public string RiverSta { get; set; }
+        public string Profile { get; set; }
+        public float QTotal { get; set; }
+        public double WSElevA { get; set; }
+        public float QTotalB { get; set; }
+        public double WSElevB { get; set; }
+        public double DELTA { get; set; }
+
+        //public double DELTA = res.DELTA;
+    }
 
 
+    public class WSELTableOxy : INotifyPropertyChanged
+    {
+        public event PropertyChangedEventHandler PropertyChanged;
+        private void OnPropertyChanged([CallerMemberName] string? n = null)
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(n));
 
+        public string River { get; set; }
+        public string Reach { get; set; }
+        public string RiverSta { get; set; }
+        public string Profile { get; set; }
+        public float QTotal { get; set; }
+        public float MinChEl { get; set; }
+        public double WSElevA { get; set; }
+        public float QTotalB { get; set; }
+        public double WSElevB { get; set; }
+        public double DELTA { get; set; }
 
+        //public double DELTA = res.DELTA;
+    }
 }
