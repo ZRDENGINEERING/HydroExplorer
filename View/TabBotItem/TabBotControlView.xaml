@@ -8,24 +8,44 @@
              xmlns:behaviors="clr-namespace:HydroExplorer.Behaviors"
              mc:Ignorable="d"
              d:DesignHeight="450" d:DesignWidth="800">
-    
 
     <UserControl.DataContext>
         <vm:TabBotControlViewModel/>
     </UserControl.DataContext>
 
 
-    <TabControl TabStripPlacement="Bottom">
-        <TabItem Header="Chart">
-            <views:TabBotChartsView/>
-        </TabItem>
-        <TabItem Header="Output">
-            <views:TabBotOutputView/>
-        </TabItem>
+    <TabControl ItemsSource="{Binding Tabs}" 
+            SelectedItem="{Binding SelectedTab}"
+            TabStripPlacement="Bottom"
+            Background="{StaticResource BackgroundBrushDark}">
+
+        <TabControl.Resources>
+            <DataTemplate DataType="{x:Type vm:TabBotChartsViewModel}">
+                <views:TabBotChartsView/>
+            </DataTemplate>
+
+            <DataTemplate DataType="{x:Type vm:TabBotOutputViewModel}">
+                <views:TabBotOutputView/>
+            </DataTemplate>
+        </TabControl.Resources>
+
+        <TabControl.ItemContainerStyle>
+            <Style TargetType="TabItem" BasedOn="{StaticResource {x:Type TabItem}}">
+                <Setter Property="Header" Value="{Binding Header}"/>
+                <Setter Property="Background" Value="{DynamicResource TabItem.Selected.Background}"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="{StaticResource BackgroundBrushDark}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+        </TabControl.ItemContainerStyle>
+
+        <TabControl.ContentTemplate>
+            <DataTemplate>
+                <ContentPresenter Content="{Binding Content}"/>
+            </DataTemplate>
+        </TabControl.ContentTemplate>
     </TabControl>
-
-
-
-
 
 </UserControl>

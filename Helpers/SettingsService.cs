@@ -10,17 +10,17 @@ namespace HydroExplorer.Helpers
         public string LastProjPath { get; set; } = string.Empty;
         public string ProjPath { get; set; } = string.Empty;
         public string ProjDir { get; set; } = string.Empty;
-        //public string HdfPathA { get; set; } = string.Empty;
-        //public string HdfPathB { get; set; } = string.Empty;
-        //public string PlanNameA { get; set; } = string.Empty;
-        //public string PlanNameB { get; set; } = string.Empty;
-        //public string ProName { get; set; } = string.Empty;
 
-        public Dictionary<string, ProjectSettings> Projects { get; set; } = new();
+        public Dictionary<string, ProjectSettings> Projects { get; set; } = [];
+        public Dictionary<string, DateTime> HmsProjects { get; set; } = [];
+
+        public IEnumerable<KeyValuePair<string, ProjectSettings>> RecentProjects =>
+            Projects.Take(10);
+
+        public IEnumerable<KeyValuePair<string, DateTime>> RecentHmsProjects =>  // NEW
+            HmsProjects.Take(10);
 
         public override string ToString() => $"{{ ProjPath: \"{ProjPath}\" }}";
-        //public override string ToString() => $"{{ HdfPath: {HdfPath}, ProjPath: \"{ProjPath}\" }}";
-        //public override string ToString() => $"{{ HdfPath: {HdfPath}, ProjPath: {ProjPath} }}";
     }
 
     public class ProjectSettings
@@ -33,13 +33,15 @@ namespace HydroExplorer.Helpers
         public string ProName { get; set; } = string.Empty;
         public string HmsPath { get; set; } = string.Empty;
         public string SelectedReach { get; set; } = string.Empty;
+        public DateTime LastOpened { get; set; } = DateTime.MinValue;
     }
-
     public interface IUserSettingsRepo
     {
         Task<UserSettings> GetSettings();
+        Task<UserSettings> GetSettingsFresh();
         Task SaveSettings(UserSettings userSettings);
     }
+
 
     public sealed class FileSystemUserSettingsRepo : IUserSettingsRepo
     {
@@ -49,65 +51,75 @@ namespace HydroExplorer.Helpers
         private readonly string _settingsFolderPath = GetSettingsFolderPath();
         private readonly string _settingsFilePath = GetSettingsFilePath();
 
-        private readonly SemaphoreSlim _lock = new(1, 1); // ✅ only one operation at a time
+        private readonly Lock _lock = new();
+        private UserSettings? _cache;
 
-
-        public async Task<UserSettings> GetSettings()
+        public Task<UserSettings> GetSettings()
         {
-            await _lock.WaitAsync();
-            try
+            lock (_lock)
             {
+                if (_cache != null) return Task.FromResult(_cache);
+
                 if (!File.Exists(_settingsFilePath))
                 {
-                    await SaveSettingsInternal(new UserSettings());
+                    _cache = new UserSettings();
+                    SaveSettingsInternal(_cache);
+                    return Task.FromResult(_cache);
                 }
 
-                using var settingsFileStream = new FileStream(
+                using var stream = new FileStream(
                     _settingsFilePath,
                     FileMode.Open,
                     FileAccess.Read,
                     FileShare.Read);
 
-                var deserializedSettings = await JsonSerializer.DeserializeAsync<UserSettings>(settingsFileStream);
+                _cache = JsonSerializer.Deserialize<UserSettings>(stream)
+                    ?? throw new InvalidOperationException("Can't deserialize user settings");
 
-                return deserializedSettings ?? throw new InvalidOperationException("Can't deserialize user settings");
-            }
-            finally
-            {
-                _lock.Release();
+                return Task.FromResult(_cache);
             }
         }
 
-
-        public async Task SaveSettings(UserSettings userSettings)
+        public Task<UserSettings> GetSettingsFresh()
         {
-            await _lock.WaitAsync();
-            try
-            {
-                await SaveSettingsInternal(userSettings);
-            }
-            finally
-            {
-                _lock.Release();
-            }
+            lock (_lock) { _cache = null; }
+            return GetSettings();
         }
 
+        public Task SaveSettings(UserSettings userSettings)
+        {
+            lock (_lock)
+            {
+                _cache = userSettings;
+                SaveSettingsInternal(userSettings);
+            }
+            return Task.CompletedTask;
+        }
 
-
-
-        // ✅ Internal method that doesn't acquire the lock
-        private async Task SaveSettingsInternal(UserSettings userSettings)
+        private void SaveSettingsInternal(UserSettings userSettings)
         {
             if (!Directory.Exists(_settingsFolderPath))
                 Directory.CreateDirectory(_settingsFolderPath);
 
-            using var settingsFileStream = new FileStream(
-                _settingsFilePath,
-                FileMode.Create,
-                FileAccess.Write,
-                FileShare.None);
+            const int maxRetries = 3;
+            for (int i = 0; i < maxRetries; i++)
+            {
+                try
+                {
+                    using var stream = new FileStream(
+                        _settingsFilePath,
+                        FileMode.Create,
+                        FileAccess.Write,
+                        FileShare.None);
 
-            await JsonSerializer.SerializeAsync(settingsFileStream, userSettings);
+                    JsonSerializer.Serialize(stream, userSettings);
+                    return;
+                }
+                catch (IOException) when (i < maxRetries - 1)
+                {
+                    Thread.Sleep(100);
+                }
+            }
         }
 
         private static string GetSettingsFolderPath()
@@ -121,5 +133,6 @@ namespace HydroExplorer.Helpers
             var settingsFolder = GetSettingsFolderPath();
             return Path.Combine(settingsFolder, SettingsFileName);
         }
+
     }
 }

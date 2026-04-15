@@ -1,4 +1,5 @@
 ﻿using HydroExplorer.ViewModel;
+using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
 
 namespace HydroExplorer.View
@@ -10,7 +11,9 @@ namespace HydroExplorer.View
         public PlotWindow()
         {
             InitializeComponent();
-            _vm = (PlotViewModel)DataContext; // reuse the XAML-created instance
+
+            _vm = App.ServiceProvider.GetRequiredService<PlotViewModel>();
+            DataContext = _vm;
         }
 
         public async Task LoadDataAsync()

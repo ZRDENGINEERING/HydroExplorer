@@ -11,6 +11,7 @@ using OxyPlot.Legends;
 using OxyPlot.Series;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 
@@ -31,8 +32,8 @@ namespace HydroExplorer.ViewModel
             set { _isSelected = value; OnPropertyChanged(); }
         }
 
-        public event PropertyChangedEventHandler PropertyChanged;
-        protected void OnPropertyChanged([CallerMemberName] string name = null)
+        public event PropertyChangedEventHandler? PropertyChanged;
+        protected void OnPropertyChanged([CallerMemberName] string? name = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
     }
 
@@ -44,13 +45,13 @@ namespace HydroExplorer.ViewModel
         private readonly HecRasHdfReader _reader = new();
         private IUserSettingsRepo? _settingsRepo;
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([CallerMemberName] string? name = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
-        private string _projPath;  // add field at top of class
+        private string _projPath = string.Empty;
 
-
+        private CancellationTokenSource? _loadCts;
 
 
         // ── Plot model ───────────────────────────────────────────────────────
@@ -58,61 +59,177 @@ namespace HydroExplorer.ViewModel
         public PlotModel PlotModel
         {
             get => _plotModel;
-            set { _plotModel = value; OnPropertyChanged(); }
+            set
+            {
+                if (_plotModel != null)
+                {
+                    _plotModel.InvalidatePlot(false);
+                }
+                _plotModel = value;
+                OnPropertyChanged();
+            }
         }
 
-        // keeps vm alias working (was in original)
+        private PlotModel _plotModelB = new();
+        public PlotModel PlotModelB
+        {
+            get => _plotModelB;
+            set
+            {
+                if (_plotModelB != null)
+                    _plotModelB.InvalidatePlot(false);
+                _plotModelB = value;
+                OnPropertyChanged();
+            }
+        }
+
         private PlotModel vm1;
-        public PlotModel vm { get => vm1; set => SetProperty(ref vm1, value); }
+        public PlotModel Vm { get => vm1; set => SetProperty(ref vm1, value); }
 
         // ── Reach data ───────────────────────────────────────────────────────
-        public List<WSELTableOxy> WselData { get; private set; } = new();
+        public List<WSELTableOxy>? WselData { get; private set; } = [];
 
-        // All raw data, keyed by reach name
-        private Dictionary<string, List<WSELTableOxy>> _dataByReach = new();
+        private Dictionary<string, List<WSELTableOxy>> _dataByReach = [];
 
-        public ObservableCollection<ReachItem> Reaches { get; set; } = new();
+        public ObservableCollection<ReachItem> Reaches { get; set; } = [];
 
-        public bool HasMultipleReaches => true; // force visible for debugging
-        //public bool HasMultipleReaches => Reaches.Count > 1;
+        //public bool HasMultipleReaches => true; // force visible for debugging
+        public bool HasMultipleReaches => Reaches.Count > 1;
 
-        // ── Commands ─────────────────────────────────────────────────────────
         public ICommand ReachSelectionChangedCommand { get; }
 
-        // ── Constructor ──────────────────────────────────────────────────────
+
+
         public PlotViewModel()
         {
             PlotModel = new PlotModel();
-            ReachSelectionChangedCommand = new RelayCommand(execute: _ => RefreshPlot(),canExecute: _ => true);
+            ReachSelectionChangedCommand = new RelayCommand(execute: _ => RefreshPlot(), canExecute: _ => true);
+
+            EventBus.ProjPathChanged += async path =>
+            {
+                _loadCts?.Cancel();
+
+                var oldCts = _loadCts;
+                _loadCts = new CancellationTokenSource();
+                var token = _loadCts.Token;
+
+                oldCts?.Dispose();
+
+                try
+                {
+                    _dataLoaded = false;
+
+                    // Delay without throwing on cancellation
+                    await Task.Delay(1000).ContinueWith(_ => { }, token);
+
+                    if (token.IsCancellationRequested) return;
+
+                    await LoadDataAsync(path);
+                }
+                catch (TaskCanceledException)
+                {
+                    System.Diagnostics.Debug.WriteLine("PlotViewModel load delay cancelled.");
+                }
+                catch (OperationCanceledException)
+                {
+                    System.Diagnostics.Debug.WriteLine("PlotViewModel ProjPathChanged cancelled.");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"PlotViewModel ProjPathChanged error: {ex.Message}");
+                }
+            };
         }
 
-        // ── Data loading ─────────────────────────────────────────────────────
-        public async Task LoadDataAsync()
+
+
+
+
+        public async Task LoadDataAsync(string projPathOverride = "")
         {
             if (_dataLoaded) return;
             _dataLoaded = true;
 
-            _settingsRepo = App.ServiceProvider.GetRequiredService<IUserSettingsRepo>();
-            var settings = await _settingsRepo.GetSettings();
-
-            _projPath = settings.ProjPath;  // store for later saving
-            var project = settings.Projects[_projPath];
-
-            var hdfPathA = project.HdfPathA;
-            var hdfPathB = project.HdfPathB;
-            var proName = project.ProName;
-
-            WselData = _reader.ReadWSELTableOxy(hdfPathA, hdfPathB, proName);
-
-            // Pass saved reach selection into LoadFromWSELTable
-            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            try
             {
-                LoadFromWSELTable(WselData, project.SelectedReach);
-            });
+                _settingsRepo = App.ServiceProvider.GetRequiredService<IUserSettingsRepo>();
+
+                var settings = string.IsNullOrEmpty(projPathOverride)
+                    ? await _settingsRepo.GetSettings()
+                    : await _settingsRepo.GetSettingsFresh();
+
+                _projPath = string.IsNullOrEmpty(projPathOverride)
+                    ? settings.ProjPath
+                    : projPathOverride;
+
+                if (string.IsNullOrEmpty(_projPath))
+                {
+                    System.Diagnostics.Debug.WriteLine("LoadDataAsync: No project path.");
+                    _dataLoaded = false;
+                    return;
+                }
+
+                if (!settings.Projects.TryGetValue(_projPath, out var project))
+                {
+                    System.Diagnostics.Debug.WriteLine($"LoadDataAsync: No saved settings for '{_projPath}'.");
+                    _dataLoaded = false;
+                    return;
+                }
+
+
+
+
+                var hdfPathA = project.HdfPathA;
+                var hdfPathB = project.HdfPathB;
+                var proName = project.ProName;
+
+                if (string.IsNullOrEmpty(hdfPathA) || !File.Exists(hdfPathA))
+                {
+                    System.Diagnostics.Debug.WriteLine($"LoadDataAsync: HDF Path A missing or not found: '{hdfPathA}'.");
+                    return;
+                }
+
+                if (string.IsNullOrEmpty(hdfPathB) || !File.Exists(hdfPathB))
+                {
+                    System.Diagnostics.Debug.WriteLine($"LoadDataAsync: HDF Path B missing or not found: '{hdfPathB}'.");
+                    return;
+                }
+
+                WselData = await Task.Run(() =>
+                    HecRasHdfReader.ReadWSELTableOxy(hdfPathA, hdfPathB, proName));
+
+                if (WselData == null) return;
+
+                var data = WselData;
+                System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                {
+                    LoadFromWSELTable(data, project.SelectedReach);
+                });
+            }
+            catch (OperationCanceledException)
+            {
+                _dataLoaded = false;
+                System.Diagnostics.Debug.WriteLine("LoadDataAsync cancelled.");
+            }
+            catch (Exception ex)
+            {
+                _dataLoaded = false;
+                System.Diagnostics.Debug.WriteLine($"LoadDataAsync error: {ex.Message}");
+            }
         }
 
-        public void LoadFromWSELTable(List<WSELTableOxy> data, string savedReach = "")
+
+
+
+
+
+
+
+
+        public void LoadFromWSELTable(List<WSELTableOxy>? data, string savedReach = "")
         {
+            if (data == null) return;
+
             _dataByReach = data
                 .GroupBy(r => string.IsNullOrWhiteSpace(r.Reach) ? "Default" : r.Reach)
                 .ToDictionary(g => g.Key, g => g.ToList());
@@ -121,7 +238,6 @@ namespace HydroExplorer.ViewModel
             bool isFirst = true;
             foreach (var key in _dataByReach.Keys)
             {
-                // Restore saved reach if available, otherwise default to first
                 bool isSelected = string.IsNullOrWhiteSpace(savedReach)
                     ? isFirst
                     : key == savedReach;
@@ -134,37 +250,66 @@ namespace HydroExplorer.ViewModel
             RefreshPlot();
         }
 
-        // ── Refresh plot from selected reaches ───────────────────────────────
+
+
+
+
+
+
+
+
+
+
         private async void RefreshPlot()
         {
-            var selectedData = Reaches
-                .Where(r => r.IsSelected)
-                .SelectMany(r => _dataByReach.TryGetValue(r.ReachId, out var rows)
-                    ? rows
-                    : Enumerable.Empty<WSELTableOxy>())
-                .ToList();
-
-            PlotModel = CreatePlot(selectedData);
-
-            // Save selected reach to settings
-            await SaveSelectedReachAsync();
-        }
-        private async Task SaveSelectedReachAsync()
-        {
-            if (_settingsRepo == null || string.IsNullOrEmpty(_projPath)) return;
-
-            var selectedReach = Reaches.FirstOrDefault(r => r.IsSelected)?.ReachId ?? string.Empty;
-
-            var settings = await _settingsRepo.GetSettings();
-            if (settings.Projects.TryGetValue(_projPath, out var project))
+            try
             {
-                project.SelectedReach = selectedReach;
-                await _settingsRepo.SaveSettings(settings);
+                var selectedData = Reaches
+                    .Where(r => r.IsSelected)
+                    .SelectMany(r => _dataByReach.TryGetValue(r.ReachId, out var rows)
+                        ? rows
+                        : Enumerable.Empty<WSELTableOxy>())
+                    .ToList();
+
+                PlotModel = CreatePlot(selectedData);
+                await SaveSelectedReachAsync();
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"RefreshPlot error: {ex.Message}");
             }
         }
 
-        // ── Plot creation ────────────────────────────────────────────────────
-        private PlotModel CreatePlot(List<WSELTableOxy> data)
+
+
+
+        private async Task SaveSelectedReachAsync()
+        {
+            try
+            {
+                if (_settingsRepo == null || string.IsNullOrEmpty(_projPath)) return;
+
+                var selectedReach = Reaches.FirstOrDefault(r => r.IsSelected)?.ReachId ?? string.Empty;
+
+                var settings = await _settingsRepo.GetSettings();
+                if (settings.Projects.TryGetValue(_projPath, out var project))
+                {
+                    project.SelectedReach = selectedReach;
+                    await _settingsRepo.SaveSettings(settings);
+                }
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"SaveSelectedReachAsync error: {ex.Message}");
+            }
+        }
+
+
+
+
+        private static PlotModel CreatePlot(List<WSELTableOxy> data)
         {
             var model = new PlotModel
             {
@@ -178,7 +323,6 @@ namespace HydroExplorer.ViewModel
                 PlotAreaBorderThickness = new OxyThickness(1),
             };
 
-            // Shared axis style helper
             static LinearAxis MakeAxis(AxisPosition pos, bool reversed = false) => new()
             {
                 Position = pos,
@@ -205,7 +349,6 @@ namespace HydroExplorer.ViewModel
             model.Axes.Add(xAxis);
             model.Axes.Add(MakeAxis(AxisPosition.Left));
 
-            // Series
             var seriesMinChEl = new LineSeries
             {
                 Title = "MinChEl",
@@ -295,13 +438,9 @@ namespace HydroExplorer.ViewModel
             return model;
         }
 
-        // ── Misc ─────────────────────────────────────────────────────────────
-        internal void UpdatePlot(List<(double x, double y)> data)
-        {
-            throw new NotImplementedException();
-        }
 
-        protected bool SetProperty<T>(ref T field, T newValue, [CallerMemberName] string propertyName = null)
+
+        protected bool SetProperty<T>(ref T field, T newValue, [CallerMemberName] string? propertyName = null)
         {
             if (!Equals(field, newValue))
             {

@@ -20,31 +20,29 @@ using System.Windows.Controls;
 
 
 
-
 namespace HydroExplorer.View
 {
-
     public partial class MapView : UserControl
     {
         public readonly EditingWidget? _editingWidget;
-        private MapControl _mapControl;
-        private Map _map;
-        private string _pathXS;
-        private string _pathBNDY;
-        private string _pathHMS = string.Empty;
-        private string _pathSubBasins;
+        private readonly MapControl _mapControl;
+        private readonly Map _map;
+        private string? _pathCL = string.Empty;
+        private string? _pathXS = string.Empty;
+        private string? _pathHdfA = string.Empty;
+        private string? _pathHdfB = string.Empty;
+        private string? _pathBNDY = string.Empty;
+        private string? _pathHMS = string.Empty;
+        private string? _pathSubBasins = string.Empty;
 
         private static readonly Color _lblBackGroundColor = new(236, 210, 1, 150);
-        
+
+        private static readonly Color _vecCLColor = new(70, 0, 0, 255);
         private static readonly Color _vecBNDYColor = new(70, 138, 138, 255);
         private static readonly Color _vecBNDYFill = new(128, 128, 128, 0);
 
-        private SelectionViewModel _selectionVm;
-        private WritableLayer _highlightLayer;
-
-
-       
-
+        private readonly SelectionViewModel _selectionVm;
+        private readonly WritableLayer _highlightLayer;
 
 
         public MapView()
@@ -55,17 +53,14 @@ namespace HydroExplorer.View
 
             LoggingWidget.ShowLoggingInMap = Mapsui.Widgets.ActiveMode.No;
 
-
             _mapControl.MapTapped += OnMapTapped;
 
-
-
-
-
             var source = KnownTileSources.Create(KnownTileSource.BingAerial);
-            TileLayer bingSat = new TileLayer(source);
-            bingSat.Name = "Bing Aerial";
-            bingSat.Opacity = 0.6;
+            TileLayer bingSat = new(source)
+            {
+                Name = "Bing Aerial",
+                Opacity = 0.6
+            };
             _map.Layers.Add(bingSat);
 
             //_map.Layers.Add(Mapsui.Tiling.OpenStreetMap.CreateTileLayer());
@@ -77,7 +72,6 @@ namespace HydroExplorer.View
             //var (x, y) = SphericalMercator.FromLonLat(-98.4936, 29.4241);
             //TX
             //var (x, y) = SphericalMercator.FromLonLat(-99.1440, 31.4928);
-
 
             _highlightLayer = new WritableLayer
             {
@@ -91,8 +85,6 @@ namespace HydroExplorer.View
             _map.Layers.Add(_highlightLayer);
 
 
-
-
             _selectionVm = App.ServiceProvider.GetRequiredService<SelectionViewModel>();
             _selectionVm.PropertyChanged += OnSelectionChanged;
 
@@ -101,18 +93,43 @@ namespace HydroExplorer.View
             Loaded += async (s, e) =>
             {
                 await BuildPaths();
-                await AddLayerShpBndy();
+                await ExportCLToShp();
 
                 var plotVm = App.ServiceProvider.GetRequiredService<PlotViewModel>();
+                if (plotVm.WselData == null) return;
                 await AddLayerShpXS(plotVm.WselData);
 
+                await AddLayerShpBndy();
+                await AddLayerShpCL();
                 await InitView();
                 //AddLayerShpZRD();
             };
-
-
         }
 
+
+        private async Task ExportCLToShp()
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(_pathHdfB)) return;
+                if (File.Exists(_pathCL)) return;
+
+                System.Diagnostics.Debug.WriteLine($"\n XS FILE DOES NOT EXIST...CREATING @ {_pathXS}\n");
+                await ExporterStream.ExportCLToShp(
+                    projPath: Path.GetDirectoryName(_pathHdfB) ?? string.Empty,
+                    hdfPath: _pathHdfB,
+                    outputShpPath: _pathCL
+                );
+            }
+            catch (OperationCanceledException)
+            {
+                System.Diagnostics.Debug.WriteLine("ExportXS cancelled.");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ExportXS error: {ex.Message}");
+            }
+        }
 
 
         private void OnMapTapped(object? sender, MapEventArgs e)
@@ -120,7 +137,7 @@ namespace HydroExplorer.View
             var xsLayer = _map.Layers.FindLayer("XS").FirstOrDefault();
             if (xsLayer == null) return;
 
-            var mapInfo = _mapControl.GetMapInfo(e.ScreenPosition, new[] { xsLayer });
+            var mapInfo = _mapControl.GetMapInfo(e.ScreenPosition, [xsLayer]);
 
             if (mapInfo?.Feature is not GeometryFeature feature) return;
 
@@ -141,7 +158,7 @@ namespace HydroExplorer.View
             if (!string.IsNullOrEmpty(infoText))
             {
                 char sep = '|';
-                List<string> valueList = infoText.Split(sep).ToList();
+                List<string> valueList = [.. infoText.Split(sep)];
 
                 string rawRiver = valueList.Where(x => x.Contains("River")).ElementAt(0);
                 string valRiver = rawRiver.Split(':').ElementAt(1);
@@ -187,7 +204,7 @@ namespace HydroExplorer.View
         }
 
 
-        private void InitInfoWidgets(Map map)
+        private static void InitInfoWidgets(Map map)
         {
             //var infoLayer = map.Layers.OfType<MemoryLayer>().FirstOrDefault(l => l.infoLayer);
             //_targetLayer = map.Layers.FirstOrDefault(f => f.Name == "Layer 3") as WritableLayer;
@@ -200,7 +217,7 @@ namespace HydroExplorer.View
 
             map.Widgets.Add(new MouseCoordinatesWidget());
 
-            
+
         }
 
 
@@ -304,14 +321,50 @@ namespace HydroExplorer.View
                     HorizontalAlignment = LabelStyle.HorizontalAlignmentEnum.Left,
                     VerticalAlignment = LabelStyle.VerticalAlignmentEnum.Center,
                     MaxVisible = 5,
-                    Offset = new Offset { X = 5, Y = 0 }
+                    Offset = new Offset { X = 0, Y = 0 }
                 });
-
                 xsLayer.Add(feature);
             }
-
             _map.Layers.Add(xsLayer);
         }
+
+
+        private async Task AddLayerShpCL()
+        {
+            if (!Path.Exists(_pathCL)) return;
+
+            //if (File.Exists(_pathBNDY) && File.Exists(_pathSubBasins))
+            //{
+            //    var newer = GetNewerFile(_pathBNDY, _pathSubBasins);
+            //    if (newer?.FullName == _pathBNDY) return;
+            //}
+
+            var shapeFileProvider = new ShapeFile(_pathCL) { CRS = "EPSG:4326" };
+            var dataSource = new ProjectingProvider(shapeFileProvider) { CRS = "EPSG:3857" };
+            var shapefileLayer = new Layer("CL")
+            {
+                Name = "CL",
+                DataSource = dataSource,
+                Tag = new OverViewLayerData { IsMapInfoLayer = true },
+                Style = new StyleCollection
+                {
+                    Styles =
+                        {
+                        new VectorStyle
+                            {
+                    Line = new Pen
+                            {
+                                Color = Color.Blue,
+                                Width = 1.5f,
+                                //PenStyle = PenStyle.Dash
+                            }
+                        }
+                    }
+                }
+            };
+            _map.Layers.Add(new RasterizingTileLayer(shapefileLayer));
+        }
+
 
 
         private void AddLayerShpZRD()
@@ -402,7 +455,7 @@ namespace HydroExplorer.View
 
             return layerNames;
         }
-    
+
 
 
         private async Task BuildPaths()
@@ -412,12 +465,11 @@ namespace HydroExplorer.View
 
             string projPath = settings.ProjPath;
 
-            if (!string.IsNullOrEmpty(projPath) && settings.Projects.TryGetValue(projPath, out var projSettings))
+            if (!string.IsNullOrEmpty(projPath) && settings.Projects.TryGetValue(projPath, out _))
             {
                 var _projects = settings.Projects[projPath];
 
-                string hdfPathA = _projects.HdfPathA;
-
+                if (string.IsNullOrEmpty(projPath)) return;
                 string tmpPath = Path.GetFullPath(Path.Combine(projPath, ".."));
 
                 string spatialPath = Path.Combine(tmpPath, "Spatial");
@@ -427,18 +479,23 @@ namespace HydroExplorer.View
                     Directory.CreateDirectory(spatialPath);
                 }
 
+                _pathCL = Path.Combine(spatialPath, "CL.shp");
                 _pathXS = Path.Combine(spatialPath, "XS.shp");
                 _pathBNDY = Path.Combine(spatialPath, "BNDY.shp");
                 _pathHMS = _projects.HmsPath;
+                _pathHdfA = _projects.HdfPathA;
+                _pathHdfB = _projects.HdfPathB;
                 _pathSubBasins = FindShapefileByName("subbasin");
-                //BOG_Merged_Subbasins
             }
         }
 
 
-        private string FindShapefileByName(string searchText)
+        private string? FindShapefileByName(string searchText)
         {
-            string mapsPath = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(_pathHMS), "maps"));
+            string? dir = Path.GetDirectoryName(_pathHMS);
+            if (string.IsNullOrEmpty(dir)) return null;
+
+            string mapsPath = Path.GetFullPath(Path.Combine(dir, "maps"));
 
             if (!Directory.Exists(mapsPath))
             {
@@ -446,13 +503,11 @@ namespace HydroExplorer.View
                 return null;
             }
 
-            var match = Directory.GetFiles(mapsPath, "*.shp", SearchOption.AllDirectories)
+            string? match = Directory.GetFiles(mapsPath, "*.shp", SearchOption.AllDirectories)
                 .FirstOrDefault(f => Path.GetFileNameWithoutExtension(f)
                     .Contains(searchText, StringComparison.OrdinalIgnoreCase));
 
-            //System.Diagnostics.Debug.WriteLine(match != null
-            //    ? $"Found shapefile: {match}"
-            //    : $"No shapefile containing '{searchText}' found in {mapsPath}");
+            if (!Path.Exists(match)) return null;
 
             var fullpath = Path.GetFullPath(match);
 
@@ -566,14 +621,6 @@ namespace HydroExplorer.View
                 System.Diagnostics.Debug.WriteLine($"ZoomToStation error: {ex.Message}");
             }
         }
-
-
-
-
-
-
-
-
 
     }
 }

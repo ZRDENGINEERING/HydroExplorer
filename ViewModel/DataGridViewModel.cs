@@ -6,6 +6,6 @@ namespace HydroExplorer.ViewModel
 {
     public class DataGridViewModel : BaseViewModel
     {
-        public ObservableCollection<HecRasProfileResult> ProfileResults { get; set; } = new();
+        public ObservableCollection<HecRasProfileResult> ProfileResults { get; set; } = [];
     }
 }

@@ -15,16 +15,17 @@
 
     <Grid Background="{StaticResource BackgroundBrushDark}">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto"/>
             <!-- Reach checkboxes -->
-            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
             <!-- Plot -->
+            <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
+        
         <!-- Reach Selector (left side, vertical stack) -->
         <Border Grid.Column="0"
-                Background="#1E2A38"
-                BorderBrush="#2D3E50"
+                Background="{StaticResource BackgroundBrushLight}"
+                BorderBrush="{StaticResource BorderBrush}"
                 BorderThickness="0,0,1,0"
                 Padding="8,10"
                 Visibility="{Binding PlotVm.HasMultipleReaches, 
@@ -33,7 +34,7 @@
                 <TextBlock Text="Reaches:"
                            FontSize="10"
                            FontWeight="SemiBold"
-                           Foreground="#A0B4C8"
+                           Foreground="{StaticResource ForegroundBrush}"
                            Margin="0,0,0,8"/>
                 <ItemsControl ItemsSource="{Binding PlotVm.Reaches}">
                     <ItemsControl.ItemsPanel>
@@ -43,15 +44,42 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <CheckBox Content="{Binding Name}"
-                                      IsChecked="{Binding IsSelected, Mode=TwoWay}"
-                                      Margin="0,0,0,6"
-                                      VerticalAlignment="Center"
-                                      FontSize="10"
-                                      Foreground="{StaticResource ForegroundBrushDark}"
-                                      Command="{Binding DataContext.PlotVm.ReachSelectionChangedCommand,
-                                                RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                      CommandParameter="{Binding}"/>
+
+
+
+                            <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                  Margin="0,0,0,6"
+                                  VerticalAlignment="Center"
+                                  Command="{Binding DataContext.PlotVm.ReachSelectionChangedCommand,
+                                        RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                  CommandParameter="{Binding}">
+                                <CheckBox.ContentTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{StaticResource ForegroundBrush}"/>
+                                                    <Setter Property="FontSize" Value="9"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsChecked, 
+                                                            RelativeSource={RelativeSource AncestorType=CheckBox}}" 
+                                                            Value="True">
+                                                            <Setter Property="Foreground" Value="Red"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </CheckBox.ContentTemplate>
+                                <CheckBox.Content>
+                                    <Binding Path="Name"/>
+                                </CheckBox.Content>
+                            </CheckBox>
+
+
+
+
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>

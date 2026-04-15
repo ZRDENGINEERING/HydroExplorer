@@ -2,6 +2,8 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
+
+
 namespace HydroExplorer.ViewModel.TabBotItem
 {
 
@@ -13,6 +15,8 @@ namespace HydroExplorer.ViewModel.TabBotItem
 
         public ObservableCollection<TabBotItemViewModel> Tabs { get; set; }
 
+        public string Header { get; set; } = "Bottom";
+
         private TabBotItemViewModel _selectedTab;
         public TabBotItemViewModel SelectedTab
         {
@@ -22,13 +26,13 @@ namespace HydroExplorer.ViewModel.TabBotItem
 
         public TabBotControlViewModel()
         {
-            Tabs = new ObservableCollection<TabBotItemViewModel>
-        {
-            new TabBotItemViewModel { Header = "Chart", Content = new TabBotChartsViewModel() },
-            new TabBotItemViewModel { Header = "Output", Content = new TabBotOutputViewModel() },
-        };
+            Tabs =
+            [
+                new TabBotItemViewModel { Header = "Chart", Content = new TabBotChartsViewModel() },
+                new TabBotItemViewModel { Header = "Output", Content = new TabBotOutputViewModel() },
+            ];
 
-            SelectedTab = Tabs[0];
+                SelectedTab = Tabs[0];
         }
     }
 }

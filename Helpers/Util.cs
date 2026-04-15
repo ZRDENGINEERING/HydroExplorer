@@ -1,6 +1,6 @@
 ﻿namespace HydroExplorer.Helpers
 {
-    public static class Utility
+    public static class Util
     {
         public static bool IsWindows11OrGreater()
         {

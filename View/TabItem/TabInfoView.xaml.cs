@@ -14,10 +14,19 @@ namespace HydroExplorer.View.TabItem
         protected void NotifyPropertyChanged([CallerMemberName] string? name = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
+        private static MapOverView? _mapOverView;
+
+
 
         public TabInfoView()
         {
             InitializeComponent();
+
+            // Reuse single instance to prevent multiple ProjPathChanged subscriptions
+            if (_mapOverView == null)
+                _mapOverView = new MapOverView();
+
+            MapContainer.Content = _mapOverView;
 
             Loaded += async (s, e) =>
             {
@@ -28,22 +37,13 @@ namespace HydroExplorer.View.TabItem
                 {
                     string projName = Path.GetFileNameWithoutExtension(settings.LastProjPath);
 
-                    string projAreaSqMi = "22";
-                    string projAreaSqAcre = "222";
-                    string projUSGSInfo = "USGS Info";
-                    string projSiteNumber = "Site No";
-                    string projStationName = "Station Name";
-                    string projBlockHUC = "HUC";
-
-
                     txtBlockProjectName.Text = $"Project Name: {projName}";
-                    txtBlockAreaSqMi.Text = $"Drainage Area (sq.mi.): {projAreaSqMi}";
-                    txtBlockAreaAcre.Text = $"Drainage Area (acre): {projAreaSqAcre}";
-                    txtBlockUSGSInfo.Text = $"USGS Info: {projUSGSInfo}";
-                    txtBlockSiteNumber.Text = $"Site Number: {projSiteNumber}";
-                    txtBlockStationName.Text = $"Station Name: {projStationName}";
-                    txtBlockHUC.Text = $"HUC Code: {projBlockHUC}";
-
+                    txtBlockAreaSqMi.Text = $"Drainage Area (sq.mi.): 22";
+                    txtBlockAreaAcre.Text = $"Drainage Area (acre): 222";
+                    txtBlockUSGSInfo.Text = $"USGS Info: USGS Info";
+                    txtBlockSiteNumber.Text = $"Site Number: Site No";
+                    txtBlockStationName.Text = $"Station Name: Station Name";
+                    txtBlockHUC.Text = $"HUC Code: HUC";
                 }
             };
 
@@ -63,15 +63,10 @@ namespace HydroExplorer.View.TabItem
             };
         }
 
-
-
-
-
         private async Task OnProjPathChanged(string projPath)
         {
             if (string.IsNullOrEmpty(projPath)) return;
 
-            // ✅ Update project name from .prj file or folder name
             string projectName = Path.GetFileNameWithoutExtension(projPath);
             txtBlockProjectName.Text = $"Project Name: {projectName}";
             txtBlockAreaSqMi.Text = $"Drainage Area (sq.mi.): {projectName}";
@@ -81,9 +76,5 @@ namespace HydroExplorer.View.TabItem
             txtBlockStationName.Text = $"Station Name: {projectName}";
             txtBlockHUC.Text = $"HUC Code: {projectName}";
         }
-
-
-
-
     }
 }

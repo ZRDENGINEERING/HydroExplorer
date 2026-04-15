@@ -1,5 +1,4 @@
-﻿using HydroExplorer.Utils;
-using HydroExplorer.View;
+﻿using HydroExplorer.View;
 using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
 using System.Windows.Input;
@@ -28,13 +27,7 @@ namespace HydroExplorer
         }
 
 
-        public static async void PlotMaker()
-        {
-            var plotWindow = new PlotWindow();
-            plotWindow.Show();
-            await plotWindow.LoadDataAsync();
 
-        }
 
         private void MinimizeButton_Click(object sender, RoutedEventArgs e)
         {

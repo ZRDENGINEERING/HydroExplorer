@@ -94,7 +94,7 @@
                 <TextBox Name="txtBoxPlanNameB" FontSize="10" 
                          Foreground="{StaticResource ForegroundBrushDark}"
                              Margin="15,0,0,0"/>
-                <TextBox Name="cboxProNameLbl" FontSize="10">Pro Name:</TextBox>
+                <TextBox Name="cboxProfileLbl" FontSize="10">Profile:</TextBox>
                 <ComboBox Name="cboxProfiles" FontSize="10" Background="#543d05" 
                           Foreground="{StaticResource ForegroundBrushDark}"
                               Margin="15,0,0,0"/>

@@ -32,6 +32,11 @@
         public static void PublishRunPath(string path) => RunPathSelected?.Invoke(path);
 
 
+        public static event Action<string>? HmsPathChanged;
+        public static void PublishHmsPathChanged(string path) => HmsPathChanged?.Invoke(path);
 
+
+        public static event Action? HdfPathChanged;
+        public static void PublishHdfPathChanged() => HdfPathChanged?.Invoke();
     }
 }

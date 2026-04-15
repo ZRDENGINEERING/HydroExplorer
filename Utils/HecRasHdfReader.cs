@@ -1,9 +1,8 @@
 ﻿using HydroExplorer.View;
-using HydroExplorer.Utils;
-using HydroExplorer.Helpers;
 using PureHDF;
 using PureHDF.VOL.Native;
 using System.Runtime.InteropServices;
+using System.IO;
 
 
 
@@ -18,95 +17,95 @@ namespace HydroExplorer.Utils
             "/Results/Steady/Output/Output Blocks/Base Output/Steady Profiles/Cross Sections/Additional Variables/";
 
         
-        public List<HecRasProfileWselResult> ReadProfileWsel(string filePath)
-        {
-            using var file = H5File.OpenRead(filePath);
+        //public static List<HecRasProfileWselResult> ReadProfileWsel(string filePath)
+        //{
+        //    using var file = H5File.OpenRead(filePath);
 
-            var riverSta = ReadCrossSectionAttrStation(file);
-            var wsElev = file.Dataset(BasePath + "Water Surface").Read<float[,]>();
-            int proN = 5;
+        //    var riverSta = ReadCrossSectionAttrStation(file);
+        //    var wsElev = file.Dataset(BasePath + "Water Surface").Read<float[,]>();
+        //    int proN = 5;
 
-            int resN = wsElev.GetLength(1);
-            var results = new List<HecRasProfileWselResult>(resN);
+        //    int resN = wsElev.GetLength(1);
+        //    var results = new List<HecRasProfileWselResult>(resN);
 
-            for (int i = 0; i < resN; i++)
-            {
-                results.Add(new HecRasProfileWselResult
-                {
-                    WSElev = wsElev[proN, i],
-                    RiverSta = riverSta[i],
+        //    for (int i = 0; i < resN; i++)
+        //    {
+        //        results.Add(new HecRasProfileWselResult
+        //        {
+        //            WSElev = wsElev[proN, i],
+        //            RiverSta = riverSta[i],
 
-                });
-            }
-            return results;
-        }
-
-
-        public List<HecRasProfileResult> ReadProfileSummary(string filePath)
-        {
-            using var file = H5File.OpenRead(filePath);
-
-            int proN = 5;
-
-            var river = ReadCrossSectionAttrRiver(file);
-            var reach = ReadCrossSectionAttrReach(file);
-            var riverSta = ReadCrossSectionAttrStation(file);
-            var profile = ReadSteadyProfileNames(file);
-
-            var profileArr = new string[river.Length];
-            Array.Fill(profileArr, profile[proN]);
-
-            var qTotal = file.Dataset(BasePathAV + "Flow Total").Read<float[,]>();
-            var wsElev = file.Dataset(BasePath + "Water Surface").Read<float[,]>();
-            var maxDepths = file.Dataset(BasePathAV + "Maximum Depth Total").Read<float[,]>();
-
-            var minChEl = CalcCrossSectionMinElev("5", wsElev, maxDepths);
-
-            var critWs = file.Dataset(BasePathAV + "Critical Water Surface").Read<float[,]>();
-            var egElev = file.Dataset(BasePath + "Energy Grade").Read<float[,]>();
-            var egSlope = file.Dataset(BasePathAV + "EG Slope").Read<float[,]>();
-            var velChnl = file.Dataset(BasePathAV + "Velocity Total").Read<float[,]>();
-            var flowArea = file.Dataset(BasePathAV + "Area Flow Total").Read<float[,]>();
-            var topWidth = file.Dataset(BasePathAV + "Top Width Total").Read<float[,]>();
-            var froude = CalcFroude(file, "5", velChnl);
-
-            var results = new List<HecRasProfileResult>(riverSta.Length);
-
-            for (int i = 0; i < riverSta.Length; i++)
-            {
-                results.Add(new HecRasProfileResult
-                {
-                    River = river[i],
-                    Reach = reach[i],
-                    RiverSta = riverSta[i],
-                    Profile = profileArr[proN],
-                    QTotal = qTotal[proN, i],
-                    MinChEl = minChEl[proN, i],
-                    WSElev = Math.Round(wsElev[proN, i], 2),
-                    MaxDepths = Math.Round(maxDepths[proN, i], 2),
-                    CritWS = Math.Round(critWs[proN, i], 2),
-                    EGElev = Math.Round(egElev[proN, i], 2),
-                    EGSlope = Math.Round(egSlope[proN, i], 4),
-                    VelChnl = Math.Round(velChnl[proN, i], 1),
-                    FlowArea = Math.Round(flowArea[proN, i]),
-                    TopWidth = Math.Round(topWidth[proN, i]),
-                    FrChnl = Math.Round(froude[proN, i], 2)
-                });
-            }
-            return results;
-        }
+        //        });
+        //    }
+        //    return results;
+        //}
 
 
-        public List<WSELTable> ReadWSELTable(string planPathA, string planPathB, string proName)
+        //public static List<HecRasProfileResult> ReadProfileSummary(string filePath)
+        //{
+        //    using var file = H5File.OpenRead(filePath);
+
+        //    int proN = 5;
+
+
+        //    var river = ReadCrossSectionAttrRiver(file);
+        //    var reach = ReadCrossSectionAttrReach(file);
+        //    var riverSta = ReadCrossSectionAttrStation(file);
+        //    var profile = ReadSteadyProfileNames(file);
+
+        //    var profileArr = new string[river.Length];
+        //    Array.Fill(profileArr, profile[proN]);
+
+        //    var qTotal = file.Dataset(BasePathAV + "Flow Total").Read<float[,]>();
+        //    var wsElev = file.Dataset(BasePath + "Water Surface").Read<float[,]>();
+        //    var maxDepths = file.Dataset(BasePathAV + "Maximum Depth Total").Read<float[,]>();
+
+        //    var minChEl = CalcCrossSectionMinElev(wsElev, maxDepths);
+
+        //    var critWs = file.Dataset(BasePathAV + "Critical Water Surface").Read<float[,]>();
+        //    var egElev = file.Dataset(BasePath + "Energy Grade").Read<float[,]>();
+        //    var egSlope = file.Dataset(BasePathAV + "EG Slope").Read<float[,]>();
+        //    var velChnl = file.Dataset(BasePathAV + "Velocity Total").Read<float[,]>();
+        //    var flowArea = file.Dataset(BasePathAV + "Area Flow Total").Read<float[,]>();
+        //    var topWidth = file.Dataset(BasePathAV + "Top Width Total").Read<float[,]>();
+        //    var froude = CalcFroude(file, velChnl);
+
+        //    var results = new List<HecRasProfileResult>(riverSta.Length);
+
+        //    for (int i = 0; i < riverSta.Length; i++)
+        //    {
+        //        results.Add(new HecRasProfileResult
+        //        {
+        //            River = river[i],
+        //            Reach = reach[i],
+        //            RiverSta = riverSta[i],
+        //            Profile = profileArr[proN],
+        //            QTotal = qTotal[proN, i],
+        //            MinChEl = minChEl[proN, i],
+        //            WSElev = Math.Round(wsElev[proN, i], 2),
+        //            MaxDepths = Math.Round(maxDepths[proN, i], 2),
+        //            CritWS = Math.Round(critWs[proN, i], 2),
+        //            EGElev = Math.Round(egElev[proN, i], 2),
+        //            EGSlope = Math.Round(egSlope[proN, i], 4),
+        //            VelChnl = Math.Round(velChnl[proN, i], 1),
+        //            FlowArea = Math.Round(flowArea[proN, i]),
+        //            TopWidth = Math.Round(topWidth[proN, i]),
+        //            FrChnl = Math.Round(froude[proN, i], 2)
+        //        });
+        //    }
+        //    return results;
+        //}
+
+
+        public static List<WSELTable> ReadWSELTable(string planPathA, string planPathB, string proName)
         {
             using var fileA = H5File.OpenRead(planPathA);
-
-            //int proN = 5;
 
             var river = ReadCrossSectionAttrRiver(fileA);
             var reach = ReadCrossSectionAttrReach(fileA);
             var riverSta = ReadCrossSectionAttrStation(fileA);
             var profile = ReadSteadyProfileNames(fileA);
+
 
             var profileArr = new string[river.Length];
 
@@ -155,48 +154,87 @@ namespace HydroExplorer.Utils
         }
 
 
-        public List<WSELTableOxy> ReadWSELTableOxy(string planPathA, string planPathB, string proName)
+        public static List<WSELTableOxy>? ReadWSELTableOxy(string planPathA, string planPathB, string proName)
         {
+
+
+            if (string.IsNullOrEmpty(planPathA) || !File.Exists(planPathA))
+            {
+                System.Diagnostics.Debug.WriteLine($"ReadWSELTableOxy: HDF Path missing: '{planPathA}'.");
+                return null;
+            }
+            if (string.IsNullOrEmpty(planPathB) || !File.Exists(planPathB))
+            {
+                System.Diagnostics.Debug.WriteLine($"ReadWSELTableOxy: HDF Path missing: '{planPathB}'.");
+                return null;
+            }
+
             using var fileA = H5File.OpenRead(planPathA);
+            using var fileB = H5File.OpenRead(planPathB);
 
             var river = ReadCrossSectionAttrRiver(fileA);
             var reach = ReadCrossSectionAttrReach(fileA);
             var riverSta = ReadCrossSectionAttrStation(fileA);
-            var profile = ReadSteadyProfileNames(fileA);
 
-            var profileArr = new string[river.Length];
+            var profileA = ReadSteadyProfileNames(fileA);
+            var profileB = ReadSteadyProfileNames(fileB);
 
-            int proN = profile.IndexOf(proName);
-            if (proN == -1) proN = 0;
+            // Look up proN independently per file
+            int proNA = profileA.IndexOf(proName);
+            if (proNA == -1) proNA = 0;
 
-            Array.Fill(profileArr, profile[proN]);
+       
+
+            int proNB = profileB.IndexOf(proName);
+            if (proNB == -1)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"ReadWSELTableOxy: '{proName}' not found in fileB profiles [{string.Join(", ", profileB)}], defaulting to 0.");
+                proNB = 0;
+            }
+
+            System.Diagnostics.Debug.WriteLine(
+                $"ReadWSELTableOxy: proName='{proName}' → proNA={proNA}/{profileA.Count - 1}, proNB={proNB}/{profileB.Count - 1}");
 
             var qTotalA = fileA.Dataset(BasePathAV + "Flow Total").Read<float[,]>();
             var wsElevA = fileA.Dataset(BasePath + "Water Surface").Read<float[,]>();
             var maxDepths = fileA.Dataset(BasePathAV + "Maximum Depth Total").Read<float[,]>();
-            var minChEl = CalcCrossSectionMinElev("5", wsElevA, maxDepths);
-            
-            using var fileB = H5File.OpenRead(planPathB);
+            var minChEl = CalcCrossSectionMinElev(wsElevA, maxDepths);
+
             var qTotalB = fileB.Dataset(BasePathAV + "Flow Total").Read<float[,]>();
             var wsElevB = fileB.Dataset(BasePath + "Water Surface").Read<float[,]>();
 
+            int rowsA = wsElevA.GetLength(0), colsA = wsElevA.GetLength(1);
+            int rowsB = wsElevB.GetLength(0), colsB = wsElevB.GetLength(1);
 
-            var results = new List<WSELTableOxy>(riverSta.Length);
+            if (proNA >= rowsA)
+            {
+                System.Diagnostics.Debug.WriteLine($"ReadWSELTableOxy: proNA={proNA} >= rowsA={rowsA}.");
+                return null;
+            }
+            if (proNB >= rowsB)
+            {
+                System.Diagnostics.Debug.WriteLine($"ReadWSELTableOxy: proNB={proNB} >= rowsB={rowsB}.");
+                return null;
+            }
 
-            for (int i = 0; i < riverSta.Length; i++)
+            int cols = Math.Min(Math.Min(colsA, colsB), riverSta.Length);
+            var results = new List<WSELTableOxy>(cols);
+
+            for (int i = 0; i < cols; i++)
             {
                 results.Add(new WSELTableOxy
                 {
                     River = river[i],
                     Reach = reach[i],
                     RiverSta = riverSta[i],
-                    Profile = profileArr[proN],
-                    QTotal = qTotalA[proN, i],
-                    MinChEl = minChEl[proN, i],
-                    WSElevA = Math.Round(wsElevA[proN, i], 2),
-                    QTotalB = qTotalB[proN, i],
-                    WSElevB = Math.Round(wsElevB[proN, i], 2),
-                    DELTA = Math.Round(wsElevB[proN, i] - (wsElevA[proN, i]), 2)
+                    Profile = profileA[proNA],
+                    QTotal = qTotalA[proNA, i],
+                    MinChEl = minChEl[proNA, i],
+                    WSElevA = Math.Round(wsElevA[proNA, i], 2),
+                    QTotalB = qTotalB[proNB, i],
+                    WSElevB = Math.Round(wsElevB[proNB, i], 2),
+                    DELTA = Math.Round(wsElevB[proNB, i] - wsElevA[proNA, i], 2)
                 });
             }
             return results;
@@ -293,19 +331,14 @@ namespace HydroExplorer.Utils
         }
 
 
-        private static string[] ReadSteadyProfileNames(NativeFile file)
+        private static List<string> ReadSteadyProfileNames(NativeFile file)
         {
-            //var raw = file.Dataset("/Results/Steady/Output/Geometry Info/Cross Section Attributes").Read<CrossSectionAttr[]>();
             var raw = file.Dataset("/Results/Steady/Output/Output Blocks/Base Output/Steady Profiles/Profile Names").Read<string[]>();
-            int rows = raw.Length;
 
-            var strings = new string[rows];
+            var strings = new List<string>(raw.Length);
+            for (int i = 0; i < raw.Length; i++)
+                strings.Add(raw[i]);
 
-            for (int i = 0; i < rows; i++)
-            {
-                strings[i] = raw[i];
-                    //.Trim();
-            }
             return strings;
         }
 
@@ -326,13 +359,13 @@ namespace HydroExplorer.Utils
             return strings;
         }
 
-        public string[] GetProfileNames(string filePath)
+        public static List<string> GetProfileNames(string filePath)
         {
             using var file = H5File.OpenRead(filePath);
             return ReadSteadyProfileNames(file);
         }
 
-        public string GetPlanName(string filePath)
+        public static string GetPlanName(string filePath)
         {
             using var file = H5File.OpenRead(filePath);
 
@@ -347,7 +380,7 @@ namespace HydroExplorer.Utils
                 }
         }
 
-        public void InspectPlanData(string filePath)
+        public static void InspectPlanData(string filePath)
         {
             using var file = H5File.OpenRead(filePath);
             var group = file.Group("/Plan Data/Plan Information");
@@ -384,7 +417,6 @@ namespace HydroExplorer.Utils
             return minValues;
         }
 
-
         private static float[,] ReadCrossSectionMaxDepth(NativeFile file)
         {
             var raw = file.Dataset("/Results/Steady/Output/Output Blocks/Base Output/Steady Profiles/Cross Sections/Additional Variables/Maximum Depth Total").Read<float[,]>();
@@ -411,8 +443,7 @@ namespace HydroExplorer.Utils
             return maxValues;
         }
 
-
-        private static float[,] CalcCrossSectionMinElev(string proFile, float[,] wsEls, float[,] maxDepths)
+        private static float[,] CalcCrossSectionMinElev(float[,] wsEls, float[,] maxDepths)
         {
             int proFileID = 1;
 
@@ -422,13 +453,11 @@ namespace HydroExplorer.Utils
             int cols = wsEls.GetLength(1);
 
             var minValues = new float[rows, cols];
-            float minCh = 10000;
-
             for (int i = 0; i < rows; i++)
             {
                 for (int j = 0; j < cols; j++)
                 {
-                    minCh = wsEls[i, j] - maxDepths[i, j];
+                    float minCh = wsEls[i, j] - maxDepths[i, j];
                     if (minCh < minValue)
                     {
                         minValues[i, j] = Convert.ToSingle(Math.Round(minCh, 2));
@@ -442,8 +471,7 @@ namespace HydroExplorer.Utils
             return minValues;
         }
 
-
-        private static float[,] CalcFroude(NativeFile file, string proFile, float[,] velCh)
+        private static float[,] CalcFroude(NativeFile file, float[,] velCh)
         {
             //fr = v / math.sqrt(g * d_hyd)
             var hydDepths = file.Dataset(BasePathAV + "Hydraulic Depth Channel").Read<float[,]>();
@@ -463,96 +491,6 @@ namespace HydroExplorer.Utils
                 }
             }
             return frVals;
-        }
-
-
-        private static string[] ReadCrossSectionAttrRiver(NativeFile file, string path, string attrString)
-        {
-            CrossSectionAttr attr = new CrossSectionAttr();
-            attr.River = attrString;
-
-            var group = file.Group("Results/Steady/Output/Geometry Info");
-            System.Diagnostics.Debug.WriteLine($"group........................: {group}");
-
-            foreach (var link in group.Children())
-            {
-                var message = link switch
-                {
-                    IH5Group childGroup => $"I am a group and my name is '{childGroup.Name}'.",
-                    IH5Dataset childDataset => $"I am a dataset, call me '{childDataset.Name}'.",
-                    IH5CommitedDatatype childDatatype => $"I am the data type '{childDatatype.Name}'.",
-                    IH5UnresolvedLink lostLink => $"I cannot find my link target =( shame on '{lostLink.Name}'.",
-                    _ => throw new Exception("Unknown link type")
-                };
-
-                System.Diagnostics.Debug.WriteLine(message);
-            }
-
-            var dataset = group.Dataset("/Results/Steady/Output/Geometry Info/Cross Section Attributes");
-            System.Diagnostics.Debug.WriteLine($"dataset........................: {dataset}");
-
-            var raw = file.Dataset("/Results/Steady/Output/Geometry Info/Cross Section Attributes").Read<CrossSectionAttr[]>();
-            System.Diagnostics.Debug.WriteLine($"raw........................: {raw}");
-            System.Diagnostics.Debug.WriteLine($"raw.Length........................: {raw.Length}");
-
-            System.Diagnostics.Debug.WriteLine($"raw[].Reach........................: {raw[2].River}");
-
-            int rows = raw.Length;
-            var strings = new string[rows];
-
-            for (int i = 0; i < rows; i++)
-            {
-                strings[i] = raw[i].River
-                    .Trim();
-            }
-            //foreach (var r in strings)
-            //{
-                //System.Diagnostics.Debug.WriteLine(string.Join(", ", row));
-                //System.Diagnostics.Debug.WriteLine(r);
-            //}
-            return strings;
-        }
-
-
-        private static string[] ReadStringDataset(NativeFile file, string path)
-        {
-            //var raw = file.Dataset(path).Read<byte[,]>();
-            var group = file.Group("Results/Steady/Output/Geometry Info");
-            System.Diagnostics.Debug.WriteLine($"group........................: {group}");
-
-            //var commitedDataType = file.Group("/Results/Steady/Output/Geometry Info/Cross Section Attributes");
-            //var unknownObject = file.Get("/Results/Steady/Output/Geometry Info/Cross Section Attributes");
-
-            foreach (var link in group.Children())
-            {
-                var message = link switch
-                {
-                    IH5Group childGroup => $"I am a group and my name is '{childGroup.Name}'.",
-                    IH5Dataset childDataset => $"I am a dataset, call me '{childDataset.Name}'.",
-                    IH5CommitedDatatype childDatatype => $"I am the data type '{childDatatype.Name}'.",
-                    IH5UnresolvedLink lostLink => $"I cannot find my link target =( shame on '{lostLink.Name}'.",
-                    _ => throw new Exception("Unknown link type")
-                };
-                System.Diagnostics.Debug.WriteLine(message);
-            }
-
-            var dataset = group.Dataset("/Results/Steady/Output/Geometry Info/Cross Section Attributes");
-            //var dataset = group.Dataset("/Results/Steady/Output/Geometry Info/Node Info");
-            System.Diagnostics.Debug.WriteLine($"dataset........................: {dataset}");
-
-            var cmem = dataset.GetHashCode;
-            System.Diagnostics.Debug.WriteLine($"GetHashCode........................: {cmem}");
-
-            var raw = file.Dataset("/Results/Steady/Output/Geometry Info/Cross Section Attributes").Read<CrossSectionAttr[]>();
-            int rows = raw.Length;
-            var strings = new string[rows];
-
-            for (int i = 0; i < rows; i++)
-            {
-                strings[i] = raw[i].Reach
-                    .Trim();
-            }
-            return strings;
         }
     }
 }

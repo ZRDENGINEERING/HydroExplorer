@@ -1,15 +1,25 @@
-﻿namespace HydroExplorer.ViewModel.TabItem
+﻿using HydroExplorer.Helpers;
+
+
+
+namespace HydroExplorer.ViewModel.TabItem
 {
     internal class TabSettingsViewModel : TabViewModelBase
     {
-        //public string Header { get; internal set; }
-        //public object Content { get; set; }
-
-        private string _header = "Home";
+        private string _header = "Settings";
         public override string Header
         {
             get => _header;
             set { _header = value; OnPropertyChanged(nameof(Header)); }
+        }
+
+
+        public TabSettingsViewModel(IUserSettingsRepo settingsRepo)
+        {
+            SettingsRepo = settingsRepo;
+            _ = LoadRecentProjectsAsync();
+
+            EventBus.ProjPathChanged += async _ => await LoadRecentProjectsAsync();
         }
     }
 }

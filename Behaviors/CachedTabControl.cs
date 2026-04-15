@@ -7,7 +7,7 @@ namespace HydroExplorer.Behaviors
 {
     public class CachedTabControl : TabControl
     {
-        private readonly Dictionary<object, ContentPresenter> _cache = new();
+        private readonly Dictionary<object, ContentPresenter> _cache = [];
 
         protected override void OnSelectionChanged(SelectionChangedEventArgs e)
         {

@@ -1,5 +1,4 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
@@ -13,6 +12,7 @@
     <None Remove="Images\file.png" />
     <None Remove="Images\folder_closed.ico" />
     <None Remove="Images\folder_open.ico" />
+    <None Remove="Images\logo_zrd.png" />
   </ItemGroup>
 
   <ItemGroup>
@@ -28,9 +28,28 @@
     <Content Include="Images\folder_open.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Content Include="Images\logo_zrd.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
+	<PropertyGroup>
+		<PlatformTarget>x64</PlatformTarget>
+		<NoWarn>$(NoWarn);CA1416</NoWarn>
+	</PropertyGroup>
+
+
   <ItemGroup>
+	  <PackageReference Include="OpenTK" Version="3.3.1">
+		<NoWarn>NU1701</NoWarn>
+	</PackageReference>
+	<PackageReference Include="OpenTK.GLWpfControl" Version="3.3.0">
+		<NoWarn>NU1701</NoWarn>
+	</PackageReference>
+		<PackageReference Include="SkiaSharp.Views.WPF" Version="3.119.2">
+		<NoWarn>NU1701</NoWarn>
+	</PackageReference>
+
     <PackageReference Include="DotSpatial.Projections" Version="4.0.656" />
     <PackageReference Include="DotSpatial.Projections.Forms" Version="4.0.656" />
     <PackageReference Include="DotSpatial.Projections.NetStandard" Version="1.0.0" />
@@ -45,7 +64,6 @@
     <PackageReference Include="OxyPlot.Wpf" Version="2.2.0" />
     <PackageReference Include="ProjNET" Version="2.1.0" />
     <PackageReference Include="PureHDF" Version="2.1.2" />
-    <PackageReference Include="SkiaSharp.Views.WPF" Version="3.119.2" />
   </ItemGroup>
 
   <ItemGroup>
@@ -61,7 +79,8 @@
     <Compile Update="Theme\LightTheme.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Update="View\TabItem\TabInfoView.xaml.cs">
+    <Compile Update="View\TabItem\Tab
+			 View.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
     <Compile Update="View\TabItem\TabMainView.xaml.cs">

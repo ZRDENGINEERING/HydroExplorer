@@ -50,7 +50,7 @@
           AutoGenerateColumns="False"
           CanUserAddRows="False"
           Grid.RowSpan="2"
-          SelectionChanged="dgSimple_SelectionChanged">
+          SelectionChanged="DgSimpleSlctChanged">
             
             
 

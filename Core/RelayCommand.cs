@@ -5,22 +5,28 @@ namespace HydroExplorer.Core
 {
     public class RelayCommand : ICommand
     {
-        private readonly Action<object> _execute = null!;
-        private readonly Func<object, bool> _canExecute = null!;
+        private readonly Action<object>? _execute = null;
+        private readonly Action? _executeSimple = null;
+        private readonly Func<object, bool>? _canExecute = null;
 
         public RelayCommand(object currentView)
         {
             CurrentView = currentView;
         }
 
-        public RelayCommand(Action<object> execute, Func<object, bool> canExecute)
+        public RelayCommand(Action<object> execute, Func<object, bool>? canExecute = null)
         {
             _execute = execute;
             _canExecute = canExecute;
         }
 
-        public object CurrentView { get; }
+        public RelayCommand(Action execute, Func<object, bool>? canExecute = null)
+        {
+            _executeSimple = execute;
+            _canExecute = canExecute;
+        }
 
+        public object CurrentView { get; }
 
         public event EventHandler? CanExecuteChanged
         {
@@ -35,7 +41,8 @@ namespace HydroExplorer.Core
 
         public void Execute(object parameter)
         {
-            _execute(parameter);
+            _execute?.Invoke(parameter);
+            _executeSimple?.Invoke();
         }
     }
 }

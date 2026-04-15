@@ -50,10 +50,17 @@
               VerticalAlignment="Top" 
               MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
 
+            <Image Source="/Images/logo_zrd.png" 
+                   Height="20" Width="36"
+                   HorizontalAlignment="Right"
+                   VerticalAlignment="Center"
+                   Margin="0,0,110,0"/>
+
+
             <TextBlock Text="HydroExplorer" 
                        Foreground="{StaticResource ForegroundBrush}"
                        VerticalAlignment="Center"
-                       Margin="10,0"/>
+                       Margin="8,0,0,0"/>
 
             <!-- Window Buttons -->
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">

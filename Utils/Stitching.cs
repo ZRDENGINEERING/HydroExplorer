@@ -14,8 +14,8 @@ public static class StitchingDependencies
         }
         ;
 
-        List<StitcherRegistration> stitcherRegistrations = new()
-        {
+        List<StitcherRegistration> stitcherRegistrations =
+        [
             new StitcherRegistration(
                 (parent, child) => parent is ContentControl && child is UIElement,
                 (parent, child) => new SimpleContentStitcher(
@@ -30,7 +30,7 @@ public static class StitchingDependencies
                     (IAddChild)parent,
                     (UIElement)child,
                     CreateGridViewStitcher)),
-        };
+        ];
         StitcherFactory stitcherFactory = new(stitcherRegistrations);
 
         return stitcherFactory;
@@ -155,9 +155,11 @@ public sealed class FallbackWpfGridStitcher : IGridStitcher
     {
         // NOTE: we are not giving control to the caller about
         // how the grid gets put into the parent control.
-        Grid grid = new();
-        grid.HorizontalAlignment = HorizontalAlignment.Stretch;
-        grid.VerticalAlignment = VerticalAlignment.Stretch;
+        Grid grid = new()
+        {
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
         _parent.AddChild(grid);
 
         var gridSticher = (IGridStitcher)_createStitcherCallback.Invoke(
