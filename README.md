@@ -75,7 +75,7 @@
 
 [![Product Name Screen Shot][product-screenshot]](https://zrdeng.com)
 
- `Data explorer for hydrologic and hydraulic models`
+ `Data explorer for hydrologic and hydraulic modeling projects`
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
