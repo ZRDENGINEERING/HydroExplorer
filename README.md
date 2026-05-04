@@ -27,7 +27,7 @@
 <h3 align="center">HydroExplorer</h3>
 
   <p align="center">
-    Data explorer for hydrologic and hydraulic models
+    Data explorer for hydrologic and hydraulic modeling projects
     <br />
     <a href="https://github.com/desrochesf/HydroExplorer"><strong>Explore the docs »</strong></a>
     <br />
