@@ -10,18 +10,25 @@ namespace HydroExplorer.Helpers
         public string LastProjPath { get; set; } = string.Empty;
         public string ProjPath { get; set; } = string.Empty;
         public string ProjDir { get; set; } = string.Empty;
+        public int NextOpenOrder { get; set; } = 0;
+
 
         public Dictionary<string, ProjectSettings> Projects { get; set; } = [];
         public Dictionary<string, DateTime> HmsProjects { get; set; } = [];
 
         public IEnumerable<KeyValuePair<string, ProjectSettings>> RecentProjects =>
-            Projects.Take(10);
+            Projects
+                .Reverse()
+                .Take(10);
 
-        public IEnumerable<KeyValuePair<string, DateTime>> RecentHmsProjects =>  // NEW
-            HmsProjects.Take(10);
+        public IEnumerable<KeyValuePair<string, DateTime>> RecentHmsProjects =>
+            HmsProjects
+                .Reverse()
+                .Take(10);
 
         public override string ToString() => $"{{ ProjPath: \"{ProjPath}\" }}";
     }
+
 
     public class ProjectSettings
     {
@@ -34,12 +41,22 @@ namespace HydroExplorer.Helpers
         public string HmsPath { get; set; } = string.Empty;
         public string SelectedReach { get; set; } = string.Empty;
         public DateTime LastOpened { get; set; } = DateTime.MinValue;
+        public int OpenOrder { get; set; } = 0; // ADD THIS
     }
+
     public interface IUserSettingsRepo
     {
         Task<UserSettings> GetSettings();
         Task<UserSettings> GetSettingsFresh();
         Task SaveSettings(UserSettings userSettings);
+    }
+
+    public class RecentProjectEntry
+    {
+        public string Name { get; set; } = string.Empty;
+        public string FilePath { get; set; } = string.Empty;
+        public DateTime LastOpened { get; set; }
+        public int OpenOrder { get; set; }
     }
 
 

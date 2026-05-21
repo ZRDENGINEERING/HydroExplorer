@@ -1,5 +1,4 @@
-﻿using HydroExplorer.View;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
 using System.Windows.Input;
 
@@ -9,7 +8,6 @@ namespace HydroExplorer
 {
     public partial class MainWindow : Window
     {
-        public static ServiceProvider ServiceProvider { get; private set; }
 
         public MainWindow()
         {

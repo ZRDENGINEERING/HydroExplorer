@@ -15,87 +15,7 @@ namespace HydroExplorer.Utils
 
         private const string BasePathAV =
             "/Results/Steady/Output/Output Blocks/Base Output/Steady Profiles/Cross Sections/Additional Variables/";
-
         
-        //public static List<HecRasProfileWselResult> ReadProfileWsel(string filePath)
-        //{
-        //    using var file = H5File.OpenRead(filePath);
-
-        //    var riverSta = ReadCrossSectionAttrStation(file);
-        //    var wsElev = file.Dataset(BasePath + "Water Surface").Read<float[,]>();
-        //    int proN = 5;
-
-        //    int resN = wsElev.GetLength(1);
-        //    var results = new List<HecRasProfileWselResult>(resN);
-
-        //    for (int i = 0; i < resN; i++)
-        //    {
-        //        results.Add(new HecRasProfileWselResult
-        //        {
-        //            WSElev = wsElev[proN, i],
-        //            RiverSta = riverSta[i],
-
-        //        });
-        //    }
-        //    return results;
-        //}
-
-
-        //public static List<HecRasProfileResult> ReadProfileSummary(string filePath)
-        //{
-        //    using var file = H5File.OpenRead(filePath);
-
-        //    int proN = 5;
-
-
-        //    var river = ReadCrossSectionAttrRiver(file);
-        //    var reach = ReadCrossSectionAttrReach(file);
-        //    var riverSta = ReadCrossSectionAttrStation(file);
-        //    var profile = ReadSteadyProfileNames(file);
-
-        //    var profileArr = new string[river.Length];
-        //    Array.Fill(profileArr, profile[proN]);
-
-        //    var qTotal = file.Dataset(BasePathAV + "Flow Total").Read<float[,]>();
-        //    var wsElev = file.Dataset(BasePath + "Water Surface").Read<float[,]>();
-        //    var maxDepths = file.Dataset(BasePathAV + "Maximum Depth Total").Read<float[,]>();
-
-        //    var minChEl = CalcCrossSectionMinElev(wsElev, maxDepths);
-
-        //    var critWs = file.Dataset(BasePathAV + "Critical Water Surface").Read<float[,]>();
-        //    var egElev = file.Dataset(BasePath + "Energy Grade").Read<float[,]>();
-        //    var egSlope = file.Dataset(BasePathAV + "EG Slope").Read<float[,]>();
-        //    var velChnl = file.Dataset(BasePathAV + "Velocity Total").Read<float[,]>();
-        //    var flowArea = file.Dataset(BasePathAV + "Area Flow Total").Read<float[,]>();
-        //    var topWidth = file.Dataset(BasePathAV + "Top Width Total").Read<float[,]>();
-        //    var froude = CalcFroude(file, velChnl);
-
-        //    var results = new List<HecRasProfileResult>(riverSta.Length);
-
-        //    for (int i = 0; i < riverSta.Length; i++)
-        //    {
-        //        results.Add(new HecRasProfileResult
-        //        {
-        //            River = river[i],
-        //            Reach = reach[i],
-        //            RiverSta = riverSta[i],
-        //            Profile = profileArr[proN],
-        //            QTotal = qTotal[proN, i],
-        //            MinChEl = minChEl[proN, i],
-        //            WSElev = Math.Round(wsElev[proN, i], 2),
-        //            MaxDepths = Math.Round(maxDepths[proN, i], 2),
-        //            CritWS = Math.Round(critWs[proN, i], 2),
-        //            EGElev = Math.Round(egElev[proN, i], 2),
-        //            EGSlope = Math.Round(egSlope[proN, i], 4),
-        //            VelChnl = Math.Round(velChnl[proN, i], 1),
-        //            FlowArea = Math.Round(flowArea[proN, i]),
-        //            TopWidth = Math.Round(topWidth[proN, i]),
-        //            FrChnl = Math.Round(froude[proN, i], 2)
-        //        });
-        //    }
-        //    return results;
-        //}
-
 
         public static List<WSELTable> ReadWSELTable(string planPathA, string planPathB, string proName)
         {
@@ -116,17 +36,6 @@ namespace HydroExplorer.Utils
 
             var qTotalA = fileA.Dataset(BasePathAV + "Flow Total").Read<float[,]>();
             var wsElevA = fileA.Dataset(BasePath + "Water Surface").Read<float[,]>();
-            //var maxDepths = fileA.Dataset(BasePathAV + "Maximum Depth Total").Read<float[,]>();
-
-            //var minChEl = CalcCrossSectionMinElev("5", wsElevA, maxDepths);
-
-            //var critWs = fileA.Dataset(BasePathAV + "Critical Water Surface").Read<float[,]>();
-            //var egElev = fileA.Dataset(BasePath + "Energy Grade").Read<float[,]>();
-            //var egSlope = fileA.Dataset(BasePathAV + "EG Slope").Read<float[,]>();
-            //var velChnl = fileA.Dataset(BasePathAV + "Velocity Total").Read<float[,]>();
-            //var flowArea = fileA.Dataset(BasePathAV + "Area Flow Total").Read<float[,]>();
-            //var topWidth = fileA.Dataset(BasePathAV + "Top Width Total").Read<float[,]>();
-            //var froude = CalcFroude(fileA, "5", velChnl);
 
             using var fileB = H5File.OpenRead(planPathB);
             var qTotalB = fileB.Dataset(BasePathAV + "Flow Total").Read<float[,]>();
@@ -143,7 +52,7 @@ namespace HydroExplorer.Utils
                     Reach = reach[i],
                     RiverSta = riverSta[i],
                     Profile = profileArr[proN],
-                    QTotal = qTotalA[proN, i],
+                    QTotalA = qTotalA[proN, i],
                     WSElevA = Math.Round(wsElevA[proN, i], 2),
                     QTotalB = qTotalB[proN, i],
                     WSElevB = Math.Round(wsElevB[proN, i], 2),
@@ -154,23 +63,19 @@ namespace HydroExplorer.Utils
         }
 
 
-        public static List<WSELTableOxy>? ReadWSELTableOxy(string planPathA, string planPathB, string proName)
+        public static List<WSELTableOxy> ReadWSELTableOxy(string? hdfPathA, string? hdfPathB, string proName)
         {
+            bool hasA = !string.IsNullOrEmpty(hdfPathA) && File.Exists(hdfPathA);
+            bool hasB = !string.IsNullOrEmpty(hdfPathB) && File.Exists(hdfPathB);
 
+            // Fall back to single-file read if only one exists
+            if (!hasA && !hasB) return [];
+            if (!hasB && hasA) return ReadWSELTableOxySingle(hdfPathA!, proName) ?? [];
+            if (!hasA && hasB) return ReadWSELTableOxySingle(hdfPathB!, proName) ?? [];
 
-            if (string.IsNullOrEmpty(planPathA) || !File.Exists(planPathA))
-            {
-                System.Diagnostics.Debug.WriteLine($"ReadWSELTableOxy: HDF Path missing: '{planPathA}'.");
-                return null;
-            }
-            if (string.IsNullOrEmpty(planPathB) || !File.Exists(planPathB))
-            {
-                System.Diagnostics.Debug.WriteLine($"ReadWSELTableOxy: HDF Path missing: '{planPathB}'.");
-                return null;
-            }
-
-            using var fileA = H5File.OpenRead(planPathA);
-            using var fileB = H5File.OpenRead(planPathB);
+            // Both exist — full comparison read
+            using var fileA = H5File.OpenRead(hdfPathA!);
+            using var fileB = H5File.OpenRead(hdfPathB!);
 
             var river = ReadCrossSectionAttrRiver(fileA);
             var reach = ReadCrossSectionAttrReach(fileA);
@@ -179,11 +84,8 @@ namespace HydroExplorer.Utils
             var profileA = ReadSteadyProfileNames(fileA);
             var profileB = ReadSteadyProfileNames(fileB);
 
-            // Look up proN independently per file
             int proNA = profileA.IndexOf(proName);
             if (proNA == -1) proNA = 0;
-
-       
 
             int proNB = profileB.IndexOf(proName);
             if (proNB == -1)
@@ -192,9 +94,6 @@ namespace HydroExplorer.Utils
                     $"ReadWSELTableOxy: '{proName}' not found in fileB profiles [{string.Join(", ", profileB)}], defaulting to 0.");
                 proNB = 0;
             }
-
-            System.Diagnostics.Debug.WriteLine(
-                $"ReadWSELTableOxy: proName='{proName}' → proNA={proNA}/{profileA.Count - 1}, proNB={proNB}/{profileB.Count - 1}");
 
             var qTotalA = fileA.Dataset(BasePathAV + "Flow Total").Read<float[,]>();
             var wsElevA = fileA.Dataset(BasePath + "Water Surface").Read<float[,]>();
@@ -210,12 +109,12 @@ namespace HydroExplorer.Utils
             if (proNA >= rowsA)
             {
                 System.Diagnostics.Debug.WriteLine($"ReadWSELTableOxy: proNA={proNA} >= rowsA={rowsA}.");
-                return null;
+                return [];
             }
             if (proNB >= rowsB)
             {
                 System.Diagnostics.Debug.WriteLine($"ReadWSELTableOxy: proNB={proNB} >= rowsB={rowsB}.");
-                return null;
+                return [];
             }
 
             int cols = Math.Min(Math.Min(colsA, colsB), riverSta.Length);
@@ -239,6 +138,69 @@ namespace HydroExplorer.Utils
             }
             return results;
         }
+
+
+
+        public static List<WSELTableOxy>? ReadWSELTableOxySingle(string planPathA, string proName)
+        {
+            if (string.IsNullOrEmpty(planPathA) || !File.Exists(planPathA))
+            {
+                System.Diagnostics.Debug.WriteLine($"ReadWSELTableOxySingle: HDF path missing: '{planPathA}'.");
+                return null;
+            }
+
+            using var fileA = H5File.OpenRead(planPathA);
+
+            var river = ReadCrossSectionAttrRiver(fileA);
+            var reach = ReadCrossSectionAttrReach(fileA);
+            var riverSta = ReadCrossSectionAttrStation(fileA);
+            var profileA = ReadSteadyProfileNames(fileA);
+
+            int proNA = profileA.IndexOf(proName);
+            if (proNA == -1)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"ReadWSELTableOxySingle: '{proName}' not found in profiles [{string.Join(", ", profileA)}], defaulting to 0.");
+                proNA = 0;
+            }
+
+            var qTotalA = fileA.Dataset(BasePathAV + "Flow Total").Read<float[,]>();
+            var wsElevA = fileA.Dataset(BasePath + "Water Surface").Read<float[,]>();
+            var maxDepths = fileA.Dataset(BasePathAV + "Maximum Depth Total").Read<float[,]>();
+            var minChEl = CalcCrossSectionMinElev(wsElevA, maxDepths);
+
+            int rowsA = wsElevA.GetLength(0);
+            int colsA = wsElevA.GetLength(1);
+
+            if (proNA >= rowsA)
+            {
+                System.Diagnostics.Debug.WriteLine($"ReadWSELTableOxySingle: proNA={proNA} >= rowsA={rowsA}.");
+                return null;
+            }
+
+            int cols = Math.Min(colsA, riverSta.Length);
+            var results = new List<WSELTableOxy>(cols);
+
+            for (int i = 0; i < cols; i++)
+            {
+                results.Add(new WSELTableOxy
+                {
+                    River = river[i],
+                    Reach = reach[i],
+                    RiverSta = riverSta[i],
+                    Profile = profileA[proNA],
+                    QTotal = qTotalA[proNA, i],
+                    MinChEl = minChEl[proNA, i],
+                    WSElevA = Math.Round(wsElevA[proNA, i], 2),
+                    QTotalB = float.NaN,   // no second source
+                    WSElevB = double.NaN,  // no second source
+                    DELTA = double.NaN   // can't compute
+                });
+            }
+
+            return results;
+        }
+
 
 
         public struct CrossSectionAttr

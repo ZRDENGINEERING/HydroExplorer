@@ -18,11 +18,11 @@ namespace HydroExplorer.View.TabItem
 
 
 
+
         public TabInfoView()
         {
             InitializeComponent();
 
-            // Reuse single instance to prevent multiple ProjPathChanged subscriptions
             if (_mapOverView == null)
                 _mapOverView = new MapOverView();
 
@@ -63,18 +63,6 @@ namespace HydroExplorer.View.TabItem
             };
         }
 
-        private async Task OnProjPathChanged(string projPath)
-        {
-            if (string.IsNullOrEmpty(projPath)) return;
-
-            string projectName = Path.GetFileNameWithoutExtension(projPath);
-            txtBlockProjectName.Text = $"Project Name: {projectName}";
-            txtBlockAreaSqMi.Text = $"Drainage Area (sq.mi.): {projectName}";
-            txtBlockAreaAcre.Text = $"Drainage Area (acre): {projectName}";
-            txtBlockUSGSInfo.Text = $"USGS Info: {projectName}";
-            txtBlockSiteNumber.Text = $"Site Number: {projectName}";
-            txtBlockStationName.Text = $"Station Name: {projectName}";
-            txtBlockHUC.Text = $"HUC Code: {projectName}";
-        }
+       
     }
 }

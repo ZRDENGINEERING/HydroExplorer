@@ -10,7 +10,7 @@ namespace HydroExplorer.Helpers
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
             if (value is double d)
-                return d > 0 ? Brushes.Red : (d < 0 ? Brushes.LimeGreen : Brushes.Gray);
+                return double.IsNaN(d) ? Brushes.Gray : (d > 0 ? Brushes.Red : (d < 0 ? Brushes.LimeGreen : Brushes.Gray));
 
             return Brushes.White; 
         }

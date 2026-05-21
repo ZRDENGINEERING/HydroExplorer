@@ -40,12 +40,16 @@
 
 
   <ItemGroup>
+	  <PackageReference Include="Hec.Dss" Version="2.0.4" />
 	  <PackageReference Include="OpenTK" Version="3.3.1">
 		<NoWarn>NU1701</NoWarn>
 	</PackageReference>
 	<PackageReference Include="OpenTK.GLWpfControl" Version="3.3.0">
 		<NoWarn>NU1701</NoWarn>
 	</PackageReference>
+	<PackageReference Include="OxyPlot.SkiaSharp" Version="2.2.0" />
+	<PackageReference Include="OxyPlot.Wpf" Version="2.2.0" />
+	<PackageReference Include="QuestPDF" Version="2026.2.4" />
 		<PackageReference Include="SkiaSharp.Views.WPF" Version="3.119.2">
 		<NoWarn>NU1701</NoWarn>
 	</PackageReference>
@@ -61,7 +65,6 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.5" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.5" />
     <PackageReference Include="NetTopologySuite.IO.ShapeFile" Version="2.1.0" />
-    <PackageReference Include="OxyPlot.Wpf" Version="2.2.0" />
     <PackageReference Include="ProjNET" Version="2.1.0" />
     <PackageReference Include="PureHDF" Version="2.1.2" />
   </ItemGroup>
@@ -69,19 +72,6 @@
   <ItemGroup>
     <Compile Update="Core\ObservableObject.cs">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Compile>
-    <Compile Update="Theme\ColourfulDarkTheme.xaml.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Update="Theme\ColourfulLightTheme.xaml.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Update="Theme\LightTheme.xaml.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Update="View\TabItem\Tab
-			 View.xaml.cs">
-      <SubType>Code</SubType>
     </Compile>
     <Compile Update="View\TabItem\TabMainView.xaml.cs">
       <SubType>Code</SubType>

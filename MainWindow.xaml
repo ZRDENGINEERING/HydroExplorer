@@ -12,7 +12,7 @@
         WindowStyle="None"
         AllowsTransparency="True"
         ResizeMode="CanResizeWithGrip"
-        BorderBrush="{StaticResource Button.Disabled.Border}" BorderThickness="0.8" 
+        BorderBrush="{StaticResource BorderBrush}" BorderThickness="0.8" 
         Background="{StaticResource DividerBrush}"
         Top="0" Left="-2000">
 
@@ -36,15 +36,18 @@
             <RowDefinition Height="25"/>
         </Grid.RowDefinitions>
 
+        
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="250" MinWidth="20"/>
             <ColumnDefinition Width="5"/>
-            <ColumnDefinition Width="*"  MinWidth="100"/>
+            <ColumnDefinition Width="*" MinWidth="100"/>
+            <ColumnDefinition Width="5"/>
+            <ColumnDefinition Width="250" MinWidth="20"/>
         </Grid.ColumnDefinitions>
 
 
         <!-- Custom Title Bar -->
-        <Grid Grid.Column="0" Grid.ColumnSpan="3"
+        <Grid Grid.Column="0" Grid.ColumnSpan="5"
             Height="25"
               Background="Black"
               VerticalAlignment="Top" 
@@ -52,85 +55,105 @@
 
             <Image Source="/Images/logo_zrd.png" 
                    Height="20" Width="36"
-                   HorizontalAlignment="Right"
+                   HorizontalAlignment="Left"
                    VerticalAlignment="Center"
-                   Margin="0,0,110,0"/>
+                   Margin="10,0,0,0"/>
 
 
             <TextBlock Text="HydroExplorer" 
                        Foreground="{StaticResource ForegroundBrush}"
                        VerticalAlignment="Center"
-                       Margin="8,0,0,0"/>
+                       FontSize="10"
+                       Margin="60,0,0,0"/>
 
             <!-- Window Buttons -->
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
 
-                <Button Content="─" Width="30" Height="30"
-                        FontSize="22"
-                        Margin = "0,-2,0,0"
+                <Button Width="30" Height="30"
+                        FontSize="18"
+                        Margin = "0,-1,0,0"
                 Background="Transparent"
-                Foreground="{StaticResource BackgroundBrushDark}"
-
                 BorderThickness="0"
-                Click="MinimizeButton_Click"/>
+                Click="MinimizeButton_Click">
+                    <TextBlock Text="─" Foreground="{StaticResource CloseButtonBrush}"/>
+                </Button>
 
-                <Button Content="□" Width="30" Height="30"
-                        FontSize="24"
-                        Margin = "0,-10,0,0"
+                <Button Width="30" Height="30"
+                        FontSize="18"
+                        Margin = "0,-6,0,0"
                 Background="Transparent"
-                Foreground="DarkBlue"
                 BorderThickness="0"
-                Click="MaximizeButton_Click"/>
+                Click="MaximizeButton_Click">
+                    <TextBlock Text="□" Foreground="{StaticResource CloseButtonBrush}"/>
+                </Button>
 
-                <Button Content="✕" Width="30"
-                        FontSize="16"
+                <Button Width="30"
+                        FontSize="12"
                 Background="Transparent"
-                Foreground="DarkBlue"
                 BorderThickness="0"
-                Click="CloseButton_Click"/>
+                Click="CloseButton_Click">
+                    <TextBlock Text="✕" Foreground="{StaticResource CloseButtonBrush}"/>
+
+                </Button>
+                    
+                    
+                    
             </StackPanel>
         </Grid>
 
 
+            
+            
         <!-- Menu Bar -->
-        <userControls:MenuBar Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="1" Margin="0,0,0,3" 
-                              Background="{StaticResource BackgroundBrushDark}" Foreground="{StaticResource ForegroundBrush}"/>
-
-        <!-- Toolbar 
-        <userControls:ToolbarControl Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="2" DataContext="{Binding}"/>-->
+        <userControls:MenuBar Grid.Column="0" Grid.ColumnSpan="5" Grid.Row="1" Margin="0,0,0,3" 
+                      Foreground="{StaticResource ForegroundBrush}" />
 
         <!-- Left Pane -->
-        <views:TreeViewControl x:Name="MyTreeViewControl" Grid.Column="0" Grid.Row="3" Grid.RowSpan="5" Margin="3,0,0,3" 
-                               Background="{StaticResource BackgroundBrushDark}"
-                               />
+        <views:TreeViewControl x:Name="MyTreeViewControl" 
+                       Grid.Column="0" Grid.Row="3" Grid.RowSpan="5" 
+                       Margin="3,0,0,3" 
+                       Background="{StaticResource BackgroundBrushDark}"/>
 
-        <!-- Splitter -->
+        <!-- Left Splitter -->
         <GridSplitter Grid.Column="1" Grid.Row="3" Grid.RowSpan="5" Width="4" 
-                      ResizeBehavior="PreviousAndNext"
-                      Background="{StaticResource DividerBrush}"
-                      ShowsPreview="False"/>
-    
+              ResizeBehavior="PreviousAndNext"
+              Background="{StaticResource DividerBrush}"
+              ShowsPreview="False"/>
 
         <!-- Center Pane -->
-        <ContentControl Grid.Column="2" Grid.Row="3" Grid.RowSpan="3" Content="{Binding CurrentView}" Margin="0,0,3,0" Background="{StaticResource BackgroundBrushDark}"/>
+        <ContentControl Grid.Column="2" Grid.Row="3" Grid.RowSpan="3" 
+                Content="{Binding CurrentView}" 
+                Margin="0,0,0,0" 
+                Background="{StaticResource BackgroundBrushDark}"/>
 
-        <!-- Splitter -->
-        <GridSplitter Grid.Column="2" Grid.ColumnSpan="2" Grid.Row="6" Width="2000"
-                      ResizeDirection="Rows"
-                      Background="{StaticResource DividerBrush}"
-                      ShowsPreview="True"/>
-    
+        <!-- Right Splitter -->
+        <GridSplitter Grid.Column="3" Grid.Row="3" Grid.RowSpan="5" Width="4"
+              ResizeBehavior="PreviousAndNext"
+              Background="{StaticResource DividerBrush}"
+              ShowsPreview="False"/>
+
+        
+        <!-- Right Pane: Recent Projects -->
+        <views:RecentProjectsView Grid.Column="4" Grid.Row="3" Grid.RowSpan="5"
+                          Margin="0,0,3,3"
+                          Background="{StaticResource BackgroundBrushDark}"
+                          DataContext="{Binding TabInfoVM}"/>
+        
+
+        <!-- Horizontal Splitter -->
+        <GridSplitter Grid.Column="2" Grid.Row="6" Width="2000"
+              ResizeDirection="Rows"
+              Background="{StaticResource DividerBrush}"
+              ShowsPreview="True"/>
 
         <!-- Bottom Pane -->
-        <views:BottomView x:Name="BottomView" Grid.Column="2" Grid.Row="7" Margin="0,0,3,3" 
-                           Background="{StaticResource BackgroundBrushDark}"     
-                           BorderBrush="{StaticResource Button.Disabled.Border}" 
-                           BorderThickness="0.8"/>
-
-
+        <views:BottomView x:Name="BottomView" Grid.Column="2" Grid.Row="7" 
+                  Margin="0,0,3,3" 
+                  Background="{StaticResource BackgroundBrushDark}"     
+                  BorderThickness="0.8"/>
 
         <!-- Footer -->
-        <Rectangle Grid.ColumnSpan="3" Grid.Row="8" Fill="{StaticResource FooterBrush}"/>
+        <Rectangle Grid.ColumnSpan="5" Grid.Row="8" Fill="{StaticResource FooterBrush}"/>
 
     </Grid>
 </Window>

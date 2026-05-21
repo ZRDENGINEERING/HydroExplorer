@@ -21,12 +21,14 @@
         public static bool IsBackdropDisabled()
         {
             var appContextBackdropData = AppContext.GetData("Switch.System.Windows.Appearance.DisableFluentThemeWindowBackdrop");
-            bool disableFluentThemeWindowBackdrop = false;
 
-            if (appContextBackdropData != null)
-            {
-                disableFluentThemeWindowBackdrop = bool.Parse(value: Convert.ToString(appContextBackdropData));
-            }
+            _ = bool.TryParse(Convert.ToString(appContextBackdropData), out bool disableFluentThemeWindowBackdrop);
+
+
+            //if (appContextBackdropData != null)
+            //{
+            //    disableFluentThemeWindowBackdrop = bool.Parse(value: Convert.ToString(appContextBackdropData));
+            //}
 
             return disableFluentThemeWindowBackdrop;
         }

@@ -1,10 +1,12 @@
 ﻿//using BruTile.Wms;
+using BruTile.Predefined;
+using BruTile.Web;
 using HydroExplorer.Helpers;
 using Mapsui;
 using Mapsui.Extensions;
 using Mapsui.Layers;
+using Mapsui.Nts;
 using Mapsui.Nts.Providers.Shapefile;
-using Mapsui.Nts.Widgets;
 using Mapsui.Projections;
 using Mapsui.Providers;
 using Mapsui.Providers.Wms;
@@ -28,7 +30,7 @@ namespace HydroExplorer.View
     }
     public partial class MapOverView : UserControl
     {
-        public readonly EditingWidget? _editingWidget;
+        private readonly MapStateService _mapState;
         private readonly MapControl _mapControl;
         private readonly Map _map;
 
@@ -39,72 +41,49 @@ namespace HydroExplorer.View
         private string? _pathHMS = string.Empty;
         private string? _pathSubBasins = string.Empty;
 
-        private static readonly Color _lblBackGroundColor = new(236, 210, 1, 150);
-        private static readonly Color _vecBNDYColor = new(70, 138, 138, 155);
-        private static readonly Color _vecBNDYFill = new(128, 128, 128, 50);
-        private static readonly Color _txtLBLColor = new(0, 0, 0, 155);
+        private static readonly Color _colorLblBackGround = new(236, 210, 1, 150);
+        private static readonly Color _colorBNDY = new(70, 138, 138, 155);
+        private static readonly Color _colorBNDYFill = new(153, 157, 23, 100);
+        private static readonly Color _colorTxtLBL = new(0, 0, 0, 155);
+
+        private static readonly Color _colorSPZLine = new(255, 255, 255, 155);
+        private static readonly Color _colorSPZFill = new(125, 125, 125, 25);
 
         private CancellationTokenSource? _resetMapCts;
+
 
 
         public MapOverView()
         {
             InitializeComponent();
 
+            _mapState = App.ServiceProvider.GetRequiredService<MapStateService>();
+
             _mapControl = new Mapsui.UI.Wpf.MapControl();
             _map = new Map { CRS = "EPSG:3857" };
 
             LoggingWidget.ShowLoggingInMap = Mapsui.Widgets.ActiveMode.No;
 
-            //var source = KnownTileSources.Create(KnownTileSource.BingAerial);
-            //TileLayer bingSat = new TileLayer(source);
-            //bingSat.Name = "Bing Aerial";
-            //map.Layers.Add(bingSat);
-
             AppDomain.CurrentDomain.FirstChanceException += (s, e) =>
             {
                 if (e.Exception is IOException && e.Exception.Source is "System.Net.Sockets" or "System.Net.Security")
-                    return; // suppress tile network noise
+                    return;
             };
 
             _mapControl.Map = _map;
-
-            //SATX
-            //var (x, y) = SphericalMercator.FromLonLat(-98.4936, 29.4241);
-            //TX
-            //var (x, y) = SphericalMercator.FromLonLat(-99.1440, 31.4928);
-            //map.Navigator.CenterOn(x, y);
-
-            //var shpPath = "Z:\\10 DEV\\hydroExplorer\\SHP\\TX_CNTY.shp";
-            //_map.Layers.Add(CreateProjectedShapefileLayer(shpPath));
-
-
+            _map.Widgets.Clear();
             Content = _mapControl;
 
-            Loaded += async (s, e) =>
-            {
-                await ResetMap();
-            };
+            Loaded += async (s, e) => { await ResetMap(); };
 
-            //InitInfoWidgets();
-            //AddLayerShpZRD();
 
             EventBus.ProjPathChanged += async path =>
             {
                 await Dispatcher.InvokeAsync(async () =>
                 {
-                    try
-                    {
-                        await ResetMap(path);
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        System.Diagnostics.Debug.WriteLine("ResetMap cancelled.");
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"ResetMap error: {ex.Message}");
-                    }
+                    try { await ResetMap(path); }
+                    catch (OperationCanceledException) { System.Diagnostics.Debug.WriteLine("ResetMap cancelled."); }
+                    catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"ResetMap error: {ex.Message}"); }
                 });
             };
         }
@@ -121,17 +100,31 @@ namespace HydroExplorer.View
             await Task.Delay(100, token);
             _map.Layers.Clear();
 
-            var lyr_osm = Mapsui.Tiling.OpenStreetMap.CreateTileLayer();
-            lyr_osm.Opacity = 0.6;
-            _map.Layers.Add(lyr_osm);
+            foreach (var name in Enum.GetNames(typeof(KnownTileSource)))
+            {
+                Console.WriteLine(name);
+                System.Diagnostics.Debug.WriteLine($"AVAILABLE.............: {name}");
+            }
+
+
+            _map.Layers.Add(new TileLayer(KnownTileSources.Create(KnownTileSource.EsriWorldDarkGrayBase)));
+
+
+
+            //lyr_osm.Opacity = 0.6;
+
+            //_map.Layers.Add(CreateDimOverlayLayer(opacity: 120));
 
             try
             {
                 await BuildPaths(projPath);
-                await ExportXStoShp();
-                await ExportBNDY();
+                //await AddLayerShpTXSpz();
+                await AddLayerShpTXCnty();
+                await AddLayerShpZRD();
+                await AddLayerShpTXZRD();
+
+                await ExportShpBNDY();
                 await AddLayerShpBndy();
-                await AddLayerCnty();
                 await InitView();
             }
             catch (OperationCanceledException)
@@ -155,11 +148,36 @@ namespace HydroExplorer.View
                 double xx = (extent.MaxX + extent.MinX) / 2;
                 double yy = (extent.MaxY + extent.MinY) / 2;
 
+                await Application.Current.Dispatcher.InvokeAsync(() => { },
+                    System.Windows.Threading.DispatcherPriority.Loaded);
+
                 var (x, y) = SphericalMercator.FromLonLat(xx, yy);
                 _map.Navigator.CenterOn(x, y);
-
                 _map.Navigator.ZoomTo(450);
             }
+        }
+
+
+
+        private static ILayer CreateDimOverlayLayer(byte opacity = 180)
+        {
+            var box = new NetTopologySuite.Geometries.Envelope(
+                -20037508.34, 20037508.34,
+                -20037508.34, 20037508.34);
+
+            var poly = new NetTopologySuite.Geometries.GeometryFactory()
+                .ToGeometry(box);
+
+            var layer = new MemoryLayer("DimOverlay")
+            {
+                Features = new[] { new GeometryFeature { Geometry = poly } },
+                Style = new VectorStyle
+                {
+                    Fill = new Brush(new Color(30, 30, 30, opacity)), // dark gray, semi-transparent
+                    Outline = null
+                }
+            };
+            return layer;
         }
 
 
@@ -214,45 +232,60 @@ namespace HydroExplorer.View
         }
 
 
-        private void AddLayerShpTxPgon()
+        private Task AddLayerShpTXSpz()
         {
-            string shapefilePath = "Z:\\10 DEV\\hydroExplorer\\SHP\\TX_PGON.shp";
-            var shapeFileProvider = new ShapeFile(shapefilePath, true) { CRS = "f:4326" };
-            var dataSource = new ProjectingProvider(shapeFileProvider) { CRS = "EPSG:3857" };
+            string shapefilePath = "Z:\\10 DEV\\hydroExplorer\\SHP\\MAPOVERVIEW\\TX_SPZ.shp";
+            if (!Path.Exists(shapefilePath)) return Task.CompletedTask;
 
-            var shapefileLayer = new Mapsui.Layers.Layer("Zones")
+            var shapefileSource = new ShapeFile(shapefilePath, true);
+            //var dataSource = new ProjectingProvider(shapeFileProvider) { CRS = "EPSG:3857" };
+
+            var shapefileLayer = new Layer("TX_SPZ")
             {
-                DataSource = dataSource,
-                Style = CreateThemeZones()
+                Name = "TX_SPZ",
+                DataSource = shapefileSource,
+                Tag = new OverViewLayerData { IsMapInfoLayer = true },
+                Style = new StyleCollection
+                {
+                    Styles =
+                    {
+                        new VectorStyle
+                        {
+                            Outline = new Pen(_colorSPZLine, 20),
+                            Fill = new Brush(_colorSPZFill)
+                        },
+                        new LabelStyle
+                        {
+                            Enabled = true,
+                            LabelColumn = "ZONE",
+                            BackColor = new Brush(Color.Transparent),
+                            ForeColor = new Color(_colorTxtLBL),
+                            Font = new Font { FontFamily = "Eras", Size = 18, Bold = false },
+                            HorizontalAlignment = LabelStyle.HorizontalAlignmentEnum.Center,
+                            VerticalAlignment = LabelStyle.VerticalAlignmentEnum.Center,
+                            MaxVisible = 1000,
+                        }
+                }
+                }
             };
             _map.Layers.Add(new RasterizingTileLayer(shapefileLayer));
+
+            return Task.CompletedTask;
         }
 
 
-        private void AddLayerShpTxCnty()
+
+
+
+        private Task AddLayerShpZRD()
         {
-            string shapefilePath = "Z:\\10 DEV\\hydroExplorer\\SHP\\TX_PGON.shp";
-            var shapeFileProvider = new ShapeFile(shapefilePath, true) { CRS = "EPSG:4326" };
-            var dataSource = new ProjectingProvider(shapeFileProvider) { CRS = "EPSG:3857" };
+            string shapefilePathZRD = "Z:\\10 DEV\\hydroExplorer\\SHP\\MAPOVERVIEW\\PROJ_TX_ZRD.shp";
+            var shapeFileSource = new ShapeFile(shapefilePathZRD, true);
 
-            var shapefileLayer = new Mapsui.Layers.Layer("Zones")
+            var shapefileLayer = new Layer("PROJ_TX_ZRD")
             {
-                DataSource = dataSource,
-                Style = CreateThemeZones()
-            };
-            _map.Layers.Add(shapefileLayer);
-        }
-
-
-        private void AddLayerShpZRD()
-        {
-            string shapefilePathZRD = "Z:\\10 DEV\\hydroExplorer\\SHP\\ZRD_TX.shp";
-            var shapeFileProvider = new ShapeFile(shapefilePathZRD, true) { CRS = "EPSG:4326" };
-            var dataSource = new ProjectingProvider(shapeFileProvider) { CRS = "EPSG:3857" };
-            var shapefileLayer = new Mapsui.Layers.Layer("ZRD")
-            {
-                Name = "PROJECTS",
-                DataSource = dataSource,
+                Name = "PROJ_TX_ZRD",
+                DataSource = shapeFileSource,
                 Tag = new OverViewLayerData { IsMapInfoLayer = true },
                 Style = new StyleCollection
                 {
@@ -268,7 +301,7 @@ namespace HydroExplorer.View
                             {
                                 LabelColumn = "projname",
                                 ForeColor = Color.Black,
-                                BackColor = new Brush(_lblBackGroundColor),
+                                BackColor = new Brush(_colorLblBackGround),
                                 CornerRounding = 3,
                                 Font = new Font { FontFamily = "Eras", Size = 10 , Bold = true},
                                 HorizontalAlignment = LabelStyle.HorizontalAlignmentEnum.Center,
@@ -280,6 +313,48 @@ namespace HydroExplorer.View
                 }
             };
             _map.Layers.Add(new RasterizingTileLayer(shapefileLayer));
+            return Task.CompletedTask;
+        }
+
+
+
+        private Task AddLayerShpTXZRD()
+        {
+            string shapefilePathZRD = "Z:\\10 DEV\\hydroExplorer\\SHP\\MAPOVERVIEW\\PROJ_TX_ZRD.shp";
+            var shapeFileSource = new ShapeFile(shapefilePathZRD, true);
+
+            var shapefileLayer = new Layer("PROJ_TX_ZRD")
+            {
+                Name = "PROJ_TX_ZRD",
+                DataSource = shapeFileSource,
+                Tag = new OverViewLayerData { IsMapInfoLayer = true },
+                Style = new StyleCollection
+                {
+                    Styles =
+                        {
+                            new SymbolStyle
+                            {
+                                Fill = new Brush(Color.Red),
+                                Outline = new Pen(Color.Black, 1),
+                                SymbolScale = 0.2
+                            },
+                            new LabelStyle
+                            {
+                                LabelColumn = "projname",
+                                ForeColor = Color.Black,
+                                BackColor = new Brush(_colorLblBackGround),
+                                CornerRounding = 3,
+                                Font = new Font { FontFamily = "Eras", Size = 10 , Bold = true},
+                                HorizontalAlignment = LabelStyle.HorizontalAlignmentEnum.Center,
+                                VerticalAlignment = LabelStyle.VerticalAlignmentEnum.Bottom,
+                                MaxVisible = 100,
+                                Offset = new Offset { Y = -5 }
+                            }
+                        }
+                }
+            };
+            _map.Layers.Add(new RasterizingTileLayer(shapefileLayer));
+            return Task.CompletedTask;
         }
 
 
@@ -302,17 +377,17 @@ namespace HydroExplorer.View
         }
 
 
-        private Task AddLayerCnty()
+        private Task AddLayerShpTXCnty()
         {
-            string shapefilePathCnty = "Z:\\10 DEV\\hydroExplorer\\SHP\\TX_CNTY.shp";
-
+            string shapefilePathCnty = "Z:\\10 DEV\\hydroExplorer\\SHP\\MAPOVERVIEW\\TX_CNTY.shp";
             if (!Path.Exists(shapefilePathCnty)) return Task.CompletedTask;
-            var shapeFileProvider = new ShapeFile(shapefilePathCnty) { CRS = "EPSG:4326" };
-            var dataSource = new ProjectingProvider(shapeFileProvider) { CRS = "EPSG:3857" };
-            var shapefileLayer = new Layer("CNTY")
+
+            var shapeFileSource = new ShapeFile(shapefilePathCnty);
+
+            var shapefileLayer = new Layer("TX_CNTY")
             {
-                Name = "CNTY",
-                DataSource = dataSource,
+                Name = "TX_CNTY",
+                DataSource = shapeFileSource,
                 Tag = new OverViewLayerData { IsMapInfoLayer = true },
                 Style = new StyleCollection
                 {
@@ -329,7 +404,7 @@ namespace HydroExplorer.View
                                 Enabled = true,
                                 LabelColumn = "NAME",
                                 BackColor = new Brush(Color.Transparent),
-                                ForeColor = new Color(_txtLBLColor),
+                                ForeColor = new Color(_colorTxtLBL),
                                 Font = new Font { FontFamily = "Eras", Size = 14 , Bold = true},
                                 HorizontalAlignment = LabelStyle.HorizontalAlignmentEnum.Center,
                                 VerticalAlignment = LabelStyle.VerticalAlignmentEnum.Center,
@@ -361,13 +436,13 @@ namespace HydroExplorer.View
                         {
                             new VectorStyle
                             {
-                                Fill = new Brush(_vecBNDYFill),
+                                Fill = new Brush(_colorBNDYFill),
                                 Outline = new Pen(Color.Black, 2),
                             },
                             new VectorStyle
                             {
-                                Fill = new Brush(_vecBNDYFill),
-                                Outline = new Pen(_vecBNDYColor, 7),
+                                Fill = new Brush(_colorBNDYFill),
+                                Outline = new Pen(_colorBNDY, 7),
                             },
                         }
                 }
@@ -430,33 +505,10 @@ namespace HydroExplorer.View
         }
 
 
-        private async Task ExportXStoShp()
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(_pathHdfB)) return;
-                if (string.IsNullOrEmpty(_pathXS)) return;
-                if (File.Exists(_pathXS)) return;
-
-                System.Diagnostics.Debug.WriteLine($"\n XS FILE DOES NOT EXIST...CREATING @ {_pathXS}\n");
-                await ExporterCrossSection.ExportXSToShp(
-                    projPath: Path.GetDirectoryName(_pathHdfB) ?? string.Empty,
-                    hdfPath: _pathHdfB,
-                    outputShpPath: _pathXS
-                );
-            }
-            catch (OperationCanceledException)
-            {
-                System.Diagnostics.Debug.WriteLine("ExportXS cancelled.");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"ExportXS error: {ex.Message}");
-            }
-        }
 
 
-        public async Task ExportBNDY()
+
+        public async Task ExportShpBNDY()
         {
             if (string.IsNullOrEmpty(_pathSubBasins) || !File.Exists(_pathSubBasins)) return;
             if (string.IsNullOrEmpty(_pathBNDY)) return;
@@ -504,18 +556,26 @@ namespace HydroExplorer.View
 
 
 
+
+
+
+
+
+
+
         private async Task BuildPaths(string projPathOverride = "")
         {
+            string? projPath = string.Empty;
+
             try
             {
-
                 var settingsRepo = App.ServiceProvider.GetRequiredService<IUserSettingsRepo>();
 
                 var settings = !string.IsNullOrEmpty(projPathOverride)
                     ? await settingsRepo.GetSettingsFresh()
                     : await settingsRepo.GetSettings();
 
-                string projPath = !string.IsNullOrEmpty(projPathOverride)
+                projPath = !string.IsNullOrEmpty(projPathOverride)
                     ? projPathOverride
                     : settings.ProjPath;
 
@@ -527,7 +587,6 @@ namespace HydroExplorer.View
                     return;
                 }
 
-                string projName = Path.GetFileNameWithoutExtension(projPath);
                 string tmpPath = Path.GetFullPath(Path.Combine(projPath, ".."));
                 string spatialPath = Path.Combine(tmpPath, "Spatial");
 
@@ -536,19 +595,14 @@ namespace HydroExplorer.View
 
                 _pathXS = Path.Combine(spatialPath, "XS.shp");
                 _pathBNDY = Path.Combine(spatialPath, "BNDY.shp");
+
                 _pathHdfA = projSettings.HdfPathA;
                 _pathHdfB = projSettings.HdfPathB;
-
-
-                if (!settings.Projects.TryGetValue(projPath, out projSettings))
-                {
-                    System.Diagnostics.Debug.WriteLine($"BuildPaths: lost settings for '{projPath}' after HDF update.");
-                    return;
-                }
-
                 _pathHMS = projSettings.HmsPath;
 
 
+
+                // ── Auto-discover HdfPathB if missing ────────────────────────
                 if (string.IsNullOrEmpty(_pathHdfB) || !File.Exists(_pathHdfB))
                 {
                     string projDir = Directory.Exists(settings.ProjPath)
@@ -563,7 +617,7 @@ namespace HydroExplorer.View
                     {
                         settings.Projects[settings.ProjPath].HdfPathB = _pathHdfB;
                         await settingsRepo.SaveSettings(settings);
-                        System.Diagnostics.Debug.WriteLine($"BuildPaths: auto-set HdfPathA={_pathHdfB}");
+                        System.Diagnostics.Debug.WriteLine($"BuildPaths: auto-set HdfPathB={_pathHdfB}");
                     }
                     else
                     {
@@ -571,86 +625,34 @@ namespace HydroExplorer.View
                     }
                 }
 
-                if (string.IsNullOrEmpty(projSettings.HdfPathB) || !File.Exists(projSettings.HdfPathB))
-                {
-                    string projDir = Directory.Exists(settings.ProjPath)
-                        ? settings.ProjPath
-                        : Path.GetDirectoryName(settings.ProjPath) ?? string.Empty;
 
-                    var hdfFiles = Directory.GetFiles(projDir, "*.hdf")
-                        .Where(f => HdfFileRegex().IsMatch(Path.GetFileName(f)))
-                        .ToList();
-
-                    string? hdfPathB = hdfFiles
-                        .FirstOrDefault(f => !f.Equals(_pathHdfB, StringComparison.OrdinalIgnoreCase));
-
-                    if (!string.IsNullOrEmpty(hdfPathB))
-                    {
-                        settings.Projects[settings.ProjPath].HdfPathB = hdfPathB;
-                        await settingsRepo.SaveSettings(settings);
-                        System.Diagnostics.Debug.WriteLine($"BuildPaths: auto-set HdfPathB={hdfPathB}");
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine("BuildPaths: no second .pxx.hdf file found.");
-                    }
-                }
-
-                _pathHMS = projSettings.HmsPath;
-
-                if (string.IsNullOrEmpty(_pathHMS))
-                {
-                    if (string.IsNullOrEmpty(_pathHdfB))
-                    {
-                        System.Diagnostics.Debug.WriteLine("BuildPaths: skipping HMS prompt, project not fully configured yet.");
-                        return;
-                    }
-
-                    var result = MessageBox.Show(
-                        "HMS path is not set. Would you like to select it now?",
-                        "HMS Path Missing",
-                        MessageBoxButton.YesNo,
-                        MessageBoxImage.Warning);
-
-                    if (result == MessageBoxResult.Yes)
-                    {
-                        var dialog = new Microsoft.Win32.OpenFileDialog
-                        {
-                            Title = "Select HMS Run File",
-                            Filter = "HMS Run Files (*.run)|*.run|All Files (*.*)|*.*",
-                            //InitialDirectory = Path.GetDirectoryName(projPath) ?? string.Empty
-                            InitialDirectory = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(projPath) ?? string.Empty, ".."))
-                        };
-
-                        if (dialog.ShowDialog() == true)
-                        {
-                            string selectedPath = dialog.FileName;
-                            string projRoot = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(projPath) ?? string.Empty, ".."));
-
-                            if (!selectedPath.StartsWith(projRoot, StringComparison.OrdinalIgnoreCase))
-                            {
-                                MessageBox.Show(
-                                    $"Selected file must be within the project root folder:\n{projRoot}",
-                                    "Invalid HMS Path",
-                                    MessageBoxButton.OK,
-                                    MessageBoxImage.Warning);
-                                return;
-                            }
-
-                            _pathHMS = selectedPath;
-                            settings.Projects[settings.ProjPath].HmsPath = _pathHMS;
-                            await settingsRepo.SaveSettings(settings);
-                            EventBus.PublishHmsPathChanged(_pathHMS);
-                            EventBus.PublishRunPath(_pathHMS);
-                        }
-                    }
-                    if (string.IsNullOrEmpty(_pathHMS)) return;
-                }
+                if (!await EnsureHmsPath(projPath, settingsRepo, settings)) return;
 
                 if (!string.IsNullOrEmpty(_pathHMS))
                     EventBus.PublishHmsPathChanged(_pathHMS);
 
                 _pathSubBasins = FindShapefileByName("subbasin") ?? string.Empty;
+
+                bool canPublish = !string.IsNullOrEmpty(projPath)
+                    && ((!string.IsNullOrEmpty(_pathHdfA) && File.Exists(_pathHdfA))
+                     || (!string.IsNullOrEmpty(_pathHdfB) && File.Exists(_pathHdfB)));
+
+                if (!canPublish)
+                {
+                    System.Diagnostics.Debug.WriteLine("BuildPaths: skipping publish, no valid HDF found.");
+                    return;
+                }
+
+                _mapState.Publish(new ProjectPaths(
+                    ProjPath: projPath,
+                    PathXS: _pathXS ?? "",
+                    PathCL: Path.Combine(Path.GetDirectoryName(_pathXS ?? "") ?? "", "CL.shp"),
+                    PathBNDY: _pathBNDY ?? "",
+                    PathHdfA: _pathHdfA ?? "",
+                    PathHdfB: _pathHdfB ?? "",
+                    PathHMS: _pathHMS ?? "",
+                    PathSubBasins: _pathSubBasins ?? ""
+                ));
             }
             catch (OperationCanceledException)
             {
@@ -661,6 +663,78 @@ namespace HydroExplorer.View
                 System.Diagnostics.Debug.WriteLine($"BuildPaths error: {ex.Message}");
             }
         }
+
+
+
+
+
+
+
+
+
+
+
+
+        private async Task<bool> EnsureHmsPath(string projPath, IUserSettingsRepo settingsRepo, UserSettings settings)
+        {
+            if (!string.IsNullOrEmpty(_pathHMS)) return true;  // ← missing, add this back
+
+            bool hasAnyHdf = (!string.IsNullOrEmpty(_pathHdfA) && File.Exists(_pathHdfA))
+                          || (!string.IsNullOrEmpty(_pathHdfB) && File.Exists(_pathHdfB));
+            if (!hasAnyHdf)
+            {
+                System.Diagnostics.Debug.WriteLine("EnsureHmsPath: skipping, no valid HDF found.");
+                return false;
+            }
+
+            var result = MessageBox.Show(
+                "HMS path is not set. Would you like to select it now?",
+                "HMS Path Missing",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning);
+
+            if (result != MessageBoxResult.Yes) return false;
+
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = "Select HMS Run File",
+                Filter = "HMS Run Files (*.run)|*.run|All Files (*.*)|*.*",
+                InitialDirectory = Path.GetFullPath(
+                    Path.Combine(Path.GetDirectoryName(projPath) ?? string.Empty, ".."))
+            };
+
+            if (dialog.ShowDialog() != true) return false;
+
+            string selectedPath = dialog.FileName;
+            string projRoot = Path.GetFullPath(
+                Path.Combine(Path.GetDirectoryName(projPath) ?? string.Empty, ".."));
+
+            if (!selectedPath.StartsWith(projRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                MessageBox.Show(
+                    $"Selected file must be within the project root folder:\n{projRoot}",
+                    "Invalid HMS Path",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return false;
+            }
+
+            _pathHMS = selectedPath;
+
+            settings.Projects[settings.ProjPath].HmsPath = _pathHMS;
+            await settingsRepo.SaveSettings(settings);
+
+            EventBus.PublishHmsPathChanged(_pathHMS);
+            EventBus.PublishRunPath(_pathHMS);
+
+            return true;
+        }
+
+
+
+
+
+
 
 
         private string? FindShapefileByName(string searchText)

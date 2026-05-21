@@ -74,7 +74,7 @@ namespace HydroExplorer.Themes.Attached
         {
             if (sender is UIElement element && e.Delta != 0)
             {
-                ScrollViewer scroller = FindVisualChild<ScrollViewer>(element);
+                ScrollViewer? scroller = FindVisualChild<ScrollViewer>(element);
                 if (scroller == null)
                 {
                     return;
@@ -153,7 +153,7 @@ namespace HydroExplorer.Themes.Attached
 
                 for (i = 0; i < count;)
                 {
-                    T child = FindVisualChildInternal<T>(VisualTreeHelper.GetChild(obj, i++));
+                    T? child = FindVisualChildInternal<T>(VisualTreeHelper.GetChild(obj, i++));
                     if (child != null)
                     {
                         return child;

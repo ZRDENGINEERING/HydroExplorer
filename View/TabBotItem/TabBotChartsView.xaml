@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             xmlns:local="clr-namespace:HydroExplorer.View.TabBotItem"
+             xmlns:local="clr-namespace:HydroExplorer.View"
              xmlns:oxy="http://oxyplot.org/wpf"
              mc:Ignorable="d"
              x:Name="Root"
@@ -13,84 +13,42 @@
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
     </UserControl.Resources>
 
-    <Grid Background="{StaticResource BackgroundBrushDark}">
+    <Grid>
         <Grid.ColumnDefinitions>
-            <!-- Reach checkboxes -->
-            <ColumnDefinition Width="Auto"/>
-            <!-- Plot -->
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="3"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
         
-        <!-- Reach Selector (left side, vertical stack) -->
-        <Border Grid.Column="0"
-                Background="{StaticResource BackgroundBrushLight}"
-                BorderBrush="{StaticResource BorderBrush}"
-                BorderThickness="0,0,1,0"
-                Padding="8,10"
-                Visibility="{Binding PlotVm.HasMultipleReaches, 
-                             Converter={StaticResource BoolToVisibilityConverter}}">
-            <StackPanel Orientation="Vertical">
-                <TextBlock Text="Reaches:"
-                           FontSize="10"
-                           FontWeight="SemiBold"
-                           Foreground="{StaticResource ForegroundBrush}"
-                           Margin="0,0,0,8"/>
-                <ItemsControl ItemsSource="{Binding PlotVm.Reaches}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Orientation="Vertical"/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
+        <!-- Return Plot — Charts/Info tabs -->
+        <local:ReturnPlotView Grid.Column="0"
+                          Visibility="{Binding ShowLP3Plot, 
+                                       Converter={StaticResource BoolToVisibilityConverter}}"/>
 
+        <!-- Profile Plot full width — Main tab only -->
+        <oxy:PlotView Grid.Column="0" Grid.ColumnSpan="3"
+                  Model="{Binding PlotVm.PlotModel}"
+                  Background="{StaticResource BackgroundBrushSidePanels}"
+                  Visibility="{Binding ShowProfilePlot,
+                               Converter={StaticResource BoolToVisibilityConverter}}"/>
 
+        <!-- Splitter -->
+        <GridSplitter Grid.Column="1" Width="3"
+                  HorizontalAlignment="Stretch"
+                  Background="{StaticResource DividerBrush}"
+                  Visibility="{Binding ShowLP3Plot,
+                               Converter={StaticResource BoolToVisibilityConverter}}"/>
 
-                            <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}"
-                                  Margin="0,0,0,6"
-                                  VerticalAlignment="Center"
-                                  Command="{Binding DataContext.PlotVm.ReachSelectionChangedCommand,
-                                        RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                  CommandParameter="{Binding}">
-                                <CheckBox.ContentTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding}">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Foreground" Value="{StaticResource ForegroundBrush}"/>
-                                                    <Setter Property="FontSize" Value="9"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsChecked, 
-                                                            RelativeSource={RelativeSource AncestorType=CheckBox}}" 
-                                                            Value="True">
-                                                            <Setter Property="Foreground" Value="Red"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                    </DataTemplate>
-                                </CheckBox.ContentTemplate>
-                                <CheckBox.Content>
-                                    <Binding Path="Name"/>
-                                </CheckBox.Content>
-                            </CheckBox>
-
-
-
-
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </StackPanel>
-        </Border>
-
-        <!-- Plot -->
-        <oxy:PlotView Grid.Column="1"
-                      Model="{Binding PlotVm.PlotModel}"
-                      BorderThickness="1"
-                      Background="{StaticResource BackgroundBrushDark}"/>
+        <!-- LP3 Plot -->
+        <oxy:PlotView Grid.Column="2"
+                  Model="{Binding LP3Vm.PlotModelLP3}"
+                  Background="{StaticResource BackgroundBrushSidePanels}"
+                  Visibility="{Binding ShowLP3Plot,
+                               Converter={StaticResource BoolToVisibilityConverter}}"/>
+    
+    
     </Grid>
-
+    
+    
 </UserControl>

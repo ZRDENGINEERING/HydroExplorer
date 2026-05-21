@@ -1,4 +1,5 @@
-﻿using System.Windows.Controls;
+﻿using HydroExplorer.ViewModel.TabItem;
+using System.Windows.Controls;
 
 
 namespace HydroExplorer.View.TabItem
@@ -8,7 +9,7 @@ namespace HydroExplorer.View.TabItem
         public TabChartView()
         {
             InitializeComponent();
-            DataContext = this;
+
         }
     }
 }

@@ -10,40 +10,32 @@
 
 
     <!-- Menu Bar -->
-    <Grid Background="{StaticResource BackgroundBrush}">
+    <Grid Background="{StaticResource BackgroundBrushSidePanels}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="30"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
         
         <Menu Background="{StaticResource BackgroundBrush}" Foreground="LightGray">
-            <MenuItem Header="File"
-                      VerticalAlignment="Center"
-                      FontSize="12">
-                <MenuItem Header="Exit" Background="{StaticResource BackgroundBrush}"/>
+            <MenuItem Header="File" VerticalAlignment="Center">
+
+                <MenuItem Header="File Menu" Background="{StaticResource BackgroundBrush}"/>
             </MenuItem>
-            <MenuItem Header="Edit" 
-                      VerticalAlignment="Center"
-                      FontSize="12">
-                <MenuItem Header="Edit This" Background="{StaticResource BackgroundBrush}"/>
+            
+            <MenuItem Header="Edit" VerticalAlignment="Center">
+                <MenuItem Header="Edit Menu" Background="{StaticResource BackgroundBrush}"/>
             </MenuItem>
 
-            <MenuItem Header="View"
-                      VerticalAlignment="Center"
-                      FontSize="12">
-                <MenuItem Header="Exit" Background="{StaticResource BackgroundBrush}"/>
+            <MenuItem Header="View" VerticalAlignment="Center">
+                <MenuItem Header="View Menu" Background="{StaticResource BackgroundBrush}"/>
             </MenuItem>
 
-            <MenuItem Header="Project"
-                      VerticalAlignment="Center"
-                      FontSize="12">
-                <MenuItem Header="Exit" Background="{StaticResource BackgroundBrush}"/>
+            <MenuItem Header="Project" VerticalAlignment="Center">
+                <MenuItem Header="Project Menu" Background="{StaticResource BackgroundBrush}"/>
             </MenuItem>
 
-            <MenuItem Header="Tools"
-                      VerticalAlignment="Center"
-                      FontSize="12">
-                <MenuItem Header="Exit" Background="{StaticResource BackgroundBrush}"/>
+            <MenuItem Header="Tools" VerticalAlignment="Center">
+                <MenuItem Header="Tools Menu" Background="{StaticResource BackgroundBrush}"/>
             </MenuItem>
         </Menu>
         </Grid>

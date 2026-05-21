@@ -1,13 +1,17 @@
 ﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <!-- These are what controls in Controls.xaml use. Instead of having say RedBlackTheme stuff in a separate file -->
-    <!-- You could put them all in here (or copy this file and edit) for more customisation (e.g "material design accents" maybe) -->
 
     <!-- The letter A is in front of the colours themselves, because it's annoying having to scroll down in visual studio's designer to "Colour" or "Brush" -->
+    <!--
+        TabItem.Selected.Background — selected tab color
+        TabItem.Static.Background — unselected tab color
+        TabItem.MouseOver.Background — hover color
+        TabItem.Disabled.Background — disabled color
+    -->
 
-    <!-- If you fancy going the JetBrains GUI way, where the main UI is just crammed with a single 1px border, then you can use these -->
 
-    <SolidColorBrush x:Key="PanelBorderBrush" Color="{DynamicResource AColour.Tone1.Border.Static}"/>
+
+    <SolidColorBrush x:Key="PanelBorderBrush" Color="{DynamicResource AColour.Tone3.Border.Static}"/>
     <SolidColorBrush x:Key="PanelBackground0" Color="{DynamicResource AColour.Tone0.Background.Static}"/>
     <SolidColorBrush x:Key="PanelBackground1" Color="{DynamicResource AColour.Tone1.Background.Static}"/>
     <SolidColorBrush x:Key="PanelBackground2" Color="{DynamicResource AColour.Tone2.Background.Static}"/>
@@ -151,13 +155,14 @@
     <SolidColorBrush x:Key="RadioButton.Disabled.Glyph" Color="{DynamicResource AColour.Glyph.Disabled}"/>
 
 
-    <SolidColorBrush x:Key="TabItem.Selected.Background" Color="Red"/>
-    <SolidColorBrush x:Key="TabItem.Selected.Border" Color="{DynamicResource AColour.Tone5.Border.Selected}"/>
+    <SolidColorBrush x:Key="TabItem.Selected.Background" Color="{DynamicResource AColour.Tone5.Background.Static}"/>
     <SolidColorBrush x:Key="TabItem.Static.Background" Color="{DynamicResource AColour.Tone5.Background.Static}"/>
-    <SolidColorBrush x:Key="TabItem.Static.Border" Color="{DynamicResource AColour.Tone5.Border.Static}"/>
     <SolidColorBrush x:Key="TabItem.MouseOver.Background" Color="{DynamicResource AColour.Tone5.Background.MouseOver}"/>
-    <SolidColorBrush x:Key="TabItem.MouseOver.Border" Color="{DynamicResource AColour.Tone5.Border.MouseOver}"/>
     <SolidColorBrush x:Key="TabItem.Disabled.Background" Color="{DynamicResource AColour.Tone5.Background.Disabled}"/>
+    
+    <SolidColorBrush x:Key="TabItem.Selected.Border" Color="{DynamicResource AColour.Tone5.Border.Selected}"/>
+    <SolidColorBrush x:Key="TabItem.Static.Border" Color="{DynamicResource AColour.Tone5.Border.Static}"/>
+    <SolidColorBrush x:Key="TabItem.MouseOver.Border" Color="{DynamicResource AColour.Tone5.Border.MouseOver}"/>
     <SolidColorBrush x:Key="TabItem.Disabled.Border" Color="{DynamicResource AColour.Tone5.Border.Disabled}"/>
 
     <SolidColorBrush x:Key="Expander.MouseOver.Circle.Fill" Color="{DynamicResource AColour.Tone5.Background.MouseOver}"/>

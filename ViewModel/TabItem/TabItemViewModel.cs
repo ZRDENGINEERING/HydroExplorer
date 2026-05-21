@@ -1,9 +1,17 @@
-﻿
-namespace HydroExplorer.ViewModel.TabItem
+﻿using System.ComponentModel;
+
+public class TabItemViewModel : INotifyPropertyChanged
 {
-    public class TabItemViewModel
+    public string Header { get; set; }
+
+    private object? _content;
+    public object? Content
     {
-        public string Header { get; set; }
-        public object Content { get; set; }
+        get => _content;
+        set { _content = value; OnPropertyChanged(nameof(Content)); }
     }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    protected void OnPropertyChanged(string name)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }

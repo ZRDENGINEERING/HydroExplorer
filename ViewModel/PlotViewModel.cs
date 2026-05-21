@@ -53,6 +53,10 @@ namespace HydroExplorer.ViewModel
 
         private CancellationTokenSource? _loadCts;
 
+        private enum PlotMode { Both, BOnly, AOnly }
+
+        private PlotMode _plotMode = PlotMode.Both;
+
 
         // ── Plot model ───────────────────────────────────────────────────────
         private PlotModel _plotModel;
@@ -103,6 +107,9 @@ namespace HydroExplorer.ViewModel
         public PlotViewModel()
         {
             PlotModel = new PlotModel();
+            PlotModelB = new PlotModel();
+            Vm = new PlotModel();
+
             ReachSelectionChangedCommand = new RelayCommand(execute: _ => RefreshPlot(), canExecute: _ => true);
 
             EventBus.ProjPathChanged += async path =>
@@ -115,24 +122,25 @@ namespace HydroExplorer.ViewModel
 
                 oldCts?.Dispose();
 
+                _dataLoaded = false;
+
                 try
                 {
-                    _dataLoaded = false;
-
-                    // Delay without throwing on cancellation
-                    await Task.Delay(1000).ContinueWith(_ => { }, token);
-
-                    if (token.IsCancellationRequested) return;
-
-                    await LoadDataAsync(path);
-                }
-                catch (TaskCanceledException)
-                {
-                    System.Diagnostics.Debug.WriteLine("PlotViewModel load delay cancelled.");
+                    await Task.Delay(1000, token).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
-                    System.Diagnostics.Debug.WriteLine("PlotViewModel ProjPathChanged cancelled.");
+                    System.Diagnostics.Debug.WriteLine("PlotViewModel load delay cancelled.");
+                    return; // exit cleanly, don't proceed to LoadDataAsync
+                }
+
+                try
+                {
+                    await LoadDataAsync(path, token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    System.Diagnostics.Debug.WriteLine("PlotViewModel LoadDataAsync cancelled.");
                 }
                 catch (Exception ex)
                 {
@@ -145,18 +153,25 @@ namespace HydroExplorer.ViewModel
 
 
 
-        public async Task LoadDataAsync(string projPathOverride = "")
+        public async Task LoadDataAsync(string projPathOverride = "", CancellationToken token = default)
         {
             if (_dataLoaded) return;
             _dataLoaded = true;
 
+            
+
+
             try
             {
+                token.ThrowIfCancellationRequested();
+
                 _settingsRepo = App.ServiceProvider.GetRequiredService<IUserSettingsRepo>();
 
                 var settings = string.IsNullOrEmpty(projPathOverride)
                     ? await _settingsRepo.GetSettings()
                     : await _settingsRepo.GetSettingsFresh();
+
+                token.ThrowIfCancellationRequested();
 
                 _projPath = string.IsNullOrEmpty(projPathOverride)
                     ? settings.ProjPath
@@ -176,32 +191,72 @@ namespace HydroExplorer.ViewModel
                     return;
                 }
 
-
-
-
                 var hdfPathA = project.HdfPathA;
                 var hdfPathB = project.HdfPathB;
                 var proName = project.ProName;
 
-                if (string.IsNullOrEmpty(hdfPathA) || !File.Exists(hdfPathA))
+                //if (string.IsNullOrEmpty(hdfPathA) || !File.Exists(hdfPathA))
+                //{
+                //    System.Diagnostics.Debug.WriteLine($"LoadDataAsync: HDF Path A missing or not found: '{hdfPathA}'.");
+                //    _dataLoaded = false; // reset so retry is possible
+                //    return;
+                //}
+
+                //if (string.IsNullOrEmpty(hdfPathB) || !File.Exists(hdfPathB))
+                //{
+                //    System.Diagnostics.Debug.WriteLine($"LoadDataAsync: HDF Path B missing or not found: '{hdfPathB}'.");
+                //    _dataLoaded = false;
+                //    return;
+                //}
+
+                token.ThrowIfCancellationRequested();
+
+                bool hasA = !string.IsNullOrEmpty(hdfPathA) && File.Exists(hdfPathA);
+                bool hasB = !string.IsNullOrEmpty(hdfPathB) && File.Exists(hdfPathB);
+
+                if (!hasA && !hasB)
                 {
-                    System.Diagnostics.Debug.WriteLine($"LoadDataAsync: HDF Path A missing or not found: '{hdfPathA}'.");
+                    System.Diagnostics.Debug.WriteLine("LoadDataAsync: No valid HDF files found. Leaving plot blank.");
+                    WselData = [];
+                    _dataLoaded = false;
                     return;
                 }
 
-                if (string.IsNullOrEmpty(hdfPathB) || !File.Exists(hdfPathB))
+                _plotMode = (hasA, hasB) switch
                 {
-                    System.Diagnostics.Debug.WriteLine($"LoadDataAsync: HDF Path B missing or not found: '{hdfPathB}'.");
-                    return;
+                    (true, true) => PlotMode.Both,
+                    (false, true) => PlotMode.BOnly,
+                    (true, false) => PlotMode.AOnly,
+                    _ => PlotMode.Both
+                };
+
+                string? effectiveA = hasA ? hdfPathA : null;
+                string? effectiveB = hasB ? hdfPathB : null;
+
+                // If only one exists, use it as B (primary) and leave A null
+                if (!hasA && hasB)
+                {
+                    effectiveA = null;
+                    effectiveB = hdfPathB;
                 }
+                else if (hasA && !hasB)
+                {
+                    effectiveA = null;
+                    effectiveB = hdfPathA;   // promote A to B slot so reader always gets a primary
+                }
+
+                token.ThrowIfCancellationRequested();
 
                 WselData = await Task.Run(() =>
-                    HecRasHdfReader.ReadWSELTableOxy(hdfPathA, hdfPathB, proName));
+                    HecRasHdfReader.ReadWSELTableOxy(effectiveA, effectiveB, proName), token);
+
+
+                token.ThrowIfCancellationRequested();
 
                 if (WselData == null) return;
 
                 var data = WselData;
-                System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                 {
                     LoadFromWSELTable(data, project.SelectedReach);
                 });
@@ -271,7 +326,7 @@ namespace HydroExplorer.ViewModel
                         : Enumerable.Empty<WSELTableOxy>())
                     .ToList();
 
-                PlotModel = CreatePlot(selectedData);
+                PlotModel = CreatePlot(selectedData, _plotMode);  // ← pass mode
                 await SaveSelectedReachAsync();
             }
             catch (OperationCanceledException) { }
@@ -309,7 +364,8 @@ namespace HydroExplorer.ViewModel
 
 
 
-        private static PlotModel CreatePlot(List<WSELTableOxy> data)
+
+        private static PlotModel CreatePlot(List<WSELTableOxy> data, PlotMode mode = PlotMode.Both)
         {
             var model = new PlotModel
             {
@@ -358,7 +414,7 @@ namespace HydroExplorer.ViewModel
 
             var seriesA = new LineSeries
             {
-                Title = "Plan A",
+                Title = mode == PlotMode.Both ? "Plan A" : "Plan",
                 Color = OxyColors.GreenYellow,
                 StrokeThickness = 2,
                 MarkerSize = 4
@@ -366,7 +422,7 @@ namespace HydroExplorer.ViewModel
 
             var seriesB = new LineSeries
             {
-                Title = "Plan B",
+                Title = mode == PlotMode.Both ? "Plan B" : "Plan",
                 Color = OxyColors.Blue,
                 StrokeThickness = 2,
                 MarkerSize = 4
@@ -393,10 +449,16 @@ namespace HydroExplorer.ViewModel
                 }
 
                 seriesMinChEl.Points.Add(new DataPoint(sta, row.MinChEl));
-                seriesA.Points.Add(new DataPoint(sta, row.WSElevA));
+
+
+                // Only add the series that have data
+                if (mode != PlotMode.BOnly)
+                    seriesA.Points.Add(new DataPoint(sta, row.WSElevA));
+
                 seriesB.Points.Add(new DataPoint(sta, row.WSElevB));
 
-                if (row.DELTA > 0)
+                // Only show deltas when comparing two plans
+                if (mode == PlotMode.Both && row.DELTA > 0)
                 {
                     deltaMarkers.Points.Add(new ScatterPoint(sta, row.WSElevB));
 
@@ -424,9 +486,14 @@ namespace HydroExplorer.ViewModel
             }
 
             model.Series.Add(seriesMinChEl);
-            model.Series.Add(seriesA);
+
+            if (mode != PlotMode.BOnly)
+                model.Series.Add(seriesA);
+
             model.Series.Add(seriesB);
-            model.Series.Add(deltaMarkers);
+
+            if (mode == PlotMode.Both)
+                model.Series.Add(deltaMarkers);
 
             model.Legends.Add(new Legend
             {

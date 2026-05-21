@@ -10,8 +10,6 @@
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
 
-
-
     <UserControl.Resources>
         <hlp:ValueToColorConverter x:Key="ValueToColorConverter"/>
     </UserControl.Resources>
@@ -22,74 +20,53 @@
             <RowDefinition Height="*"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
-
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <DataGrid
-            Grid.Row="0"
-            AutoGenerateColumns="False"
-            CanUserAddRows="False">
-
+        <DataGrid Grid.Row="0"
+                  AutoGenerateColumns="False"
+                  CanUserAddRows="False">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="" Binding="{Binding Name}" Width="318"/>
-                <DataGridTextColumn Header="EXST" Width="137"/>
-                <DataGridTextColumn Header="PROP" Width="153"/>
-
-
+                <DataGridTextColumn Header="HDF A" Width="137"/>
+                <DataGridTextColumn Header="HDF B" Width="153"/>
                 <DataGridTextColumn Header="" Binding="{Binding Name}" Width="67"/>
             </DataGrid.Columns>
         </DataGrid>
-        
-        
-        
 
         <DataGrid x:Name="dgSimple"
-          Grid.Row="1"
-          AutoGenerateColumns="False"
-          CanUserAddRows="False"
-          Grid.RowSpan="2"
-          SelectionChanged="DgSimpleSlctChanged">
-            
-            
-
+                  Grid.Row="1"
+                  Grid.RowSpan="2"
+                  AutoGenerateColumns="False"
+                  CanUserAddRows="False"
+                  SelectionChanged="DgSimpleSlctChanged">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="River" Binding="{Binding River}" Foreground="Gray"
-                                                        ElementStyle="{StaticResource CenterStyle}"/>
-
+                                    ElementStyle="{StaticResource CenterStyle}"/>
                 <DataGridTextColumn Header="Reach" Binding="{Binding Reach}" Foreground="Gray"
-                                                        ElementStyle="{StaticResource CenterStyle}"/>
-
+                                    ElementStyle="{StaticResource CenterStyle}"/>
                 <DataGridTextColumn Header="RiverSta" Binding="{Binding RiverSta}"
-                                                        ElementStyle="{StaticResource CenterStyle}"/>
-                
+                                    ElementStyle="{StaticResource CenterStyle}"/>
                 <DataGridTextColumn Header="Profile" Binding="{Binding Profile}" Foreground="Gray"
-                                                        ElementStyle="{StaticResource CenterStyle}"/>
-
-                <DataGridTextColumn Header="QTotal" Binding="{Binding QTotal}" Foreground="Gray"
-                                                        ElementStyle="{StaticResource CenterStyle}"/>
-
-                <DataGridTextColumn Header="WSElevA" Binding="{Binding WSElevA}"
-                                                        ElementStyle="{StaticResource CenterStyle}"/>
-
-                <DataGridTextColumn Header="QTotalB" Binding="{Binding QTotalB}" Foreground="Gray"
-                                                        ElementStyle="{StaticResource CenterStyle}"/>
-
-                <DataGridTextColumn Header="WSElevB" Binding="{Binding WSElevB}"
-                                                        ElementStyle="{StaticResource CenterStyle}"/>
-
-                <DataGridTextColumn Header="DELTA" Binding="{Binding DELTA}">
+                                    ElementStyle="{StaticResource CenterStyle}"/>
+                <DataGridTextColumn Header="QTotal A" Binding="{Binding QTotal}" Foreground="Gray"
+                                    ElementStyle="{StaticResource CenterStyle}"/>
+                <DataGridTextColumn Header="WSElev A" Binding="{Binding WSElevA}"
+                                    ElementStyle="{StaticResource CenterStyle}"/>
+                <DataGridTextColumn Header="QTotal B" Binding="{Binding QTotalBDisplay}" Foreground="Gray"
+                                    ElementStyle="{StaticResource CenterStyle}"/>
+                <DataGridTextColumn Header="WSElev B" Binding="{Binding WSElevBDisplay}"
+                                    ElementStyle="{StaticResource CenterStyle}"/>
+                <DataGridTextColumn Header="DELTA (B-A)" Binding="{Binding DELTADisplay}">
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
                             <Setter Property="HorizontalAlignment" Value="Center"/>
                             <Setter Property="TextAlignment" Value="Center"/>
                             <Setter Property="Foreground"
-                                Value="{Binding DELTA,
-                                Converter={StaticResource ValueToColorConverter}}"/>
+                                    Value="{Binding DELTA, Converter={StaticResource ValueToColorConverter}}"/>
                         </Style>
                     </DataGridTextColumn.ElementStyle>
-
                 </DataGridTextColumn>
             </DataGrid.Columns>
         </DataGrid>

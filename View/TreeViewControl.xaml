@@ -14,9 +14,10 @@
 
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="30"/>
             <RowDefinition Height="3*"/>
             <RowDefinition Height="4"/>
-            <RowDefinition Height="370" MinHeight="32"/>
+            <RowDefinition Height="330" MinHeight="32"/>
         </Grid.RowDefinitions>
 
         <Grid.ColumnDefinitions>
@@ -24,28 +25,42 @@
         </Grid.ColumnDefinitions>
 
 
+        <!-- Header -->
+        <GroupBox Grid.Row="0"
+                  Header="PROJECT EXPLORER"
+                  FontSize="12" FontWeight="SemiBold"
+                  Background="{StaticResource BackgroundBrushHeader}"
+                  BorderBrush="{StaticResource BorderBrush}"
+                  BorderThickness="0.8">
+        </GroupBox>
+        
+        
 
         <TreeView x:Name="foldersItem"
-                  Grid.Row="0"
+                  Grid.Row="1"
                   SelectedItemChanged="FoldersItem_SelectedItemChanged"
-                  Background="{StaticResource BackgroundBrush}"
-                  BorderBrush="{StaticResource Button.Disabled.Border}" 
+                  MouseMove="FoldersItem_MouseMove"
+                  Background="{StaticResource BackgroundBrushSidePanels}"
+                  BorderBrush="{StaticResource BorderBrush}" 
                   BorderThickness="0.8">
 
-            <TreeView.Resources>
-                <Style TargetType="{x:Type TreeViewItem}">
-                    <Setter Property="Foreground" Value="{StaticResource ForegroundBrush}"/>
-                    <Setter Property="FontSize" Value="10"/>
 
+
+
+            <TreeView.Resources>
+                <Style TargetType="{x:Type TreeViewItem}" 
+           BasedOn="{StaticResource {x:Type TreeViewItem}}">
+                    <Setter Property="FontSize" Value="10"/>
+                    <EventSetter Event="RequestBringIntoView" Handler="TreeViewItem_RequestBringIntoView"/>
                     <Setter Property="HeaderTemplate">
                         <Setter.Value>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal" Margin="2,0,0,0">
                                     <Image Width="18" Margin="1" 
-                                         Source="{Binding RelativeSource={RelativeSource 
-                                                Mode=FindAncestor, AncestorType={x:Type TreeViewItem}},
-                                                Path=Tag,
-                                                Converter={x:Static local:HeaderToImageConv.Instance}}"/>
+                            Source="{Binding RelativeSource={RelativeSource 
+                                Mode=FindAncestor, AncestorType={x:Type TreeViewItem}},
+                                Path=Tag,
+                                Converter={x:Static local:HeaderToImageConv.Instance}}"/>
                                     <TextBlock VerticalAlignment="Center" Text="{Binding}"/>
                                 </StackPanel>
                             </DataTemplate>
@@ -57,7 +72,7 @@
 
 
         <!-- Splitter -->
-        <GridSplitter Grid.Row="1" Width="400"
+        <GridSplitter Grid.Row="2" Width="400"
                       ResizeDirection="Rows"
                       Background="{StaticResource DividerBrush}"
                       ShowsPreview="False"/>
@@ -65,46 +80,47 @@
 
 
         <!-- Project Path Selections -->
-        <GroupBox Header="Project Paths" Grid.Row="2" Grid.Column="0" Margin="0,0,0,0"
-                  Background="{StaticResource DividerBrush}"
-                        BorderThickness="0.8">
-            <StackPanel>
+
+        <GroupBox Grid.Row="3"
+                  Header="ACTIVE PATHS" 
+                  FontSize="12" FontWeight="SemiBold"
+                  Foreground="{StaticResource ForegroundBrush}"
+                  Background="{StaticResource BackgroundBrushLight}"
+                  BorderBrush="{StaticResource BorderBrush}"
+                  BorderThickness="0.8">
+            <StackPanel Background="{StaticResource BackgroundBrushSidePanels}">
+
                 
-                <TextBox Name="txtBoxProjPathLbl" FontSize="10">Proj Path:</TextBox>
-                <TextBox Name="txtBoxProjPath" FontSize="10" 
-                         Foreground="{StaticResource ForegroundBrushDark}"
-                             Margin="15,0,0,0"/>
-                <TextBox Name="cboxHdfPathLblA" FontSize="10">HDF Path A:</TextBox>
-                <ComboBox Name="cboxHdfPathA" FontSize="10" Background="#543d05" 
-                          Foreground="{StaticResource ForegroundBrushDark}"
-                              Margin="15,0,0,0"/>
-                <TextBox Name="txtBoxPlanNameLblA" FontSize="10">Plan Name A:</TextBox>
-                <TextBox Name="txtBoxPlanNameA" FontSize="10" 
-                         Foreground="{StaticResource ForegroundBrushDark}"
-                             Margin="15,0,0,0"/>
-                <TextBox Name="txtBoxHeadLblB" FontSize="10"></TextBox>
-                <TextBox Name="txtBoxHeadB" FontSize="10" 
-                         Foreground="{StaticResource ForegroundBrushDark}"
-                             Margin="15,0,0,0"/>
-                <TextBox Name="cboxHdfPathLblB" FontSize="10">HDF Path B:</TextBox>
-                <ComboBox Name="cboxHdfPathB" FontSize="10" Background="#543d05" 
-                          Foreground="{StaticResource ForegroundBrushDark}"
-                              Margin="15,0,0,0"/>
-                <TextBox Name="txtBoxPlanNameLblB" FontSize="10">Plan Name B:</TextBox>
-                <TextBox Name="txtBoxPlanNameB" FontSize="10" 
-                         Foreground="{StaticResource ForegroundBrushDark}"
-                             Margin="15,0,0,0"/>
-                <TextBox Name="cboxProfileLbl" FontSize="10">Profile:</TextBox>
-                <ComboBox Name="cboxProfiles" FontSize="10" Background="#543d05" 
-                          Foreground="{StaticResource ForegroundBrushDark}"
-                              Margin="15,0,0,0"/>
-                <TextBox Name="txtBoxHeadHMS" FontSize="10" 
-                         Foreground="{StaticResource ForegroundBrushDark}"
-                             Margin="15,0,0,0"/>
-                <TextBox Name="txtBoxHmsPathLbl" FontSize="10">HMS Path:</TextBox>
-                <TextBox Name="txtBoxHmsPath" FontSize="10" IsReadOnly="True" 
-                         Foreground="{StaticResource ForegroundBrushDark}"
-                             Margin="15,0,0,0"/>
+                <TextBox Name="txtBoxProjPathLbl" FontSize="10" BorderThickness="0" Margin="10,0,0,0">Proj Path:</TextBox>
+                <TextBox Name="txtBoxProjPath" FontSize="8" BorderThickness="0" Width="220" HorizontalAlignment="left"
+                    Foreground="{StaticResource ForegroundBrushDark}" Margin="15,0,0,0"/>
+
+                <TextBox Name="txtBoxPlanNameLblA" FontSize="10" BorderThickness="0" Margin="10,0,0,0">Plan Name A:</TextBox>
+                <ComboBox Name="cboxPlanNameA" FontSize="10" Background="#543d05" BorderThickness="0" Width="200"
+                    Foreground="{StaticResource ForegroundBrushDark}" Margin="30,0,0,10"/>
+                <TextBox Name="txtBoxHdfPathA" FontSize="8" IsReadOnly="True" BorderThickness="0" Width="220" HorizontalAlignment="left"
+                    Foreground="{StaticResource ForegroundBrushDark}" Margin="15,0,0,0"/>
+
+                
+                <TextBox Name="txtBoxHeadB" FontSize="10" BorderThickness="0"
+                     Foreground="{StaticResource ForegroundBrushDark}" Margin="15,0,0,0"/>
+                <TextBox Name="txtBoxPlanNameLblB" FontSize="10" BorderThickness="0" Margin="10,0,0,0">Plan Name B:</TextBox>
+                <ComboBox Name="cboxPlanNameB" FontSize="10" Background="#543d05" BorderThickness="0" Width="200"
+                    Foreground="{StaticResource ForegroundBrushDark}" Margin="30,0,0,10"/>
+                <TextBox Name="txtBoxHdfPathB" FontSize="8" IsReadOnly="True" BorderThickness="0" Width="220" HorizontalAlignment="left"
+                     Foreground="{StaticResource ForegroundBrushDark}" Margin="15,0,0,0"/>
+
+
+                <TextBox Name="cboxProfileLbl" FontSize="10" BorderThickness="0" Margin="10,0,0,0">Profile:</TextBox>
+                <ComboBox Name="cboxProfiles" FontSize="10" Background="#543d05" BorderThickness="0" Width="200"
+                    Foreground="{StaticResource ForegroundBrushDark}" Margin="30,0,0,10"/>
+                <TextBox Name="txtBoxHeadHMS" FontSize="10" BorderThickness="0" Width="220" HorizontalAlignment="left"
+                    Foreground="{StaticResource ForegroundBrushDark}" Margin="15,0,0,0"/>
+
+                <TextBox Name="txtBoxHmsPathLbl" FontSize="10" BorderThickness="0">HMS Path:</TextBox>
+                <TextBox Name="txtBoxHmsPath" FontSize="10" IsReadOnly="True" BorderThickness="0"
+                    Foreground="{StaticResource ForegroundBrushDark}" Margin="15,0,0,0"/>
+
             </StackPanel>
         </GroupBox>
 

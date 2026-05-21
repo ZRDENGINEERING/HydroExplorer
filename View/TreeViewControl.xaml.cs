@@ -42,6 +42,9 @@ namespace HydroExplorer.View
 
         private DateTime _lastSaveRequest = DateTime.MinValue;
 
+        private Dictionary<string, string> _hdfPlanNames = [];
+
+
 
 
 
@@ -54,13 +57,13 @@ namespace HydroExplorer.View
             EventBus.HdfFileASelected += (profiles, planName) =>
             {
                 cboxProfiles.ItemsSource = profiles;
-                txtBoxPlanNameA.Text = planName;
+                txtBoxHdfPathA.Text = planName;
             };
 
             EventBus.HdfFileBSelected += (profiles, planName) =>
             {
                 cboxProfiles.ItemsSource = profiles;
-                txtBoxPlanNameB.Text = planName;
+                txtBoxHdfPathB.Text = planName;
             };
 
             EventBus.ProjPathSelected += async path =>
@@ -96,6 +99,7 @@ namespace HydroExplorer.View
 
             cboxProfiles.SelectionChanged += async (s, e) =>
             {
+                if (_isLoading) return;
                 try
                 {
                     if (cboxProfiles.SelectedItem is string selectedProfile)
@@ -111,53 +115,55 @@ namespace HydroExplorer.View
                 }
             };
 
-            cboxHdfPathA.SelectionChanged += async (s, e) =>
+
+            cboxPlanNameA.SelectionChanged += async (s, e) =>
             {
                 if (_isLoading) return;
                 try
                 {
-                    if (cboxHdfPathA.SelectedItem is string selectedHdf)
+                    if (cboxPlanNameA.SelectedItem is string selectedPlanName)
                     {
-                        var allFiles = cboxHdfPathA.ItemsSource as List<string> ?? [];
-                        UpdateHdfPathB(allFiles, selectedHdf);
-                        var profiles = HecRasHdfReader.GetProfileNames(selectedHdf);
-                        var planName = HecRasHdfReader.GetPlanName(selectedHdf);
-                        cboxProfiles.ItemsSource = profiles;
-                        txtBoxPlanNameA.Text = planName;
-                        await SaveSettings();
+                        var selectedPath = PlanNameToPath(selectedPlanName);
+                        if (selectedPath == null) return;
 
+                        var allFiles = (cboxPlanNameA.Tag as List<string>) ?? [];
+                        UpdateHdfPathB(allFiles, selectedPath);
+
+                        var profiles = HecRasHdfReader.GetProfileNames(selectedPath);
+                        cboxProfiles.ItemsSource = profiles;
+                        txtBoxHdfPathA.Text = selectedPath; // TextBox shows the HDF path
+                        await SaveSettings();
                         EventBus.PublishHdfPathChanged();
                     }
                 }
-                catch (OperationCanceledException) { }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"cboxHdfPathA error: {ex.Message}");
-                }
+                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"cboxPlanNameA error: {ex.Message}"); }
             };
 
-            cboxHdfPathB.SelectionChanged += async (s, e) =>
+            cboxPlanNameB.SelectionChanged += async (s, e) =>
             {
                 if (_isLoading) return;
                 try
                 {
-                    if (cboxHdfPathB.SelectedItem is string selectedHdf)
+                    if (cboxPlanNameB.SelectedItem is string selectedPlanName)
                     {
-                        var profiles = HecRasHdfReader.GetProfileNames(selectedHdf);
-                        var planName = HecRasHdfReader.GetPlanName(selectedHdf);
+                        var selectedPath = PlanNameToPath(selectedPlanName);
+                        if (selectedPath == null) return;
+
+                        var profiles = HecRasHdfReader.GetProfileNames(selectedPath);
                         cboxProfiles.ItemsSource = profiles;
-                        txtBoxPlanNameB.Text = planName;
+                        txtBoxHdfPathB.Text = selectedPath; // TextBox shows the HDF path
                         await SaveSettings();
                         EventBus.PublishHdfPathChanged();
                     }
                 }
-                catch (OperationCanceledException) { }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"cboxHdfPathB error: {ex.Message}");
-                }
+                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"cboxPlanNameB error: {ex.Message}"); }
             };
         }
+
+
+        
+
+
 
 
         private async void UserControl_Loaded(object sender, RoutedEventArgs e)
@@ -286,8 +292,6 @@ namespace HydroExplorer.View
                 var profiles = HecRasHdfReader.GetProfileNames(path);
                 var planName = HecRasHdfReader.GetPlanName(path);
 
-                System.Diagnostics.Debug.WriteLine($"Profiles found: {profiles.Count}, Plan: {planName}");
-
                 EventBus.PublishHdfFileA([.. profiles], planName);
             }
 
@@ -314,6 +318,7 @@ namespace HydroExplorer.View
                 if (IsHecRasProjectFile(path)) EventBus.PublishProjPath(path);
             }
         }
+
 
 
 
@@ -350,8 +355,6 @@ namespace HydroExplorer.View
             {
                 ExploreAPath(Directories[i]);
             }
-
-            System.Diagnostics.Debug.WriteLine($"ExploreAPath: {Files}\n");
         }
 
         [GeneratedRegex(@"\.p\d+\.hdf$", System.Text.RegularExpressions.RegexOptions.IgnoreCase, "en-US")]
@@ -410,9 +413,6 @@ namespace HydroExplorer.View
 
 
 
-
-
-
         private async Task InitializeAsync()
         {
             _isLoading = true;
@@ -426,14 +426,28 @@ namespace HydroExplorer.View
                     Tag = rootPath,
                     FontWeight = FontWeights.Normal
                 };
+
+                rootItem.Loaded += (s, e) =>
+                {
+                    if (s is not TreeViewItem tvi) return;
+                    if (tvi.Template.FindName("Bd", tvi) is Border bd)
+                    {
+                        bd.Background = System.Windows.Media.Brushes.Transparent;
+                        tvi.MouseEnter += (_, _) => bd.Background = System.Windows.Media.Brushes.Transparent;
+                        tvi.MouseLeave += (_, _) => bd.Background = System.Windows.Media.Brushes.Transparent;
+                    }
+                };
+
                 rootItem.Items.Add(dummyNode);
                 rootItem.Expanded += new RoutedEventHandler(Folder_Expanded);
                 foldersItem.Items.Add(rootItem);
             }
 
+
             settings = await _settingsRepo.GetSettings();
 
-            projPath = settings.LastProjPath;
+            projPath = NormalizeProjKey(settings.LastProjPath);
+            settings.LastProjPath = projPath;
             txtBoxProjPath.Text = projPath;
 
             projDir = Directory.Exists(projPath)
@@ -442,21 +456,33 @@ namespace HydroExplorer.View
 
             PopulateHdfComboBox(projDir);
 
+
             if (!string.IsNullOrEmpty(projPath) && settings.Projects.TryGetValue(projPath, out var projSettings))
             {
-                cboxHdfPathA.SelectedItem = cboxHdfPathA.Items
-                    .Cast<string>()
-                    .FirstOrDefault(f => f.Equals(projSettings.HdfPathA, StringComparison.OrdinalIgnoreCase));
+                _isLoading = true;
 
-                var allFiles = (cboxHdfPathA.ItemsSource as List<string>) ?? [];
+                cboxPlanNameA.SelectedItem = cboxPlanNameA.Items
+                    .Cast<string>()
+                    .FirstOrDefault(name =>
+                    {
+                        var path = PlanNameToPath(name);
+                        return path?.Equals(projSettings.HdfPathA, StringComparison.OrdinalIgnoreCase) == true;
+                    });
+                
+                var allFiles = (cboxPlanNameA.Tag as List<string>) ?? [];
                 UpdateHdfPathB(allFiles, projSettings.HdfPathA);
 
-                cboxHdfPathB.SelectedItem = cboxHdfPathB.Items
+                // Restore plan name B — match by path, display plan name
+                cboxPlanNameB.SelectedItem = cboxPlanNameB.Items
                     .Cast<string>()
-                    .FirstOrDefault(f => f.Equals(projSettings.HdfPathB, StringComparison.OrdinalIgnoreCase));
+                    .FirstOrDefault(name =>
+                    {
+                        var path = PlanNameToPath(name);
+                        return path?.Equals(projSettings.HdfPathB, StringComparison.OrdinalIgnoreCase) == true;
+                    });
 
-                txtBoxPlanNameA.Text = projSettings.PlanNameA;
-                txtBoxPlanNameB.Text = projSettings.PlanNameB;
+                txtBoxHdfPathA.Text = projSettings.HdfPathA;
+                txtBoxHdfPathB.Text = projSettings.HdfPathB;
                 txtBoxHmsPath.Text = projSettings.HmsPath;
 
                 if (!string.IsNullOrEmpty(projSettings.HdfPathA) && File.Exists(projSettings.HdfPathA))
@@ -465,8 +491,8 @@ namespace HydroExplorer.View
                     {
                         var profiles = HecRasHdfReader.GetProfileNames(projSettings.HdfPathA);
                         cboxProfiles.ItemsSource = profiles;
-                        cboxProfiles.SelectedItem = projSettings.ProName;
-                        txtBoxPlanNameA.Text = projSettings.PlanNameA;
+                        SelectDefaultProfile(profiles, projSettings.ProName);
+                        txtBoxHdfPathA.Text = projSettings.HdfPathA;
                     }
                     catch (Exception ex)
                     {
@@ -474,10 +500,50 @@ namespace HydroExplorer.View
                     }
                 }
             }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"InitializeAsync: No project settings found for key '{projPath}'");
+            }
+
             _isLoading = false;
+
             if (!string.IsNullOrEmpty(projDir))
                 await ExpandToPath(projDir);
         }
+
+
+        private void SelectDefaultProfile(IList<string> profiles, string? savedProfile)
+        {
+            if (profiles.Count == 0) return;
+
+            string? match = null;
+
+            if (!string.IsNullOrEmpty(savedProfile))
+                match = profiles.FirstOrDefault(p => p.Equals(savedProfile, StringComparison.OrdinalIgnoreCase));
+
+            if (match == null)
+                match = profiles.FirstOrDefault(p => p.Contains("100", StringComparison.OrdinalIgnoreCase));
+
+            if (match == null)
+                match = profiles[0];
+
+            cboxProfiles.SelectedItem = match;
+        }
+
+        private void FoldersItem_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            SetRootItemsNoHover();
+        }
+
+        private void SetRootItemsNoHover()
+        {
+            foreach (var item in foldersItem.Items.OfType<TreeViewItem>())
+            {
+                item.Background = System.Windows.Media.Brushes.Transparent;
+            }
+        }
+
+
 
 
         private void PopulateHdfComboBox(string projTitle)
@@ -485,25 +551,44 @@ namespace HydroExplorer.View
             if (string.IsNullOrEmpty(projTitle) || !Directory.Exists(projTitle))
                 return;
 
-            List<string> hdfFiles = [.. Directory.GetFiles(projTitle, "*.hdf").Where(f => MyRegex1().IsMatch(Path.GetFileName(f)))];
+            List<string> hdfFiles = [.. Directory.GetFiles(projTitle, "*.hdf")
+        .Where(f => MyRegex1().IsMatch(Path.GetFileName(f)))];
 
-            cboxHdfPathA.ItemsSource = hdfFiles.ToList();
+            // Build path → plan name lookup
+            _hdfPlanNames = hdfFiles.ToDictionary(
+                f => f,
+                f => { try { return HecRasHdfReader.GetPlanName(f); } catch { return Path.GetFileName(f); } }
+            );
 
-            UpdateHdfPathB(hdfFiles, cboxHdfPathA.SelectedItem as string);
+            // ComboBox displays plan names, Tag/SelectedValue resolves back to path
+            cboxPlanNameA.ItemsSource = hdfFiles.Select(f => _hdfPlanNames[f]).ToList();
+            cboxPlanNameA.Tag = hdfFiles; // keep full paths accessible
+
+            UpdateHdfPathB(hdfFiles, null);
         }
+
+        private string? PlanNameToPath(string? planName)
+        {
+            if (string.IsNullOrEmpty(planName)) return null;
+            return _hdfPlanNames.FirstOrDefault(kv => kv.Value == planName).Key;
+        }
+
+
 
         private void UpdateHdfPathB(List<string> allFiles, string? excludePath)
         {
             _isLoading = true;
-            var savedB = cboxHdfPathB.SelectedItem as string;
+            var savedB = cboxPlanNameB.SelectedItem as string;
 
             List<string> hdfFilesB = [.. allFiles.Where(f =>
-                !f.Equals(excludePath, StringComparison.OrdinalIgnoreCase))];
+        !f.Equals(excludePath, StringComparison.OrdinalIgnoreCase))];
 
-            cboxHdfPathB.ItemsSource = hdfFilesB;
+            cboxPlanNameB.ItemsSource = hdfFilesB.Select(f =>
+                _hdfPlanNames.TryGetValue(f, out var name) ? name : Path.GetFileName(f)).ToList();
+            cboxPlanNameB.Tag = hdfFilesB;
+
             if (!string.IsNullOrEmpty(savedB))
-                cboxHdfPathB.SelectedItem = hdfFilesB
-                    .FirstOrDefault(f => f.Equals(savedB, StringComparison.OrdinalIgnoreCase));
+                cboxPlanNameB.SelectedItem = savedB; // already a plan name string
 
             _isLoading = false;
         }
@@ -524,8 +609,10 @@ namespace HydroExplorer.View
         }
 
 
-        private async Task OnProjPathChanged(string projPath)
+        private async Task OnProjPathChanged(string rawPath)
         {
+            string projPath = NormalizeProjKey(rawPath);
+
             if (string.IsNullOrEmpty(projPath)) return;
 
             string projDir = Directory.Exists(projPath)
@@ -534,7 +621,7 @@ namespace HydroExplorer.View
 
             if (string.IsNullOrEmpty(projDir)) return;
 
-            this.projPath = projPath;  // keep class field in sync
+            this.projPath = NormalizeProjKey(projPath);
             this.projDir = projDir;
 
             PopulateHdfComboBox(projDir);
@@ -548,21 +635,29 @@ namespace HydroExplorer.View
             {
                 _isLoading = true;
 
-                cboxHdfPathA.SelectedItem = cboxHdfPathA.Items
+                cboxPlanNameA.SelectedItem = cboxPlanNameA.Items
                     .Cast<string>()
-                    .FirstOrDefault(f => f.Equals(existingSettings.HdfPathA, StringComparison.OrdinalIgnoreCase));
+                    .FirstOrDefault(name =>
+                    {
+                        var path = PlanNameToPath(name);
+                        return path?.Equals(existingSettings.HdfPathA, StringComparison.OrdinalIgnoreCase) == true;
+                    });
 
-                var allFiles = (cboxHdfPathA.ItemsSource as List<string>) ?? [];
+                var allFiles = (cboxPlanNameA.Tag as List<string>) ?? [];
                 UpdateHdfPathB(allFiles, existingSettings.HdfPathA);
 
-                cboxHdfPathB.SelectedItem = cboxHdfPathB.Items
+                cboxPlanNameB.SelectedItem = cboxPlanNameB.Items
                     .Cast<string>()
-                    .FirstOrDefault(f => f.Equals(existingSettings.HdfPathB, StringComparison.OrdinalIgnoreCase));
+                    .FirstOrDefault(name =>
+                    {
+                        var path = PlanNameToPath(name);
+                        return path?.Equals(existingSettings.HdfPathB, StringComparison.OrdinalIgnoreCase) == true;
+                    });
 
-                txtBoxPlanNameA.Text = existingSettings.PlanNameA;
-                txtBoxPlanNameB.Text = existingSettings.PlanNameB;
+                txtBoxHdfPathA.Text = existingSettings.HdfPathA;
+                txtBoxHdfPathB.Text = existingSettings.HdfPathB;
 
-                // Validate stored HMS path still belongs to this project root
+
                 string projRoot = Path.GetFullPath(Path.Combine(
                     Path.GetDirectoryName(projPath) ?? string.Empty, ".."));
 
@@ -580,7 +675,7 @@ namespace HydroExplorer.View
                     {
                         var profiles = HecRasHdfReader.GetProfileNames(existingSettings.HdfPathA);
                         cboxProfiles.ItemsSource = profiles;
-                        cboxProfiles.SelectedItem = existingSettings.ProName;
+                        SelectDefaultProfile(profiles, existingSettings.ProName);
                     }
                     catch (Exception ex)
                     {
@@ -601,59 +696,62 @@ namespace HydroExplorer.View
                     LastOpened = DateTime.Now
                 };
 
-                System.Diagnostics.Debug.WriteLine($"New project, loading defaults for {projPath}");
-
-                if (cboxHdfPathA.Items.Count > 0)
+                if (cboxPlanNameA.Items.Count > 0)
                 {
-                    cboxHdfPathA.SelectedIndex = 0;
-                    if (cboxHdfPathA.SelectedItem is string selectedHdfA && File.Exists(selectedHdfA))
+                    cboxPlanNameA.SelectedIndex = 0;
+                    if (cboxPlanNameA.SelectedItem is string selectedPlanName)
                     {
-                        try
+                        var selectedPath = PlanNameToPath(selectedPlanName);
+                        if (selectedPath != null && File.Exists(selectedPath))
                         {
-                            var profiles = HecRasHdfReader.GetProfileNames(selectedHdfA);
-                            var planName = HecRasHdfReader.GetPlanName(selectedHdfA);
-                            txtBoxPlanNameA.Text = planName;
-                            cboxProfiles.ItemsSource = profiles;
-                            if (profiles.Count > 0)
+                            try
                             {
-                                cboxProfiles.SelectedIndex = 0;
-                                settings.Projects[projPath].ProName = profiles[0];
+                                txtBoxHdfPathA.Text = selectedPath;
+
+                                var profiles = HecRasHdfReader.GetProfileNames(selectedPath);
+                                cboxProfiles.ItemsSource = profiles;
+                                SelectDefaultProfile(profiles, null);
+                                if (cboxProfiles.SelectedItem is string selected)
+                                    settings.Projects[projPath].ProName = selected;
+
+                                await _settingsRepo.SaveSettings(settings);
                             }
-
-                            await _settingsRepo.SaveSettings(settings);
-                        }
-                        catch (Exception ex)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"Error loading HDF A: {ex.Message}");
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Error loading HDF A: {ex.Message}");
+                            }
                         }
                     }
                 }
-                if (cboxHdfPathB.Items.Count > 1)
-                    cboxHdfPathB.SelectedIndex = 1;
-                else if (cboxHdfPathB.Items.Count > 0)
+
+                if (cboxPlanNameB.Items.Count > 1)
+                    cboxPlanNameB.SelectedIndex = 1;
+                else if (cboxPlanNameB.Items.Count > 0)
                 {
-                    cboxHdfPathB.SelectedIndex = 0;
-                    if (cboxHdfPathB.SelectedItem is string selectedHdfB && File.Exists(selectedHdfB))
+                    cboxPlanNameB.SelectedIndex = 0;
+                    if (cboxPlanNameB.SelectedItem is string selectedPlanNameB)
                     {
-                        try
+                        var selectedPathB = PlanNameToPath(selectedPlanNameB);
+                        if (selectedPathB != null && File.Exists(selectedPathB))
                         {
-                            var planName = HecRasHdfReader.GetPlanName(selectedHdfB);
-                            txtBoxPlanNameB.Text = planName;
-                        }
-                        catch (Exception ex)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"Error loading HDF B: {ex.Message}");
+                            try
+                            {
+                                txtBoxHdfPathB.Text = selectedPathB;
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Error loading HDF B: {ex.Message}");
+                            }
                         }
                     }
                 }
+
+                await _settingsRepo.SaveSettings(settings);
+                EventBus.PublishProjPathChanged(projPath);
+
             }
-
-            await _settingsRepo.SaveSettings(settings);
-            EventBus.PublishProjPathChanged(projPath);
+            await ExpandToPath(projDir);
         }
-
-
-
 
 
 
@@ -662,16 +760,17 @@ namespace HydroExplorer.View
 
         private async Task SaveSettings()
         {
+            if (_isLoading) return;
+
             _lastSaveRequest = DateTime.Now;
             var requestTime = _lastSaveRequest;
 
             await Task.Delay(500);
-
             if (_lastSaveRequest != requestTime) return;
 
             try
             {
-                string projPath = txtBoxProjPath.Text;
+                string projPath = NormalizeProjKey(txtBoxProjPath.Text);
                 if (string.IsNullOrEmpty(projPath)) return;
 
                 var settings = await _settingsRepo.GetSettings();
@@ -682,21 +781,29 @@ namespace HydroExplorer.View
                     ? projPath
                     : Path.GetDirectoryName(projPath) ?? string.Empty;
 
-                // Preserve existing LastOpened if the project already exists
                 var existingLastOpened = settings.Projects.TryGetValue(projPath, out var existing)
                     ? existing.LastOpened
                     : DateTime.Now;
 
+                int openOrder = settings.NextOpenOrder++;
+
+                string? selectedPlanNameA = cboxPlanNameA.SelectedItem as string;
+                string? selectedPlanNameB = cboxPlanNameB.SelectedItem as string;
+                string? resolvedPathA = PlanNameToPath(selectedPlanNameA);
+                string? resolvedPathB = PlanNameToPath(selectedPlanNameB);
+
                 settings.Projects[projPath] = new ProjectSettings
                 {
                     ProjDir = settings.ProjDir,
-                    HdfPathA = cboxHdfPathA.SelectedItem as string ?? string.Empty,
-                    HdfPathB = cboxHdfPathB.SelectedItem as string ?? string.Empty,
-                    PlanNameA = txtBoxPlanNameA.Text,
-                    PlanNameB = txtBoxPlanNameB.Text,
+                    HdfPathA = resolvedPathA ?? string.Empty,
+                    HdfPathB = resolvedPathB ?? string.Empty,
+                    PlanNameA = selectedPlanNameA ?? string.Empty,
+                    PlanNameB = selectedPlanNameB ?? string.Empty,
                     ProName = cboxProfiles.SelectedItem as string ?? string.Empty,
                     HmsPath = txtBoxHmsPath.Text,
-                    LastOpened = existingLastOpened
+                    LastOpened = existingLastOpened,
+                    OpenOrder = openOrder
+
                 };
 
                 var hmsPath = txtBoxHmsPath.Text;
@@ -710,5 +817,36 @@ namespace HydroExplorer.View
                 System.Diagnostics.Debug.WriteLine($"SaveSettings error: {ex.Message}");
             }
         }
+
+        private void TreeViewItem_RequestBringIntoView(object sender, RequestBringIntoViewEventArgs e)
+        {
+            if (sender is TreeViewItem tvi)
+            {
+                e.Handled = true;
+            }
+        }
+
+
+
+
+        internal static string NormalizeProjKey(string projPath)
+        {
+            if (string.IsNullOrEmpty(projPath)) return projPath;
+
+            // If it's a .prj, check if a .rasmap sibling exists — prefer that as the key
+            if (projPath.EndsWith(".prj", StringComparison.OrdinalIgnoreCase))
+            {
+                string dir = Path.GetDirectoryName(projPath) ?? string.Empty;
+                string stem = Path.GetFileNameWithoutExtension(projPath);
+                string rasmap = Path.Combine(dir, stem + ".rasmap");
+                if (File.Exists(rasmap)) return rasmap;
+            }
+
+            return projPath;
+        }
+
+
     }
+
+
 }

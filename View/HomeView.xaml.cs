@@ -5,7 +5,6 @@
         public HomeView()
         {
             InitializeComponent();
-            DataContext = this;
         }
     }
 }

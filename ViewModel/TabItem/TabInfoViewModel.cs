@@ -1,4 +1,5 @@
 ﻿using HydroExplorer.Core;
+using HydroExplorer.View;
 using HydroExplorer.Helpers;
 using System.IO;
 using System.Windows.Input;
@@ -51,11 +52,16 @@ namespace HydroExplorer.ViewModel.TabItem
 
         private async void OpenRecentProject(RecentProjectEntry project)
         {
-            if (!Directory.Exists(project.FilePath))
-                return;
+            if (!Directory.Exists(project.FilePath)) return;
 
-            var projFile = Directory.GetFiles(project.FilePath, "*.rasmap").FirstOrDefault();
-            if (projFile == null) return;
+            var projFile = Directory.GetFiles(project.FilePath, "*.rasmap").FirstOrDefault()
+                ?? Directory.GetFiles(project.FilePath, "*.prj").FirstOrDefault();
+
+            if (projFile == null)
+            {
+                System.Diagnostics.Debug.WriteLine($"\n OpenRecentProject: projFile NOT FOUND '{projFile}'\n");
+                return;
+            }
 
             var settings = await SettingsRepo!.GetSettings();
             if (settings.Projects.TryGetValue(projFile, out var projSettings))
@@ -65,6 +71,8 @@ namespace HydroExplorer.ViewModel.TabItem
             }
 
             EventBus.PublishProjPath(projFile);
+            EventBus.PublishProjPathChanged(projFile);
+
             await LoadRecentProjectsAsync();
         }
 
@@ -81,16 +89,4 @@ namespace HydroExplorer.ViewModel.TabItem
             await LoadRecentProjectsAsync();
         }
     }
-
-
-    public class RecentProjectEntry
-    {
-        public string Name { get; set; } = string.Empty;
-        public string FilePath { get; set; } = string.Empty;
-        public DateTime LastOpened { get; set; }
-    }
-
-
-
-
 }

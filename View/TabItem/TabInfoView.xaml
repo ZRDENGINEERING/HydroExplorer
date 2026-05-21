@@ -9,7 +9,8 @@
       mc:Ignorable="d" 
       d:DesignHeight="450" d:DesignWidth="800">
 
-    <Grid Background="{StaticResource BackgroundBrushDark}">
+    
+    <Grid Background="{StaticResource BackgroundBrushSidePanels}">
         <Grid.RowDefinitions>
             <RowDefinition Height="30"/>
             <RowDefinition Height="40"/>
@@ -29,6 +30,7 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
+        
         <!-- Site Info Text -->
         <TextBlock Text="Site Information"
                    Grid.ColumnSpan="2"
@@ -45,6 +47,7 @@
                     Grid.ColumnSpan="3"
                     Margin="10,0,0,0"
                     VerticalAlignment="Top">
+            
             <TextBlock Name="txtBlockProjectName" Text="Project Name: " FontSize="11"/>
             <TextBlock Name="txtBlockAreaSqMi" Text="Drainage Area (sq.mi.): " FontSize="10"/>
             <TextBlock Name="txtBlockAreaAcre" Text="Drainage Area (acre): " FontSize="10"/>
@@ -55,120 +58,13 @@
         </StackPanel>
 
         <!-- Map Pane -->
-        <ContentControl x:Name="MapContainer" Grid.Row="1" Grid.RowSpan="5" Margin="20,0,0,0" Grid.Column="1"/>
+        <Border Grid.Row="0" Grid.RowSpan="5" Grid.Column="3" Grid.ColumnSpan="2"
+        Margin="5"
+        BorderBrush="{StaticResource BorderBrush}"
+        BorderThickness="1">
+            <ContentControl x:Name="MapContainer"/>
+        </Border>
 
-        <!-- Recent Projects -->
-        <GroupBox Header="Recent Projects" 
-                  Grid.Row="1" Grid.RowSpan="4"
-                  Grid.Column="2" Grid.ColumnSpan="2"
-                  Margin="100,0,10,0"
-                  Background="{StaticResource BackgroundBrushDark}"
-                  BorderBrush="{StaticResource Button.Disabled.Border}"
-                  BorderThickness="0.8">
-            <GroupBox.HeaderTemplate>
-                <DataTemplate>
-                    <TextBlock Text="{Binding}"
-                               Foreground="{StaticResource ForegroundBrush}"
-                               FontSize="11" FontWeight="SemiBold"/>
-                </DataTemplate>
-            </GroupBox.HeaderTemplate>
 
-            <DockPanel>
-                <ListBox ItemsSource="{Binding RecentProjects}"
-                         SelectedItem="{Binding SelectedRecentProject, Mode=TwoWay}"
-                         Background="Transparent"
-                         BorderThickness="0"
-                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <StackPanel Orientation="Vertical" Margin="0,2">
-                                <TextBlock Text="{Binding Name}"
-                                           Foreground="{StaticResource ForegroundBrush}"
-                                           FontSize="11" FontWeight="SemiBold"/>
-                                <TextBlock Text="{Binding FilePath}"
-                                           Foreground="{StaticResource ForegroundBrushDark}"
-                                           FontSize="10"
-                                           TextTrimming="CharacterEllipsis"
-                                           ToolTip="{Binding FilePath}"/>
-                                <TextBlock Text="{Binding LastOpened, StringFormat='Last opened: {0:MM/dd/yyyy h:mm tt}'}"
-                                           Foreground="Gray" FontSize="9"/>
-                            </StackPanel>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                    <ListBox.ItemContainerStyle>
-                        <Style TargetType="ListBoxItem">
-                            <Setter Property="Background" Value="Transparent"/>
-                            <Setter Property="Padding" Value="4,3"/>
-                            <Setter Property="Cursor" Value="Hand"/>
-                            <Style.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="Background" Value="{StaticResource BackgroundBrush}"/>
-                                </Trigger>
-                            </Style.Triggers>
-                        </Style>
-                    </ListBox.ItemContainerStyle>
-                </ListBox>
-            </DockPanel>
-        </GroupBox>
-
-        <!-- Recent HMS Projects -->
-        <GroupBox Header="Recent HMS Projects" 
-                  Grid.Row="5" Grid.RowSpan="2"
-                  Grid.Column="2" Grid.ColumnSpan="2"
-                  Margin="100,0,10,0"
-                  Background="{StaticResource BackgroundBrushDark}"
-                  BorderBrush="{StaticResource Button.Disabled.Border}"
-                  BorderThickness="0.8">
-            <GroupBox.HeaderTemplate>
-                <DataTemplate>
-                    <TextBlock Text="{Binding}"
-                               Foreground="{StaticResource ForegroundBrush}"
-                               FontSize="11" FontWeight="SemiBold"/>
-                </DataTemplate>
-            </GroupBox.HeaderTemplate>
-
-            <DockPanel>
-                <Button DockPanel.Dock="Bottom"
-                        Content="CLEAR ALL RECENT PROJECTS"
-                        Command="{Binding ClearAllRecentCommand}"
-                        Margin="0,4,0,0"
-                        Padding="6,3"
-                        HorizontalAlignment="Left"
-                        Background="{StaticResource BackgroundBrush}"
-                        FontSize="8"/>
-
-                <ListBox ItemsSource="{Binding RecentHmsProjects}"
-                         Background="Transparent"
-                         BorderThickness="0"
-                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <StackPanel Orientation="Vertical" Margin="0,2">
-                                <TextBlock Text="{Binding Name}"
-                                           Foreground="{StaticResource ForegroundBrush}"
-                                           FontSize="11" FontWeight="SemiBold"/>
-                                <TextBlock Text="{Binding FilePath}"
-                                           Foreground="{StaticResource ForegroundBrushDark}"
-                                           FontSize="10"
-                                           TextTrimming="CharacterEllipsis"
-                                           ToolTip="{Binding FilePath}"/>
-                            </StackPanel>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                    <ListBox.ItemContainerStyle>
-                        <Style TargetType="ListBoxItem">
-                            <Setter Property="Background" Value="Transparent"/>
-                            <Setter Property="Padding" Value="4,3"/>
-                            <Setter Property="Cursor" Value="Hand"/>
-                            <Style.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="Background" Value="{StaticResource BackgroundBrush}"/>
-                                </Trigger>
-                            </Style.Triggers>
-                        </Style>
-                    </ListBox.ItemContainerStyle>
-                </ListBox>
-            </DockPanel>
-        </GroupBox>
     </Grid>
 </UserControl>

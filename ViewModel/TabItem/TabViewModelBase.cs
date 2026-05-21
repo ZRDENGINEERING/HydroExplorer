@@ -2,6 +2,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Windows;
 
 
@@ -12,8 +13,10 @@ namespace HydroExplorer.ViewModel.TabItem
     {
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        protected void OnPropertyChanged(string propertyName)
+
+        protected void OnPropertyChanged([CallerMemberName] string propertyName = "")
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
 
         public abstract string Header { get; set; }
         public object Content { get; set; }
@@ -70,6 +73,10 @@ namespace HydroExplorer.ViewModel.TabItem
                 RecentProjects = new ObservableCollection<RecentProjectEntry>(recent);
                 RecentHmsProjects = new ObservableCollection<RecentProjectEntry>(recentHms);
             });
+
+
+
+
         }
     }
 }

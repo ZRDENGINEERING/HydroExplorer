@@ -11,7 +11,7 @@
 
     <DockPanel>
 
-        <ToolBarTray DockPanel.Dock="Top" Background="LightGray">
+        <ToolBarTray DockPanel.Dock="Top" Background="red">
             <ToolBar Name="ButtonBar">
                 <Button>One</Button>
                 <Button>Two</Button>

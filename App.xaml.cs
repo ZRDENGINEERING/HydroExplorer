@@ -12,57 +12,71 @@ namespace HydroExplorer
     {
         public static ServiceProvider ServiceProvider { get; private set; }
 
+
+
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
 
             CleanupTempShapefiles();
-
             TaskScheduler.UnobservedTaskException += (s, args) =>
             {
+                var ex = args.Exception?.InnerException ?? args.Exception;
+
+                if (ex is System.Net.Sockets.SocketException ||
+                    ex is System.IO.IOException { InnerException: System.Net.Sockets.SocketException } ||
+                    ex is OperationCanceledException)
+                {
+                    args.SetObserved();
+                    return;
+                }
+
                 System.Diagnostics.Debug.WriteLine($"Unobserved task exception: {args.Exception}");
                 args.SetObserved();
             };
 
             DispatcherUnhandledException += (s, args) =>
             {
+                if (args.Exception is System.Net.Sockets.SocketException ||
+                    args.Exception?.InnerException is System.Net.Sockets.SocketException ||
+                    args.Exception is OperationCanceledException ||
+                    args.Exception?.InnerException is OperationCanceledException)
+                {
+                    args.Handled = true;
+                    return;
+                }
+
                 System.Diagnostics.Debug.WriteLine($"Dispatcher exception: {args.Exception}");
                 args.Handled = true;
             };
 
             AppDomain.CurrentDomain.UnhandledException += (s, args) =>
             {
-                System.Diagnostics.Debug.WriteLine($"Unhandled exception: {args.ExceptionObject}");
+                var ex = args.ExceptionObject as Exception;
+                System.Diagnostics.Debug.WriteLine($"Unhandled: {ex?.GetType().Name}");
+                System.Diagnostics.Debug.WriteLine($"Message: {ex?.Message}");
+                System.Diagnostics.Debug.WriteLine($"Stack: {ex?.StackTrace}");
             };
+
+
+
+
+
 
             var services = new ServiceCollection();
             services.AddSingleton<IUserSettingsRepo, FileSystemUserSettingsRepo>();
             services.AddSingleton<MainWindowViewModel>();
+            services.AddSingleton<MapStateService>();
             services.AddSingleton<PlotViewModel>();
             services.AddSingleton<SelectionViewModel>();
 
             ServiceProvider = services.BuildServiceProvider();
-
-            
 
             var mainWindow = new MainWindow
             {
                 DataContext = ServiceProvider.GetRequiredService<MainWindowViewModel>()
             };
             mainWindow.Show();
-
-            // Fire and forget safely on UI thread - no Task.Run
-            var plotVm = ServiceProvider.GetRequiredService<PlotViewModel>();
-            _ = plotVm.LoadDataAsync();
-        }
-
-
-
-
-        protected override void OnExit(ExitEventArgs e)
-        {
-            ServiceProvider?.Dispose();
-            base.OnExit(e);
         }
 
 

@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             xmlns:vm="clr-namespace:HydroExplorer.ViewModel.TabItem" 
+             xmlns:vm="clr-namespace:HydroExplorer.ViewModel.TabItem"
              xmlns:views="clr-namespace:HydroExplorer.View.TabItem" 
              xmlns:behaviors="clr-namespace:HydroExplorer.Behaviors"
              mc:Ignorable="d"
@@ -12,10 +12,12 @@
     <UserControl.DataContext>
         <vm:TabControlViewModel/>
     </UserControl.DataContext>
-
+    
+    
+    
     <TabControl ItemsSource="{Binding Tabs}" 
                 SelectedItem="{Binding SelectedTab}"
-                Background="Transparent">
+                Style="{StaticResource NoOffsetTabControl}">
 
         <TabControl.Resources>
             <DataTemplate DataType="{x:Type vm:TabInfoViewModel}">
@@ -31,10 +33,9 @@
                 <views:TabPrintView/>
             </DataTemplate>
             <DataTemplate DataType="{x:Type vm:TabSettingsViewModel}">
-                <views:TabSettingsView/>
+                <views:TabOutputView/>
             </DataTemplate>
         </TabControl.Resources>
-
        
 
         <TabControl.ContentTemplate>
@@ -43,4 +44,6 @@
             </DataTemplate>
         </TabControl.ContentTemplate>
     </TabControl>
+    
+    
 </UserControl>

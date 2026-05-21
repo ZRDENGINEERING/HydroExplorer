@@ -1,4 +1,5 @@
-﻿using System.Collections.ObjectModel;
+﻿using HydroExplorer.Helpers;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
@@ -6,7 +7,6 @@ using System.Runtime.CompilerServices;
 
 namespace HydroExplorer.ViewModel.TabBotItem
 {
-
     public class TabBotControlViewModel : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -15,24 +15,56 @@ namespace HydroExplorer.ViewModel.TabBotItem
 
         public ObservableCollection<TabBotItemViewModel> Tabs { get; set; }
 
-        public string Header { get; set; } = "Bottom";
+        private TabBotItemViewModel? _chartTab;
+
+        public TabBotControlViewModel()
+        {
+            _chartTab = new TabBotItemViewModel { Header = "Chart", Content = null };
+
+            Tabs =
+            [
+                _chartTab,
+            new TabBotItemViewModel { Header = "Output", Content = new TabBotOutputViewModel() },
+        ];
+
+            SelectedTab = Tabs[0];
+
+            EventBus.TopTabChanged += OnTopTabChanged;
+        }
+
+
+
+
+        private void OnTopTabChanged(string topTabHeader)
+        {
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                if (topTabHeader == "Charts")
+                {
+                    // Show Chart tab with real content
+                    if (_chartTab!.Content == null)
+                        _chartTab.Content = new TabBotChartsViewModel();
+                    _chartTab.Header = "Chart";
+                }
+                else
+                {
+                    _chartTab!.Content = null;
+                }
+            });
+        }
 
         private TabBotItemViewModel _selectedTab;
         public TabBotItemViewModel SelectedTab
         {
             get => _selectedTab;
-            set { _selectedTab = value; OnPropertyChanged(); }
-        }
+            set
+            {
+                if (value?.Header == "Chart" && value.Content == null)
+                    value.Content = new TabBotChartsViewModel();
 
-        public TabBotControlViewModel()
-        {
-            Tabs =
-            [
-                new TabBotItemViewModel { Header = "Chart", Content = new TabBotChartsViewModel() },
-                new TabBotItemViewModel { Header = "Output", Content = new TabBotOutputViewModel() },
-            ];
-
-                SelectedTab = Tabs[0];
+                _selectedTab = value;
+                OnPropertyChanged();
+            }
         }
     }
 }

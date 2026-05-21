@@ -55,32 +55,74 @@ namespace HydroExplorer.View
                 EventBus.ProjPathChanged -= OnProjPathChanged;
                 EventBus.HdfPathChanged -= OnHdfPathChanged;
             };
+
+            Loaded += (s, e) => BuildColumnContextMenu();
+
+        }
+
+
+        private void BuildColumnContextMenu()
+        {
+            var menu = new ContextMenu();
+
+            foreach (var column in dgSimple.Columns)
+            {
+                var header = column.Header?.ToString() ?? "(column)";
+                var item = new MenuItem
+                {
+                    Header = header,
+                    IsCheckable = true,
+                    IsChecked = true,
+                    Tag = column
+                };
+                item.Click += ColumnMenuItem_Click;
+                menu.Items.Add(item);
+            }
+
+            dgSimple.ContextMenu = menu;
+        }
+
+        private void ColumnMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not MenuItem menuItem) return;
+            if (menuItem.Tag is not DataGridColumn column) return;
+
+            column.Visibility = menuItem.IsChecked
+                ? Visibility.Visible
+                : Visibility.Collapsed;
         }
 
         private async void OnHdfPathChanged()
         {
-            System.Diagnostics.Debug.WriteLine("OnHdfPathChanged fired");
             await Dispatcher.InvokeAsync(async () => await LoadDataGrid(fresh: true));
         }
 
 
         private async Task LoadDataGrid(bool fresh = false)
         {
-
-            System.Diagnostics.Debug.WriteLine($"LoadDataGrid called, fresh={fresh}");
             try
             {
                 await LoadSettingsDataGrid(fresh);
 
-                if (string.IsNullOrEmpty(hdfPathA) || string.IsNullOrEmpty(hdfPathB))
+                if (string.IsNullOrEmpty(hdfPathA) || string.IsNullOrEmpty(proName))
                 {
-                    System.Diagnostics.Debug.WriteLine("LoadDataGrid: HDF paths not set, skipping.");
+                    System.Diagnostics.Debug.WriteLine("LoadDataGrid: HDF path A not set, skipping.");
                     return;
                 }
 
-                System.Diagnostics.Debug.WriteLine($"LoadDataGrid: reading WSEL, proName={proName}");
-                var wselDataOxy = HecRasHdfReader.ReadWSELTableOxy(hdfPathA, hdfPathB, proName);
-                System.Diagnostics.Debug.WriteLine($"LoadDataGrid: got {wselDataOxy?.Count} rows");
+                List<WSELTableOxy>? wselDataOxy;
+
+                bool hasBothSources = !string.IsNullOrEmpty(hdfPathB);
+
+                if (hasBothSources)
+                {
+                    wselDataOxy = HecRasHdfReader.ReadWSELTableOxy(hdfPathA, hdfPathB, proName);
+                }
+                else
+                {
+                    wselDataOxy = HecRasHdfReader.ReadWSELTableOxySingle(hdfPathA, proName);
+                }
+
 
                 dgSimple.ItemsSource = wselDataOxy;
                 PlotVm.LoadFromWSELTable(wselDataOxy);
@@ -93,7 +135,6 @@ namespace HydroExplorer.View
 
         private async void OnProjPathChanged(string path)
         {
-            System.Diagnostics.Debug.WriteLine($"OnProjPathChanged fired: {path}");
             await Dispatcher.InvokeAsync(async () => await LoadDataGrid(fresh: true));
         }
 
@@ -127,9 +168,6 @@ namespace HydroExplorer.View
                 ? await _settingsRepo.GetSettingsFresh()
                 : await _settingsRepo.GetSettings();
 
-            System.Diagnostics.Debug.WriteLine($"LoadSettingsDataGrid: fresh={fresh}, projPath={settings.ProjPath}");
-
-
             projPath = settings.ProjPath;
             projDir = settings.ProjDir;
 
@@ -141,8 +179,6 @@ namespace HydroExplorer.View
             planNameA = project.PlanNameA;
             planNameB = project.PlanNameB;
             proName = project.ProName;
-
-            System.Diagnostics.Debug.WriteLine($"LoadSettingsDataGrid: projPath={projPath}, hdfA={hdfPathA}, proName={proName}");
         }
 
 
@@ -241,6 +277,7 @@ namespace HydroExplorer.View
 
 
 
+
     }
 
 
@@ -293,7 +330,7 @@ namespace HydroExplorer.View
         public string Reach { get; set; }
         public string RiverSta { get; set; }
         public string Profile { get; set; }
-        public float QTotal { get; set; }
+        public float QTotalA { get; set; }
         public double WSElevA { get; set; }
         public float QTotalB { get; set; }
         public double WSElevB { get; set; }
@@ -320,6 +357,11 @@ namespace HydroExplorer.View
         public double WSElevB { get; set; }
         public double DELTA { get; set; }
 
-        //public double DELTA = res.DELTA;
+        public string QTotalBDisplay => float.IsNaN(QTotalB) ? "—" : QTotalB.ToString("F0");
+        public string WSElevBDisplay => double.IsNaN(WSElevB) ? "—" : WSElevB.ToString("F2");
+        public string DELTADisplay => double.IsNaN(DELTA) ? "—" : DELTA.ToString("F2");
     }
+
+
+
 }

@@ -11,13 +11,13 @@ namespace HydroExplorer.View
         public PlotWindow()
         {
             InitializeComponent();
-
             _vm = App.ServiceProvider.GetRequiredService<PlotViewModel>();
             DataContext = _vm;
         }
 
-        public async Task LoadDataAsync()
+        protected override async void OnContentRendered(EventArgs e)
         {
+            base.OnContentRendered(e);
             await _vm.LoadDataAsync();
         }
 
