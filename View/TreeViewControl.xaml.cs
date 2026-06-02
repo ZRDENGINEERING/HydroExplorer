@@ -311,6 +311,7 @@ namespace HydroExplorer.View
                         "Verify HMS Path",
                         MessageBoxButton.OK,
                         MessageBoxImage.Warning);
+                        EventBus.PublishRunPath(path);
                     return;
                 }
 
