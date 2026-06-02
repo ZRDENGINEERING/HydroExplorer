@@ -41,7 +41,9 @@ namespace HydroExplorer.ViewModel.TabItem
         public TabInfoViewModel(IUserSettingsRepo settingsRepo)
         {
             SettingsRepo = settingsRepo;
-            _ = LoadRecentProjectsAsync();
+            //_ = LoadRecentProjectsAsync();
+            _ = ValidateAndLoadRecentProjectsAsync(); // replaces initial LoadRecentProjectsAsync
+
 
             EventBus.ProjPathChanged += async _ => await LoadRecentProjectsAsync();
             EventBus.ProjPathSelected += async _ => await LoadRecentProjectsAsync();
@@ -49,13 +51,54 @@ namespace HydroExplorer.ViewModel.TabItem
             ClearAllRecentCommand = new RelayCommand(async () => await ClearRecentProjectsAsync());
         }
 
+        private async Task ValidateAndLoadRecentProjectsAsync()
+        {
+            var settings = await SettingsRepo!.GetSettings();
+            bool dirty = false;
+
+            // Remove Projects entries whose file no longer exists
+            var deadProjects = settings.Projects.Keys
+                .Where(k => !File.Exists(k))
+                .ToList();
+
+            foreach (var key in deadProjects)
+            {
+                settings.Projects.Remove(key);
+                dirty = true;
+            }
+
+            // Remove HmsProjects entries whose file no longer exists
+            var deadHms = settings.HmsProjects.Keys
+                .Where(k => !File.Exists(k))
+                .ToList();
+
+            foreach (var key in deadHms)
+            {
+                settings.HmsProjects.Remove(key);
+                dirty = true;
+            }
+
+            if (dirty)
+                await SettingsRepo.SaveSettings(settings);
+
+            await LoadRecentProjectsAsync();
+        }
+
+
 
         private async void OpenRecentProject(RecentProjectEntry project)
         {
-            if (!Directory.Exists(project.FilePath)) return;
+            if (!Directory.Exists(project.FilePath))
+            {
+                await RemoveRecentProjectAsync(project.FilePath);
+                return;
+            }
+
 
             var projFile = Directory.GetFiles(project.FilePath, "*.rasmap").FirstOrDefault()
                 ?? Directory.GetFiles(project.FilePath, "*.prj").FirstOrDefault();
+
+            
 
             if (projFile == null)
             {
@@ -88,5 +131,34 @@ namespace HydroExplorer.ViewModel.TabItem
             await SettingsRepo.SaveSettings(settings);
             await LoadRecentProjectsAsync();
         }
+
+
+        private async Task RemoveRecentProjectAsync(string dirPath)
+        {
+            var settings = await SettingsRepo!.GetSettings();
+
+            // Projects keys are full file paths — remove any whose directory matches
+            var projKeysToRemove = settings.Projects.Keys
+                .Where(k => Path.GetDirectoryName(k)
+                    ?.Equals(dirPath, StringComparison.OrdinalIgnoreCase) == true)
+                .ToList();
+
+            foreach (var key in projKeysToRemove)
+                settings.Projects.Remove(key);
+
+            // HmsProjects keys are also file paths
+            var hmsKeysToRemove = settings.HmsProjects.Keys
+                .Where(k => Path.GetDirectoryName(k)
+                    ?.Equals(dirPath, StringComparison.OrdinalIgnoreCase) == true)
+                .ToList();
+
+            foreach (var key in hmsKeysToRemove)
+                settings.HmsProjects.Remove(key);
+
+            await SettingsRepo.SaveSettings(settings);
+            await LoadRecentProjectsAsync();
+        }
+
+
     }
 }

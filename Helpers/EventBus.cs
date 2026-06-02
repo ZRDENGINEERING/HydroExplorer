@@ -30,6 +30,11 @@
         public static event Action? HdfPathChanged;
         public static void PublishHdfPathChanged() => HdfPathChanged?.Invoke();
 
+        public static event Action<string>? ProfileChanged;
+        public static void PublishProfileChanged(string profileName) => ProfileChanged?.Invoke(profileName);
+
+
+
         public static event Action<string>? TopTabChanged;
         public static void RaiseTopTabChanged(string tabHeader) => TopTabChanged?.Invoke(tabHeader);
     }

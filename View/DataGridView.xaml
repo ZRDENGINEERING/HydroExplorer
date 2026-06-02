@@ -11,7 +11,49 @@
              d:DesignHeight="450" d:DesignWidth="800">
 
     <UserControl.Resources>
-        <hlp:ValueToColorConverter x:Key="ValueToColorConverter"/>
+            <hlp:ValueToColorConverter x:Key="ValueToColorConverter"/>
+            <Style x:Key="ColAStyle" TargetType="DataGridCell">
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="DataGridCell">
+                        <Border x:Name="border" Background="#2e2e2e" BorderThickness="0" SnapsToDevicePixels="True">
+                                <ContentPresenter SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="border" Property="Background"
+                                    Value="{DynamicResource DataGrid.CellItem.MouseOver.Background}"/>
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter TargetName="border" Property="Background"
+                                    Value="{DynamicResource DataGrid.Row.Selected.Background}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        <Style x:Key="DeltaStyle" TargetType="DataGridCell">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridCell">
+                        <Border x:Name="border" Background="#232f3b" BorderThickness="0" SnapsToDevicePixels="True">
+                            <ContentPresenter SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background"
+                        Value="{DynamicResource DataGrid.CellItem.MouseOver.Background}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="border" Property="Background"
+                        Value="{DynamicResource DataGrid.Row.Selected.Background}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
     <Grid Background="#181818" HorizontalAlignment="Left">
@@ -24,47 +66,38 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <DataGrid Grid.Row="0"
-                  AutoGenerateColumns="False"
-                  CanUserAddRows="False">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="" Binding="{Binding Name}" Width="318"/>
-                <DataGridTextColumn Header="HDF A" Width="137"/>
-                <DataGridTextColumn Header="HDF B" Width="153"/>
-                <DataGridTextColumn Header="" Binding="{Binding Name}" Width="67"/>
-            </DataGrid.Columns>
-        </DataGrid>
 
         <DataGrid x:Name="dgSimple"
-                  Grid.Row="1"
-                  Grid.RowSpan="2"
-                  AutoGenerateColumns="False"
-                  CanUserAddRows="False"
-                  SelectionChanged="DgSimpleSlctChanged">
+          Grid.Row="0"
+          Grid.RowSpan="2"
+          AutoGenerateColumns="False"
+          CanUserAddRows="False"
+          SelectionChanged="DgSimpleSlctChanged">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="River" Binding="{Binding River}" Foreground="Gray"
-                                    ElementStyle="{StaticResource CenterStyle}"/>
-                <DataGridTextColumn Header="Reach" Binding="{Binding Reach}" Foreground="Gray"
-                                    ElementStyle="{StaticResource CenterStyle}"/>
-                <DataGridTextColumn Header="RiverSta" Binding="{Binding RiverSta}"
-                                    ElementStyle="{StaticResource CenterStyle}"/>
-                <DataGridTextColumn Header="Profile" Binding="{Binding Profile}" Foreground="Gray"
-                                    ElementStyle="{StaticResource CenterStyle}"/>
-                <DataGridTextColumn Header="QTotal A" Binding="{Binding QTotal}" Foreground="Gray"
-                                    ElementStyle="{StaticResource CenterStyle}"/>
-                <DataGridTextColumn Header="WSElev A" Binding="{Binding WSElevA}"
-                                    ElementStyle="{StaticResource CenterStyle}"/>
-                <DataGridTextColumn Header="QTotal B" Binding="{Binding QTotalBDisplay}" Foreground="Gray"
-                                    ElementStyle="{StaticResource CenterStyle}"/>
-                <DataGridTextColumn Header="WSElev B" Binding="{Binding WSElevBDisplay}"
-                                    ElementStyle="{StaticResource CenterStyle}"/>
-                <DataGridTextColumn Header="DELTA (B-A)" Binding="{Binding DELTADisplay}">
+                <DataGridTextColumn Header="Reach"       Binding="{Binding Reach}"          Width="80"  Foreground="Gray" ElementStyle="{StaticResource CenterStyle}"/>
+                <DataGridTextColumn Header="River Sta"   Binding="{Binding RiverSta}"        Width="60"  ElementStyle="{StaticResource CenterStyle}"/>
+                <DataGridTextColumn Header="Profile"     Binding="{Binding Profile}"         Width="60"  Foreground="Gray" ElementStyle="{StaticResource CenterStyle}"/>
+
+                <DataGridTextColumn Header="QTotal A" Binding="{Binding QTotal}" Width="65" Foreground="Gray"
+                    ElementStyle="{StaticResource CenterStyle}"
+                    CellStyle="{StaticResource ColAStyle}"/>
+
+                <DataGridTextColumn Header="WSElev A" Binding="{Binding WSElevA}" Width="68"
+                    ElementStyle="{StaticResource CenterStyle}"
+                    CellStyle="{StaticResource ColAStyle}"/>
+
+
+                <DataGridTextColumn Header="QTotal B"    Binding="{Binding QTotalBDisplay}"  Width="65"  Foreground="Gray" ElementStyle="{StaticResource CenterStyle}"/>
+                <DataGridTextColumn Header="WSElev B"    Binding="{Binding WSElevBDisplay}"  Width="68"  ElementStyle="{StaticResource CenterStyle}"/>
+
+                <DataGridTextColumn Header="DELTA" Binding="{Binding DELTADisplay}" Width="65" CellStyle="{StaticResource DeltaStyle}">
+                    
                     <DataGridTextColumn.ElementStyle>
                         <Style TargetType="TextBlock">
                             <Setter Property="HorizontalAlignment" Value="Center"/>
                             <Setter Property="TextAlignment" Value="Center"/>
                             <Setter Property="Foreground"
-                                    Value="{Binding DELTA, Converter={StaticResource ValueToColorConverter}}"/>
+                            Value="{Binding DELTA, Converter={StaticResource ValueToColorConverter}}"/>
                         </Style>
                     </DataGridTextColumn.ElementStyle>
                 </DataGridTextColumn>

@@ -58,6 +58,30 @@ namespace HydroExplorer.View
 
             Loaded += (s, e) => BuildColumnContextMenu();
 
+
+            EventBus.ProfileChanged += OnProfileChanged;
+            Unloaded += (s, e) =>
+            {
+                EventBus.ProjPathChanged -= OnProjPathChanged;
+                EventBus.HdfPathChanged -= OnHdfPathChanged;
+                EventBus.ProfileChanged -= OnProfileChanged;
+            };
+
+
+
+
+            EventBus.HdfFileASelected += (_, name) => Dispatcher.Invoke(() =>
+            {
+                planNameA = name;
+                UpdateColumnHeaders();
+            });
+
+            EventBus.HdfFileBSelected += (_, name) => Dispatcher.Invoke(() =>
+            {
+                planNameB = name;
+                UpdateColumnHeaders();
+            });
+
         }
 
 
@@ -98,11 +122,15 @@ namespace HydroExplorer.View
         }
 
 
-        private async Task LoadDataGrid(bool fresh = false)
+        private async Task LoadDataGrid(bool fresh = false, string? overrideProName = null)
         {
             try
             {
                 await LoadSettingsDataGrid(fresh);
+                UpdateColumnHeaders();
+
+                if (overrideProName != null)
+                    proName = overrideProName;
 
                 if (string.IsNullOrEmpty(hdfPathA) || string.IsNullOrEmpty(proName))
                 {
@@ -275,8 +303,31 @@ namespace HydroExplorer.View
             }
         }
 
+        private void UpdateColumnHeaders()
+        {
+            var nameA = string.IsNullOrEmpty(planNameA) ? "HDF A" : planNameA;
+            var nameB = string.IsNullOrEmpty(planNameB) ? "HDF B" : planNameB;
 
+            foreach (var col in dgSimple.Columns)
+            {
+                var h = col.Header?.ToString() ?? "";
+                if (h == "QTotal A" || h.StartsWith("QTotal (") && h.Contains(nameA))
+                    col.Header = $"QTotal ({nameA})";
+                else if (h == "WSElev A" || h.StartsWith("WSElev (") && h.Contains(nameA))
+                    col.Header = $"WSElev ({nameA})";
+                else if (h == "QTotal B" || h.StartsWith("QTotal (") && h.Contains(nameB))
+                    col.Header = $"QTotal ({nameB})";
+                else if (h == "WSElev B" || h.StartsWith("WSElev (") && h.Contains(nameB))
+                    col.Header = $"WSElev ({nameB})";
+                //else if (h == "DELTA" || h.StartsWith("WSElev (") && h.Contains(nameB))
+                    //col.Header = $"DELTA ({nameB} - {nameA})";
+            }
+        }
 
+        private async void OnProfileChanged(string profileName)
+        {
+            await Dispatcher.InvokeAsync(async () => await LoadDataGrid(fresh: false, overrideProName: profileName));
+        }
 
     }
 

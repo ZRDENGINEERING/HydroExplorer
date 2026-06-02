@@ -100,11 +100,11 @@ namespace HydroExplorer.View
             await Task.Delay(100, token);
             _map.Layers.Clear();
 
-            foreach (var name in Enum.GetNames(typeof(KnownTileSource)))
-            {
-                Console.WriteLine(name);
-                System.Diagnostics.Debug.WriteLine($"AVAILABLE.............: {name}");
-            }
+            //foreach (var name in Enum.GetNames(typeof(KnownTileSource)))
+            //{
+            //    Console.WriteLine(name);
+            //    System.Diagnostics.Debug.WriteLine($"AVAILABLE.............: {name}");
+            //}
 
 
             _map.Layers.Add(new TileLayer(KnownTileSources.Create(KnownTileSource.EsriWorldDarkGrayBase)));
@@ -631,7 +631,7 @@ namespace HydroExplorer.View
                 if (!string.IsNullOrEmpty(_pathHMS))
                     EventBus.PublishHmsPathChanged(_pathHMS);
 
-                _pathSubBasins = FindShapefileByName("subbasin") ?? string.Empty;
+                _pathSubBasins = FindShapefileByName("basin") ?? string.Empty;
 
                 bool canPublish = !string.IsNullOrEmpty(projPath)
                     && ((!string.IsNullOrEmpty(_pathHdfA) && File.Exists(_pathHdfA))
@@ -677,7 +677,7 @@ namespace HydroExplorer.View
 
         private async Task<bool> EnsureHmsPath(string projPath, IUserSettingsRepo settingsRepo, UserSettings settings)
         {
-            if (!string.IsNullOrEmpty(_pathHMS)) return true;  // ← missing, add this back
+            if (!string.IsNullOrEmpty(_pathHMS)) return true;
 
             bool hasAnyHdf = (!string.IsNullOrEmpty(_pathHdfA) && File.Exists(_pathHdfA))
                           || (!string.IsNullOrEmpty(_pathHdfB) && File.Exists(_pathHdfB));
@@ -712,11 +712,11 @@ namespace HydroExplorer.View
             if (!selectedPath.StartsWith(projRoot, StringComparison.OrdinalIgnoreCase))
             {
                 MessageBox.Show(
-                    $"Selected file must be within the project root folder:\n{projRoot}",
-                    "Invalid HMS Path",
+                    $"Selected file should be within the project root folder:\n{projRoot}",
+                    "Verify HMS Path",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
-                return false;
+                //return false;
             }
 
             _pathHMS = selectedPath;

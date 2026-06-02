@@ -2426,7 +2426,7 @@
     </Style>
  
     <Style TargetType="{x:Type DataGridColumnHeader}">
-        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontSize" Value="10"/>
         <Setter Property="Background" Value="{DynamicResource DataGrid.HeaderItem.Static.Background}"/>
         <Setter Property="BorderBrush" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
@@ -2453,10 +2453,15 @@
                         </Themes:DataGridHeaderBorder>
                         -->
                         <Border x:Name="PART_Border" BorderThickness="{TemplateBinding BorderThickness}" BorderBrush="{TemplateBinding BorderBrush}" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                              RecognizesAccessKey="True" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"
-                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                            <TextBlock Text="{TemplateBinding Content}"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
+                               HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                               VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                               FontSize="{TemplateBinding FontSize}"/>
                         </Border>
+                        
+                        
                         <Border Background="{TemplateBinding SeparatorBrush}" Width="1" HorizontalAlignment="Right" Visibility="{TemplateBinding SeparatorVisibility}"/>
                         <Thumb x:Name="PART_LeftHeaderGripper" HorizontalAlignment="Left" Style="{StaticResource ColumnHeaderGripperStyle}"/>
                         <Thumb x:Name="PART_RightHeaderGripper" HorizontalAlignment="Right" Style="{StaticResource ColumnHeaderGripperStyle}"/>

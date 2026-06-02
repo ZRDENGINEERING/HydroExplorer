@@ -60,6 +60,8 @@ namespace HydroExplorer.View
                 txtBoxHdfPathA.Text = planName;
             };
 
+
+
             EventBus.HdfFileBSelected += (profiles, planName) =>
             {
                 cboxProfiles.ItemsSource = profiles;
@@ -105,6 +107,7 @@ namespace HydroExplorer.View
                     if (cboxProfiles.SelectedItem is string selectedProfile)
                     {
                         cboxProfiles.Text = selectedProfile;
+                        EventBus.PublishProfileChanged(selectedProfile);
                         await SaveSettings();
                     }
                 }
@@ -293,6 +296,7 @@ namespace HydroExplorer.View
                 var planName = HecRasHdfReader.GetPlanName(path);
 
                 EventBus.PublishHdfFileA([.. profiles], planName);
+
             }
 
             else if (extension == ".run")
@@ -303,8 +307,8 @@ namespace HydroExplorer.View
                 if (!path.StartsWith(projRoot, StringComparison.OrdinalIgnoreCase))
                 {
                     MessageBox.Show(
-                        $"Selected HMS file must be within the project root folder:\n{projRoot}",
-                        "Invalid HMS Path",
+                        $"Selected HMS file should be within the project root folder:\n{projRoot}",
+                        "Verify HMS Path",
                         MessageBoxButton.OK,
                         MessageBoxImage.Warning);
                     return;

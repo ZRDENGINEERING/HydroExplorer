@@ -59,6 +59,8 @@ namespace HydroExplorer.ViewModel.TabItem
                 AppendLine($"[{DateTime.Now:HH:mm:ss}] Project loaded: {System.IO.Path.GetFileNameWithoutExtension(path)}");
             };
 
+
+
             EventBus.HmsPathChanged += path =>
             {
                 AppendLine($"[{DateTime.Now:HH:mm:ss}] HMS path set: {System.IO.Path.GetFileName(path)}");
