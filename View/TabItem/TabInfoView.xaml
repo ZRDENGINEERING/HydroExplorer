@@ -23,11 +23,12 @@
         </Grid.RowDefinitions>
 
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="260"/>
-            <ColumnDefinition Width="500"/>
-            <ColumnDefinition Width="100"/>
-            <ColumnDefinition Width="400"/>
+            <ColumnDefinition Width="150"/>
             <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="100"/>
+            <ColumnDefinition Width="300"/>
+            <ColumnDefinition Width="260"/>
+            
         </Grid.ColumnDefinitions>
 
         

@@ -49,7 +49,7 @@ namespace HydroExplorer.ViewModel.TabItem
                 new TabItemViewModel { Header = "Main",    Content = new TabMainViewModel() },
                 new TabItemViewModel { Header = "Charts",  Content = null },
                 new TabItemViewModel { Header = "Output",  Content = new TabSettingsViewModel() },
-                new TabItemViewModel { Header = "Publish", Content = new TabPrintViewModel() },
+                new TabItemViewModel { Header = "Publish", Content = new TabPublishViewModel() },
             ];
 
             SelectedTab = Tabs[0];

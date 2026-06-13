@@ -1,185 +1,92 @@
 ﻿using Hec.Dss;
 using System.IO;
 
-
 namespace HydroExplorer.Utils
 {
+    /// <summary>
+    /// Reads HMS hyetograph (precipitation) data from a DSS-7 file.
+    /// For flow/hydrograph data use DssHydrographReader.
+    /// </summary>
     public class DssHyetographReader
     {
         public record HyetographRecord(DateTime Time, double Value);
 
-        public static List<HyetographRecord> ReadPrecipInc(string dssFilePath, string preferredRun = "")
+        public static List<HyetographRecord> ReadPrecipInc(
+            string dssFilePath, string preferredRun = "")
         {
             var results = new List<HyetographRecord>();
-
             if (!File.Exists(dssFilePath)) return results;
-
             try
             {
                 using var dss = new DssReader(dssFilePath);
                 var catalog = dss.GetCatalog();
 
                 var precipPaths = catalog
-                    .Where(p => p.FullPath.Contains("PRECIP-INC", StringComparison.OrdinalIgnoreCase))
+                    .Where(p => p.FullPath.Contains("PRECIP-INC",
+                        StringComparison.OrdinalIgnoreCase))
                     .ToList();
 
-                if (!precipPaths.Any())
+                if (!precipPaths.Any()) return results;
+
+                var selected = MatchRun(precipPaths, preferredRun);
+                System.Diagnostics.Debug.WriteLine(
+                    $"DssHyetographReader.ReadPrecipInc: {selected.FullPath}");
+
+                var ts = dss.GetTimeSeries(new DssPath(selected.FullPath));
+                if (ts == null || ts.Count == 0) return results;
+
+                for (int i = 0; i < ts.Count; i++)
                 {
-                    //System.Diagnostics.Debug.WriteLine("No PRECIP-INC record found in DSS file.");
-                    return results;
+                    var v = ts.Values[i];
+                    if (double.IsNaN(v) || v <= -900) continue;
+                    results.Add(new HyetographRecord(ts.Times[i], v));
                 }
-
-                var selected = string.IsNullOrEmpty(preferredRun)
-                    ? precipPaths.First()
-                    : precipPaths.FirstOrDefault(p =>
-                        p.FullPath.Contains(preferredRun, StringComparison.OrdinalIgnoreCase))
-                      ?? precipPaths.First();
-
-                System.Diagnostics.Debug.WriteLine($"Reading PRECIP-INC pathname: {selected.FullPath}");
-
-                var timeSeries = dss.GetTimeSeries(new DssPath(selected.FullPath));
-
-                if (timeSeries == null || timeSeries.Count == 0) return results;
-
-                for (int i = 0; i < timeSeries.Count; i++)
-                {
-                    var value = timeSeries.Values[i];
-                    if (double.IsNaN(value) || value <= -900) continue;
-                    results.Add(new HyetographRecord(timeSeries.Times[i], value));
-                }
-
-                //System.Diagnostics.Debug.WriteLine($"Read {results.Count} PRECIP-INC records.");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"ReadPrecipInc error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine(
+                    $"DssHyetographReader.ReadPrecipInc error: {ex.Message}");
             }
-
             return results;
         }
 
-        public static List<HyetographRecord> ReadFlow(string dssFilePath, string preferredRun = "")
+        /// <summary>
+        /// Returns all DSS pathnames in the file — used to enumerate run names.
+        /// </summary>
+        public static List<string> GetAllPaths(string dssFilePath)
         {
-            var results = new List<HyetographRecord>();
-
-            if (!File.Exists(dssFilePath)) return results;
-
+            if (!File.Exists(dssFilePath)) return [];
             try
             {
                 using var dss = new DssReader(dssFilePath);
-                var catalog = dss.GetCatalog();
-
-                var flowPaths = catalog
-                    .Where(p => p.FullPath.Contains("/FLOW/", StringComparison.OrdinalIgnoreCase))
-                    .ToList();
-
-                var flowPaths_Combine = catalog
-                    .Where(p => p.FullPath.Contains("/FLOW-COMBINE/", StringComparison.OrdinalIgnoreCase))
-                    .ToList();
-
-                var flowPaths_Base = catalog
-                    .Where(p => p.FullPath.Contains("/FLOW-BASE/", StringComparison.OrdinalIgnoreCase))
-                    .ToList();
-
-                var flowPaths_Direct = catalog
-                    .Where(p => p.FullPath.Contains("/FLOW-DIRECT/", StringComparison.OrdinalIgnoreCase))
-                    .ToList();
-
-                var flowPaths_Unit_Graph = catalog
-                    .Where(p => p.FullPath.Contains("/FLOW-UNIT-GRAPH/", StringComparison.OrdinalIgnoreCase))
-                    .ToList();
-
-
-                if (!flowPaths.Any())
-                {
-                    System.Diagnostics.Debug.WriteLine("No FLOW record found in DSS file.");
-                    return results;
-                }
-
-                var selected = string.IsNullOrEmpty(preferredRun)
-                    ? flowPaths.First()
-                    : flowPaths.FirstOrDefault(p =>
-                        p.FullPath.Contains(preferredRun, StringComparison.OrdinalIgnoreCase))
-                      ?? flowPaths.First();
-
-                System.Diagnostics.Debug.WriteLine($"Reading FLOW pathname: {selected.FullPath}");
-
-                var timeSeries = dss.GetTimeSeries(new DssPath(selected.FullPath));
-
-                if (timeSeries == null || timeSeries.Count == 0) return results;
-
-                for (int i = 0; i < timeSeries.Count; i++)
-                {
-                    var value = timeSeries.Values[i];
-                    if (double.IsNaN(value) || value <= -900) continue;
-                    results.Add(new HyetographRecord(timeSeries.Times[i], value));
-                }
-
-                //System.Diagnostics.Debug.WriteLine($"Read {results.Count} FLOW records.");
+                var catalog = dss.GetCatalog().ToList();
+                //System.Diagnostics.Debug.WriteLine(
+                //    $"GetAllPaths: count={catalog.Count} file={dssFilePath}");
+                //foreach (var p in catalog.Take(5))
+                    //System.Diagnostics.Debug.WriteLine($"  SAMPLE: '{p.FullPath}'");
+                return catalog.Select(p => p.FullPath).ToList();
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"ReadFlow error: {ex.Message}");
+                //System.Diagnostics.Debug.WriteLine($"GetAllPaths error: {ex.Message}");
+                if (ex is IOException)
+                    System.Diagnostics.Debug.WriteLine(
+                        "DSS file may be locked by HEC-HMS");
+                return [];
             }
-
-            return results;
         }
 
+        // ── Helpers ──────────────────────────────────────────────────────────
 
-
-
-
-        public static List<HyetographRecord> ReadByPartB(string dssFilePath, string partB, string preferredRun = "")
+        private static DssPath MatchRun(List<DssPath> paths, string runName)
         {
-            var results = new List<HyetographRecord>();
-            if (!File.Exists(dssFilePath)) return results;
-
-            try
-            {
-                using var dss = new DssReader(dssFilePath);
-                var catalog = dss.GetCatalog();
-
-                var paths = catalog
-                    .Where(p => p.FullPath.Contains($"/{partB}/", StringComparison.OrdinalIgnoreCase))
-                    .ToList();
-
-                if (!paths.Any())
-                {
-                    //System.Diagnostics.Debug.WriteLine($"No {partB} record found in DSS file.");
-                    return results;
-                }
-
-                var selected = string.IsNullOrEmpty(preferredRun)
-                    ? paths.First()
-                    : paths.FirstOrDefault(p =>
-                        p.FullPath.Contains(preferredRun, StringComparison.OrdinalIgnoreCase))
-                      ?? paths.First();
-
-                System.Diagnostics.Debug.WriteLine($"Reading {partB} pathname: {selected.FullPath}");
-
-                var timeSeries = dss.GetTimeSeries(new DssPath(selected.FullPath));
-
-                //System.Diagnostics.Debug.WriteLine($"TimeSeries count: {timeSeries?.Count}");
-
-                if (timeSeries == null || timeSeries.Count == 0) return results;
-
-                for (int i = 0; i < timeSeries.Count; i++)
-                {
-                    var value = timeSeries.Values[i];
-                    if (double.IsNaN(value) || value <= -900) continue;
-                    results.Add(new HyetographRecord(timeSeries.Times[i], value));
-                }
-
-                //System.Diagnostics.Debug.WriteLine($"Read {results.Count} {partB} records.");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"ReadByPartB({partB}) error: {ex.Message}");
-            }
-
-            return results;
+            if (string.IsNullOrEmpty(runName)) return paths.First();
+            return paths.FirstOrDefault(p =>
+                       p.FullPath.Contains($"RUN:{runName}",
+                           StringComparison.OrdinalIgnoreCase) ||
+                       p.FullPath.Contains(runName,
+                           StringComparison.OrdinalIgnoreCase))
+                   ?? paths.First();
         }
-
-
     }
 }

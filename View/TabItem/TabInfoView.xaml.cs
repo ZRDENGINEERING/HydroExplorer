@@ -3,8 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
-
-
+using System.Windows;
 
 namespace HydroExplorer.View.TabItem
 {
@@ -15,9 +14,6 @@ namespace HydroExplorer.View.TabItem
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
         private static MapOverView? _mapOverView;
-
-
-
 
         public TabInfoView()
         {
@@ -31,12 +27,26 @@ namespace HydroExplorer.View.TabItem
             Loaded += async (s, e) =>
             {
                 var settingsRepo = App.ServiceProvider.GetRequiredService<IUserSettingsRepo>();
-                var settings = await settingsRepo.GetSettings();
+                var settings = await settingsRepo.GetSettingsFresh();
 
-                if (!string.IsNullOrEmpty(settings.LastProjPath))
+                // Fall back to most recently opened project if LastProjPath not set
+                string projPath = settings.LastProjPath;
+                if (string.IsNullOrEmpty(projPath) && settings.Projects.Count > 0)
                 {
-                    string projName = Path.GetFileNameWithoutExtension(settings.LastProjPath);
+                    projPath = settings.Projects
+                        .OrderByDescending(kvp => kvp.Value.LastOpened)
+                        .First().Key;
 
+                    // Persist it so next launch is faster
+                    settings.LastProjPath = projPath;
+                    settings.ProjPath = projPath;
+                    settings.ProjDir = settings.Projects[projPath].ProjDir;
+                    await settingsRepo.SaveSettings(settings);
+                }
+
+                if (!string.IsNullOrEmpty(projPath))
+                {
+                    string projName = Path.GetFileNameWithoutExtension(projPath);
                     txtBlockProjectName.Text = $"Project Name: {projName}";
                     txtBlockAreaSqMi.Text = $"Drainage Area (sq.mi.): 22";
                     txtBlockAreaAcre.Text = $"Drainage Area (acre): 222";
@@ -62,7 +72,5 @@ namespace HydroExplorer.View.TabItem
                 });
             };
         }
-
-       
     }
 }

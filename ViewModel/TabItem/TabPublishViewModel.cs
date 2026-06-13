@@ -1,6 +1,6 @@
 ﻿namespace HydroExplorer.ViewModel.TabItem
 {
-    public class TabPrintViewModel : TabViewModelBase
+    public class TabPublishViewModel : TabViewModelBase
     {
         private string _header = "Home";
         public override string Header

@@ -374,7 +374,7 @@ namespace HydroExplorer.ViewModel
                 DefaultFontSize = 10,
                 SubtitleFontSize = 10,
                 TextColor = OxyColorPalette.Colors["TextAxis"],
-                PlotMargins = new OxyThickness(30, 10, 10, 30),
+                PlotMargins = new OxyThickness(38, 5, 5, 40),
                 PlotAreaBorderColor = OxyColorPalette.Colors["DimGray"],
                 PlotAreaBorderThickness = new OxyThickness(1),
             };

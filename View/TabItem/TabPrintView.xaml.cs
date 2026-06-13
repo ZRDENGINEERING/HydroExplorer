@@ -3,9 +3,9 @@
 
 namespace HydroExplorer.View.TabItem
 {
-    public partial class TabPrintView : UserControl
+    public partial class TabPublishView : UserControl
     {
-        public TabPrintView()
+        public TabPublishView()
         {
             InitializeComponent();
             DataContext = this;

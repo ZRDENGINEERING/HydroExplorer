@@ -11,7 +11,6 @@
              d:DesignHeight="450" d:DesignWidth="150">
 
 
-
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="30"/>
@@ -97,36 +96,48 @@
 
                 <TextBox Name="txtBoxPlanNameLblA" FontSize="10" BorderThickness="0" Margin="10,0,0,0">Plan Name A:</TextBox>
                 <ComboBox Name="cboxPlanNameA" FontSize="10" Background="#543d05" BorderThickness="0" Width="200"
-                    Foreground="{StaticResource ForegroundBrushDark}" Margin="30,0,0,10"/>
+                    Foreground="{StaticResource ForegroundBrushDark}" Margin="0,0,0,10"/>
                 <TextBox Name="txtBoxHdfPathA" FontSize="8" IsReadOnly="True" BorderThickness="0" Width="220" HorizontalAlignment="left"
                     Foreground="{StaticResource ForegroundBrushDark}" Margin="15,0,0,0"/>
 
                 
-                <TextBox Name="txtBoxHeadB" FontSize="10" BorderThickness="0"
-                     Foreground="{StaticResource ForegroundBrushDark}" Margin="15,0,0,0"/>
+                
                 <TextBox Name="txtBoxPlanNameLblB" FontSize="10" BorderThickness="0" Margin="10,0,0,0">Plan Name B:</TextBox>
                 <ComboBox Name="cboxPlanNameB" FontSize="10" Background="#543d05" BorderThickness="0" Width="200"
-                    Foreground="{StaticResource ForegroundBrushDark}" Margin="30,0,0,10"/>
+                    Foreground="{StaticResource ForegroundBrushDark}" Margin="0,0,0,10"/>
                 <TextBox Name="txtBoxHdfPathB" FontSize="8" IsReadOnly="True" BorderThickness="0" Width="220" HorizontalAlignment="left"
                      Foreground="{StaticResource ForegroundBrushDark}" Margin="15,0,0,0"/>
 
 
                 <TextBox Name="cboxProfileLbl" FontSize="10" BorderThickness="0" Margin="10,0,0,0">Profile:</TextBox>
                 <ComboBox Name="cboxProfiles" FontSize="10" Background="#543d05" BorderThickness="0" Width="200"
-                    Foreground="{StaticResource ForegroundBrushDark}" Margin="30,0,0,10"/>
+                    Foreground="{StaticResource ForegroundBrushDark}" Margin="0,0,0,10"/>
                 <TextBox Name="txtBoxHeadHMS" FontSize="10" BorderThickness="0" Width="220" HorizontalAlignment="left"
                     Foreground="{StaticResource ForegroundBrushDark}" Margin="15,0,0,0"/>
 
-                <TextBox Name="txtBoxHmsPathLbl" FontSize="10" BorderThickness="0">HMS Path:</TextBox>
-                <TextBox Name="txtBoxHmsPath" FontSize="10" IsReadOnly="True" BorderThickness="0"
-                    Foreground="{StaticResource ForegroundBrushDark}" Margin="15,0,0,0"/>
+                <TextBlock Margin="10,0,0,0"
+                    Name="txtBoxHmsPathLbl" FontSize="10">HMS Path:</TextBlock>
 
+                    <DockPanel Margin="20,0,4,4">
+                        <Button DockPanel.Dock="Right"
+                            Content="..."
+                            Command="{Binding BrowseShpCommand}"
+                            CommandParameter="Boundary"
+                            Width="22" Height="20"
+                            Padding="0"
+                            FontSize="10"
+                            Background="{StaticResource BackgroundBrushSidePanels}"/>
+                        <TextBox Text="{Binding SelectedBoundaryPath.Name, Mode=OneWay}"
+                            Name="txtBoxHmsPath" 
+                             FontSize="10" 
+                             IsReadOnly="True" BorderThickness="0"
+                             Foreground="{StaticResource ForegroundBrushDark}"/>
+                    </DockPanel>
+
+                
             </StackPanel>
         </GroupBox>
-
-
     </Grid>
-
 </UserControl>
     
             

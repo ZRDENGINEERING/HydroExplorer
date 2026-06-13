@@ -1,4 +1,5 @@
-﻿using HydroExplorer.Themes;
+﻿using HydroExplorer.Helpers;
+using HydroExplorer.Themes;
 using OxyPlot;
 using OxyPlot.Axes;
 using OxyPlot.Legends;
@@ -28,16 +29,25 @@ namespace HydroExplorer.ViewModel
             get => _plotModelLP3;
             set
             {
-                if (_plotModelLP3 != null)
-                    _plotModelLP3.InvalidatePlot(false);
+                _plotModelLP3?.InvalidatePlot(false);
                 _plotModelLP3 = value;
                 OnPropertyChanged();
             }
         }
 
+        private string _planNameA = "Plan A";
+        private string _planNameB = "Plan B";
+
         public LP3PlotViewModel()
         {
             LoadDummyData();
+
+            EventBus.PlanNamesChanged += (nameA, nameB) =>
+            {
+                _planNameA = string.IsNullOrEmpty(nameA) ? "Plan A" : nameA;
+                _planNameB = string.IsNullOrEmpty(nameB) ? "Plan B" : nameB;
+                System.Windows.Application.Current.Dispatcher.Invoke(LoadDummyData);
+            };
         }
 
         public void LoadDummyData()
@@ -70,15 +80,15 @@ namespace HydroExplorer.ViewModel
                 new() { ReturnInterval = 500,   PeakDischarge = 18900, UpperCI = 23500, LowerCI = 15800 },
             };
 
-            PlotModelLP3 = CreatePlotLP3(seriesA, seriesB);
+            PlotModelLP3 = CreatePlotLP3(seriesA, seriesB, _planNameA, _planNameB);
         }
 
         public void LoadData(List<LP3Record> seriesA, List<LP3Record> seriesB)
-        {
-            PlotModelLP3 = CreatePlotLP3(seriesA, seriesB);
-        }
+            => PlotModelLP3 = CreatePlotLP3(seriesA, seriesB, _planNameA, _planNameB);
 
-        private static PlotModel CreatePlotLP3(List<LP3Record> seriesA, List<LP3Record> seriesB)
+        private static PlotModel CreatePlotLP3(
+            List<LP3Record> seriesA, List<LP3Record> seriesB,
+            string nameA, string nameB)
         {
             var model = new PlotModel
             {
@@ -86,7 +96,7 @@ namespace HydroExplorer.ViewModel
                 TitleFontSize = 12,
                 DefaultFontSize = 10,
                 TextColor = OxyColorPalette.Colors["TextAxis"],
-                PlotMargins = new OxyThickness(50, 10, 10, 40),
+                PlotMargins = new OxyThickness(45, 5, 5, 40),
                 PlotAreaBorderColor = OxyColorPalette.Colors["DimGray"],
                 PlotAreaBorderThickness = new OxyThickness(1),
             };
@@ -94,7 +104,7 @@ namespace HydroExplorer.ViewModel
             var xAxis = new LogarithmicAxis
             {
                 Position = AxisPosition.Bottom,
-                Title = "Return Period (years)",
+                Title = "RETURN PERIOD (yr)",
                 Minimum = 1,
                 Maximum = 600,
                 AxislineStyle = LineStyle.Solid,
@@ -110,7 +120,7 @@ namespace HydroExplorer.ViewModel
             var yAxis = new LinearAxis
             {
                 Position = AxisPosition.Left,
-                Title = "Peak Discharge (cfs)",
+                Title = "PEAK DISCHARGE (cfs)",
                 AxislineStyle = LineStyle.Solid,
                 AxislineColor = OxyColorPalette.Colors["DimGray"],
                 MajorGridlineStyle = LineStyle.Solid,
@@ -124,59 +134,12 @@ namespace HydroExplorer.ViewModel
             model.Axes.Add(xAxis);
             model.Axes.Add(yAxis);
 
-            // Series A — fitted line
-            var lineA = new LineSeries
-            {
-                Title = "Plan A",
-                Color = OxyColors.GreenYellow,
-                StrokeThickness = 2,
-                MarkerType = MarkerType.Circle,
-                MarkerSize = 4,
-                MarkerFill = OxyColors.GreenYellow,
-            };
-
-            // Series A — confidence interval
-            var ciUpperA = new LineSeries
-            {
-                Title = "95% CI (A)",
-                Color = OxyColor.FromAColor(120, OxyColors.GreenYellow),
-                StrokeThickness = 1,
-                LineStyle = LineStyle.Dash,
-            };
-            var ciLowerA = new LineSeries
-            {
-                Title = string.Empty,
-                Color = OxyColor.FromAColor(120, OxyColors.GreenYellow),
-                StrokeThickness = 1,
-                LineStyle = LineStyle.Dash,
-            };
-
-            // Series B — fitted line
-            var lineB = new LineSeries
-            {
-                Title = "Plan B",
-                Color = OxyColors.SteelBlue,
-                StrokeThickness = 2,
-                MarkerType = MarkerType.Circle,
-                MarkerSize = 4,
-                MarkerFill = OxyColors.SteelBlue,
-            };
-
-            // Series B — confidence interval
-            var ciUpperB = new LineSeries
-            {
-                Title = "95% CI (B)",
-                Color = OxyColor.FromAColor(120, OxyColors.SteelBlue),
-                StrokeThickness = 1,
-                LineStyle = LineStyle.Dash,
-            };
-            var ciLowerB = new LineSeries
-            {
-                Title = string.Empty,
-                Color = OxyColor.FromAColor(120, OxyColors.SteelBlue),
-                StrokeThickness = 1,
-                LineStyle = LineStyle.Dash,
-            };
+            var lineA = MakeLine(nameA, OxyColors.GreenYellow, 2, LineStyle.Solid);
+            var ciUpperA = MakeLine($"95% CI ({nameA})", OxyColor.FromAColor(120, OxyColors.GreenYellow), 1, LineStyle.Dash);
+            var ciLowerA = MakeLine(string.Empty, OxyColor.FromAColor(120, OxyColors.GreenYellow), 1, LineStyle.Dash);
+            var lineB = MakeLine(nameB, OxyColors.SteelBlue, 2, LineStyle.Solid);
+            var ciUpperB = MakeLine($"95% CI ({nameB})", OxyColor.FromAColor(120, OxyColors.SteelBlue), 1, LineStyle.Dash);
+            var ciLowerB = MakeLine(string.Empty, OxyColor.FromAColor(120, OxyColors.SteelBlue), 1, LineStyle.Dash);
 
             foreach (var r in seriesA.OrderBy(r => r.ReturnInterval))
             {
@@ -208,5 +171,17 @@ namespace HydroExplorer.ViewModel
 
             return model;
         }
+
+        private static LineSeries MakeLine(string title, OxyColor color,
+            double thickness, LineStyle style) => new()
+            {
+                Title = title,
+                Color = color,
+                StrokeThickness = thickness,
+                LineStyle = style,
+                MarkerType = thickness > 1 ? MarkerType.Circle : MarkerType.None,
+                MarkerSize = 4,
+                MarkerFill = color,
+            };
     }
 }

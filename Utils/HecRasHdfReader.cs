@@ -68,18 +68,19 @@ namespace HydroExplorer.Utils
             bool hasA = !string.IsNullOrEmpty(hdfPathA) && File.Exists(hdfPathA);
             bool hasB = !string.IsNullOrEmpty(hdfPathB) && File.Exists(hdfPathB);
 
-            // Fall back to single-file read if only one exists
             if (!hasA && !hasB) return [];
             if (!hasB && hasA) return ReadWSELTableOxySingle(hdfPathA!, proName) ?? [];
             if (!hasA && hasB) return ReadWSELTableOxySingle(hdfPathB!, proName) ?? [];
 
-            // Both exist — full comparison read
             using var fileA = H5File.OpenRead(hdfPathA!);
             using var fileB = H5File.OpenRead(hdfPathB!);
 
-            var river = ReadCrossSectionAttrRiver(fileA);
-            var reach = ReadCrossSectionAttrReach(fileA);
-            var riverSta = ReadCrossSectionAttrStation(fileA);
+            // Read geometry from each plan independently
+            var riverA = ReadCrossSectionAttrRiver(fileA);
+            var reachA = ReadCrossSectionAttrReach(fileA);
+            var staA = ReadCrossSectionAttrStation(fileA);
+
+            var staB = ReadCrossSectionAttrStation(fileB);
 
             var profileA = ReadSteadyProfileNames(fileA);
             var profileB = ReadSteadyProfileNames(fileB);
@@ -90,8 +91,8 @@ namespace HydroExplorer.Utils
             int proNB = profileB.IndexOf(proName);
             if (proNB == -1)
             {
-                System.Diagnostics.Debug.WriteLine(
-                    $"ReadWSELTableOxy: '{proName}' not found in fileB profiles [{string.Join(", ", profileB)}], defaulting to 0.");
+                //System.Diagnostics.Debug.WriteLine(
+                //    $"ReadWSELTableOxy: '{proName}' not in fileB [{string.Join(", ", profileB)}], using 0.");
                 proNB = 0;
             }
 
@@ -106,36 +107,45 @@ namespace HydroExplorer.Utils
             int rowsA = wsElevA.GetLength(0), colsA = wsElevA.GetLength(1);
             int rowsB = wsElevB.GetLength(0), colsB = wsElevB.GetLength(1);
 
-            if (proNA >= rowsA)
-            {
-                System.Diagnostics.Debug.WriteLine($"ReadWSELTableOxy: proNA={proNA} >= rowsA={rowsA}.");
-                return [];
-            }
-            if (proNB >= rowsB)
-            {
-                System.Diagnostics.Debug.WriteLine($"ReadWSELTableOxy: proNB={proNB} >= rowsB={rowsB}.");
-                return [];
-            }
+            if (proNA >= rowsA || proNB >= rowsB) return [];
 
-            int cols = Math.Min(Math.Min(colsA, colsB), riverSta.Length);
-            var results = new List<WSELTableOxy>(cols);
+            // Build a lookup from station string → index in Plan B
+            var staBIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            for (int j = 0; j < staB.Length && j < colsB; j++)
+                staBIndex.TryAdd(staB[j].Trim(), j);
 
-            for (int i = 0; i < cols; i++)
+            var results = new List<WSELTableOxy>();
+
+            for (int i = 0; i < staA.Length && i < colsA; i++)
             {
+                string sta = staA[i].Trim();
+
+                // Find matching cross section in Plan B by station label
+                if (!staBIndex.TryGetValue(sta, out int j))
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"ReadWSELTableOxy: station '{sta}' not found in Plan B — skipping.");
+                    continue;
+                }
+
+                double wselA = Math.Round(wsElevA[proNA, i], 2);
+                double wselB = Math.Round(wsElevB[proNB, j], 2);
+
                 results.Add(new WSELTableOxy
                 {
-                    River = river[i],
-                    Reach = reach[i],
-                    RiverSta = riverSta[i],
+                    River = riverA[i],
+                    Reach = reachA[i],
+                    RiverSta = sta,
                     Profile = profileA[proNA],
-                    QTotal = qTotalA[proNA, i],
+                    QTotalA = qTotalA[proNA, i],
                     MinChEl = minChEl[proNA, i],
-                    WSElevA = Math.Round(wsElevA[proNA, i], 2),
-                    QTotalB = qTotalB[proNB, i],
-                    WSElevB = Math.Round(wsElevB[proNB, i], 2),
-                    DELTA = Math.Round(wsElevB[proNB, i] - wsElevA[proNA, i], 2)
+                    WSElevA = wselA,
+                    QTotalB = qTotalB[proNB, j],
+                    WSElevB = wselB,
+                    DELTA = Math.Round(wselB - wselA, 2)
                 });
             }
+
             return results;
         }
 
@@ -189,7 +199,7 @@ namespace HydroExplorer.Utils
                     Reach = reach[i],
                     RiverSta = riverSta[i],
                     Profile = profileA[proNA],
-                    QTotal = qTotalA[proNA, i],
+                    QTotalA = qTotalA[proNA, i],
                     MinChEl = minChEl[proNA, i],
                     WSElevA = Math.Round(wsElevA[proNA, i], 2),
                     QTotalB = float.NaN,   // no second source

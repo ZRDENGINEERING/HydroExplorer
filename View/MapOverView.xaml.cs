@@ -59,8 +59,22 @@ namespace HydroExplorer.View
 
             _mapState = App.ServiceProvider.GetRequiredService<MapStateService>();
 
-            _mapControl = new Mapsui.UI.Wpf.MapControl();
+            _mapControl = new Mapsui.UI.Wpf.MapControl
+            {
+                Background = new System.Windows.Media.SolidColorBrush(
+                System.Windows.Media.Color.FromRgb(71, 71, 73))
+            };
+
+
+
+
             _map = new Map { CRS = "EPSG:3857" };
+
+            // Texas center, reasonable zoom
+            var (cx, cy) = SphericalMercator.FromLonLat(-99.0, 31.0);
+            _map.Navigator.CenterOnAndZoomTo(new MPoint(cx, cy), 500_000);
+
+
 
             LoggingWidget.ShowLoggingInMap = Mapsui.Widgets.ActiveMode.No;
 
@@ -72,20 +86,22 @@ namespace HydroExplorer.View
 
             _mapControl.Map = _map;
             _map.Widgets.Clear();
+
+            _mapControl.Opacity = 0;
             Content = _mapControl;
 
             Loaded += async (s, e) => { await ResetMap(); };
-
 
             EventBus.ProjPathChanged += async path =>
             {
                 await Dispatcher.InvokeAsync(async () =>
                 {
                     try { await ResetMap(path); }
-                    catch (OperationCanceledException) { System.Diagnostics.Debug.WriteLine("ResetMap cancelled."); }
+                    catch (OperationCanceledException) { }
                     catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"ResetMap error: {ex.Message}"); }
                 });
             };
+
         }
 
 
@@ -97,46 +113,77 @@ namespace HydroExplorer.View
             _resetMapCts = new CancellationTokenSource();
             var token = _resetMapCts.Token;
 
+            await Dispatcher.InvokeAsync(() => _mapControl.Opacity = 0);
             await Task.Delay(100, token);
+
             _map.Layers.Clear();
 
-            //foreach (var name in Enum.GetNames(typeof(KnownTileSource)))
-            //{
-            //    Console.WriteLine(name);
-            //    System.Diagnostics.Debug.WriteLine($"AVAILABLE.............: {name}");
-            //}
 
+            var tileSource = KnownTileSources.Create(
+                KnownTileSource.EsriWorldDarkGrayBase,
+                apiKey: null,
+                persistentCache: new BruTile.Cache.FileCache(
+                    Path.Combine(Path.GetTempPath(), "HydroExplorer", "TileCache"),
+            "png"));
 
-            _map.Layers.Add(new TileLayer(KnownTileSources.Create(KnownTileSource.EsriWorldDarkGrayBase)));
+            _map.Layers.Add(new TileLayer(tileSource));
 
-
-
-            //lyr_osm.Opacity = 0.6;
-
-            //_map.Layers.Add(CreateDimOverlayLayer(opacity: 120));
+            //_map.Layers.Add(new TileLayer(KnownTileSources.Create(KnownTileSource.EsriWorldDarkGrayBase)));
 
             try
             {
                 await BuildPaths(projPath);
-                //await AddLayerShpTXSpz();
                 await AddLayerShpTXCnty();
                 await AddLayerShpZRD();
                 await AddLayerShpTXZRD();
-
                 await ExportShpBNDY();
                 await AddLayerShpBndy();
                 await InitView();
+                await Dispatcher.InvokeAsync(() => _mapControl.Refresh());
+                await WaitForTilesAsync(token);
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) { return; }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"ResetMap error: {ex.Message}"); }
+
+            // Wait for first real tile render before fading in
+            await WaitForTilesAsync(token);
+
+            await Dispatcher.InvokeAsync(() =>
             {
-                System.Diagnostics.Debug.WriteLine("ResetMap cancelled - newer project selected.");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"ResetMap error: {ex.Message}");
-            }
+                _mapControl.BeginAnimation(OpacityProperty,
+                    new System.Windows.Media.Animation.DoubleAnimation(0, 1,
+                        TimeSpan.FromMilliseconds(300)));
+            });
         }
 
+
+        private async Task WaitForTilesAsync(CancellationToken token)
+        {
+            var tcs = new TaskCompletionSource<bool>();
+
+            void OnMapDataChanged(object? sender, EventArgs e)
+            {
+                var tileLayer = _map.Layers.OfType<TileLayer>().FirstOrDefault();
+                if (tileLayer?.Extent != null)
+                    tcs.TrySetResult(true);
+            }
+
+            _map.DataChanged += OnMapDataChanged;
+
+            try
+            {
+                // Timeout fallback — don't hang forever if offline
+                using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+                timeoutCts.CancelAfter(TimeSpan.FromSeconds(5));
+
+                await tcs.Task.WaitAsync(timeoutCts.Token);
+            }
+            catch (OperationCanceledException) { /* timeout or reset — fade in anyway */ }
+            finally
+            {
+                _map.DataChanged -= OnMapDataChanged;
+            }
+        }
 
         private async Task InitView()
         {
@@ -625,13 +672,41 @@ namespace HydroExplorer.View
                     }
                 }
 
+                if (string.IsNullOrEmpty(_pathHdfA))
+                {
+                    System.Diagnostics.Debug.WriteLine("BuildPaths: no .pxx.hdf file found.");
+                }
 
-                if (!await EnsureHmsPath(projPath, settingsRepo, settings)) return;
+                // ── Warn if no HDF found at all ──────────────────────────────────────
+                if ((string.IsNullOrEmpty(_pathHdfA) || !File.Exists(_pathHdfA)) &&
+                    (string.IsNullOrEmpty(_pathHdfB) || !File.Exists(_pathHdfB)))
+                {
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        MessageBox.Show(
+                            "No HDF files were found for this project.\n\nVerify that HEC-RAS has been run and output files exist in the project directory.",
+                            "No HDF Files Found",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Warning);
+                    });
+                }
+
+
+                //if (!await EnsureHmsPath(projPath, settingsRepo, settings)) return;
 
                 if (!string.IsNullOrEmpty(_pathHMS))
                     EventBus.PublishHmsPathChanged(_pathHMS);
 
                 _pathSubBasins = FindShapefileByName("basin") ?? string.Empty;
+
+                EventBus.PublishGeometryPathsResolved(
+                    pathSubBasins: _pathSubBasins,
+                    pathXS: _pathXS ?? string.Empty,
+                    pathBNDY: _pathBNDY ?? string.Empty
+                );
+
+
+
 
                 bool canPublish = !string.IsNullOrEmpty(projPath)
                     && ((!string.IsNullOrEmpty(_pathHdfA) && File.Exists(_pathHdfA))
@@ -709,15 +784,15 @@ namespace HydroExplorer.View
             string projRoot = Path.GetFullPath(
                 Path.Combine(Path.GetDirectoryName(projPath) ?? string.Empty, ".."));
 
-            if (!selectedPath.StartsWith(projRoot, StringComparison.OrdinalIgnoreCase))
-            {
-                MessageBox.Show(
-                    $"Selected file should be within the project root folder:\n{projRoot}",
-                    "Verify HMS Path",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning);
-                //return false;
-            }
+            //if (!selectedPath.StartsWith(projRoot, StringComparison.OrdinalIgnoreCase))
+            //{
+            //    MessageBox.Show(
+            //        $"Selected file should be within the project root folder:\n{projRoot}",
+            //        "Verify HMS Path",
+            //        MessageBoxButton.OK,
+            //        MessageBoxImage.Warning);
+            //    //return false;
+            //}
 
             _pathHMS = selectedPath;
 

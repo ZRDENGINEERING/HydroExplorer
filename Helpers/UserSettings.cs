@@ -1,8 +1,6 @@
 ﻿using System.IO;
 using System.Text.Json;
 
-
-
 namespace HydroExplorer.Helpers
 {
     public class UserSettings
@@ -10,23 +8,28 @@ namespace HydroExplorer.Helpers
         public string LastProjPath { get; set; } = string.Empty;
         public string ProjPath { get; set; } = string.Empty;
         public string ProjDir { get; set; } = string.Empty;
-        public int NextOpenOrder { get; set; } = 0;
 
+        public string DssPath { get; set; } = string.Empty;
+        public int NextOpenOrder { get; set; } = 0;
 
         public Dictionary<string, ProjectSettings> Projects { get; set; } = [];
         public Dictionary<string, DateTime> HmsProjects { get; set; } = [];
+        public Dictionary<string, ShpPathEntry> ShpPaths { get; set; } = [];
 
         public IEnumerable<KeyValuePair<string, ProjectSettings>> RecentProjects =>
-            Projects
-                .Reverse()
-                .Take(10);
+            Projects.Reverse().Take(10);
 
-        public IEnumerable<KeyValuePair<string, DateTime>> RecentHmsProjects =>
-            HmsProjects
-                .Reverse()
-                .Take(10);
+        public IEnumerable<KeyValuePair<string, ShpPathEntry>> GeometryPaths =>
+            ShpPaths.Reverse().Take(20);
 
         public override string ToString() => $"{{ ProjPath: \"{ProjPath}\" }}";
+    }
+
+
+    public class ShpPathEntry
+    {
+        public DateTime LastOpened { get; set; }
+        public string LayerType { get; set; } = string.Empty;
     }
 
 
@@ -41,8 +44,19 @@ namespace HydroExplorer.Helpers
         public string HmsPath { get; set; } = string.Empty;
         public string SelectedReach { get; set; } = string.Empty;
         public DateTime LastOpened { get; set; } = DateTime.MinValue;
-        public int OpenOrder { get; set; } = 0; // ADD THIS
+        public int OpenOrder { get; set; } = 0;
     }
+
+
+    public class GeometryPathEntry
+    {
+        public string ShpPath { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string Directory { get; set; } = string.Empty;
+        public string LayerType { get; set; } = string.Empty;
+        public DateTime LastOpened { get; set; }
+    }
+
 
     public interface IUserSettingsRepo
     {
@@ -50,6 +64,7 @@ namespace HydroExplorer.Helpers
         Task<UserSettings> GetSettingsFresh();
         Task SaveSettings(UserSettings userSettings);
     }
+
 
     public class RecentProjectEntry
     {
@@ -150,6 +165,5 @@ namespace HydroExplorer.Helpers
             var settingsFolder = GetSettingsFolderPath();
             return Path.Combine(settingsFolder, SettingsFileName);
         }
-
     }
 }

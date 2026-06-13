@@ -29,8 +29,8 @@
             <DataTemplate DataType="{x:Type vm:TabChartViewModel}">
                 <views:TabChartView/>
             </DataTemplate>
-            <DataTemplate DataType="{x:Type vm:TabPrintViewModel}">
-                <views:TabPrintView/>
+            <DataTemplate DataType="{x:Type vm:TabPublishViewModel}">
+                <views:TabPublishView/>
             </DataTemplate>
             <DataTemplate DataType="{x:Type vm:TabSettingsViewModel}">
                 <views:TabOutputView/>

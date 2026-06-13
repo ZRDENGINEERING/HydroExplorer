@@ -1,12 +1,11 @@
-﻿using HydroExplorer.Utils;
+﻿using HydroExplorer.Helpers;
+using HydroExplorer.Themes;
+using HydroExplorer.Utils;
 using OxyPlot;
 using OxyPlot.Axes;
-using OxyPlot.Series;
 using OxyPlot.Legends;
-using HydroExplorer.Themes;
+using OxyPlot.Series;
 using System.IO;
-
-
 
 namespace HydroExplorer.ViewModel
 {
@@ -23,53 +22,78 @@ namespace HydroExplorer.ViewModel
             set { _plotModel?.InvalidatePlot(false); _plotModel = value; OnPropertyChanged(); }
         }
 
-        private static readonly (string Run, double ReturnPeriod)[] Runs =
+        // Run name suffixes to look for — matched against Part F after stripping "RUN:" prefix
+        // These are the return period suffixes; the prefix (e.g. "BOG_") varies by project
+        private static readonly (string Suffix, double ReturnPeriod)[] ReturnPeriods =
         [
-            ("BOG_2YR",   2),
-            ("BOG_5YR",   5),
-            ("BOG_10YR",  10),
-            ("BOG_25YR",  25),
-            ("BOG_50YR",  50),
-            ("BOG_100YR", 100),
-            ("BOG_500YR", 500),
+            ("2YR",   2),
+            ("5YR",   5),
+            ("10YR",  10),
+            ("25YR",  25),
+            ("50YR",  50),
+            ("100YR", 100),
+            ("500YR", 500),
         ];
 
         private static readonly OxyColor[] RunColors =
-[
-    OxyColors.SteelBlue,
-    OxyColors.MediumSeaGreen,
-    OxyColors.Goldenrod,
-    OxyColors.DarkOrange,
-    OxyColors.Tomato,
-    OxyColors.Crimson,
-    OxyColors.MediumPurple,
-];
+        [
+            OxyColors.SteelBlue,
+            OxyColors.MediumSeaGreen,
+            OxyColors.Goldenrod,
+            OxyColors.DarkOrange,
+            OxyColors.Tomato,
+            OxyColors.Crimson,
+            OxyColors.MediumPurple,
+        ];
 
         public ReturnPlotViewModel()
         {
             PlotModel = BuildEmptyPlot();
-            LoadAsync();
+
+            // Reload when user changes DSS file or run in Hydrology tab
+            EventBus.DssRunSelected += (dssPath, _) => LoadAsync(dssPath);
         }
 
-
-        private async void LoadAsync()
+        private async void LoadAsync(string dssFile)
         {
+            if (!File.Exists(dssFile)) return;
             try
             {
-                var dssFile = @"C:\Temp\199805003 Bart Test\Boggy\Boggy.dss";
-                if (!File.Exists(dssFile)) return;
+                // Get all run names from the file
+                var allPaths = await System.Threading.Tasks.Task.Run(() =>
+                    DssHyetographReader.GetAllPaths(dssFile));
 
-                var allRecords = new List<(double ReturnPeriod, List<DssHyetographReader.HyetographRecord> Records)>();
+                var runNames = allPaths
+                    .Select(p => {
+                        var trimmed = p.TrimEnd('/');
+                        var last = trimmed.LastIndexOf('/');
+                        if (last < 0) return string.Empty;
+                        var f = trimmed[(last + 1)..].Trim();
+                        return f.StartsWith("RUN:", StringComparison.OrdinalIgnoreCase) ? f[4..] : f;
+                    })
+                    .Where(r => !string.IsNullOrEmpty(r))
+                    .Distinct()
+                    .ToList();
 
-                foreach (var (run, rp) in Runs)
+                // Match return period suffixes against available run names
+                var allRecords = new List<(double ReturnPeriod, List<DssHydrographReader.HydrographRecord> Records)>();
+
+                foreach (var (suffix, rp) in ReturnPeriods)
                 {
+                    var matchedRun = runNames.FirstOrDefault(r =>
+                        r.EndsWith(suffix, StringComparison.OrdinalIgnoreCase));
+
+                    if (matchedRun == null) continue;
+
                     var records = await System.Threading.Tasks.Task.Run(() =>
-                        DssHyetographReader.ReadByPartB(dssFile, "FLOW", run));
+                        DssHydrographReader.ReadFlow(dssFile, matchedRun));
 
                     if (records.Count > 0)
                     {
                         allRecords.Add((rp, records));
-                        //System.Diagnostics.Debug.WriteLine($"Return period {rp}yr: {records.Count} records, peak: {records.Max(r => r.Value):F0} cfs");
+                        //System.Diagnostics.Debug.WriteLine(
+                        //    $"ReturnPlot: {rp}yr run='{matchedRun}' records={records.Count} " +
+                        //    $"peak={records.Max(r => r.Value):F0}");
                     }
                 }
 
@@ -86,28 +110,24 @@ namespace HydroExplorer.ViewModel
             }
         }
 
-
-
-
         private PlotModel BuildEmptyPlot() => BuildPlot(null);
 
-
         private static PlotModel BuildPlot(
-    List<(double ReturnPeriod, List<DssHyetographReader.HyetographRecord> Records)>? runs = null)
+            List<(double ReturnPeriod, List<DssHydrographReader.HydrographRecord> Records)>? runs = null)
         {
             var model = new PlotModel
             {
                 TextColor = OxyColorPalette.Colors["TextAxis"],
                 PlotAreaBorderColor = OxyColorPalette.Colors["DimGray"],
                 PlotAreaBorderThickness = new OxyThickness(1),
-                PlotMargins = new OxyThickness(70, 10, 10, 40),
+                PlotMargins = new OxyThickness(38, 5, 5, 40),
                 DefaultFontSize = 10,
             };
 
             var xAxis = new LinearAxis
             {
                 Position = AxisPosition.Bottom,
-                Title = "TIME IN HOURS",
+                Title = "TIME (hr)",
                 Minimum = 0,
                 MajorGridlineStyle = LineStyle.Solid,
                 MajorGridlineColor = OxyColorPalette.Colors["DimGray"],
@@ -124,7 +144,7 @@ namespace HydroExplorer.ViewModel
             var yAxis = new LinearAxis
             {
                 Position = AxisPosition.Left,
-                Title = "DISCHARGE (CFS)",
+                Title = "DISCHARGE (cfs)",
                 Minimum = 0,
                 MajorGridlineStyle = LineStyle.Solid,
                 MajorGridlineColor = OxyColorPalette.Colors["DimGray"],
@@ -154,7 +174,6 @@ namespace HydroExplorer.ViewModel
                         Title = $"{(int)rp}-YR",
                         Color = color,
                         StrokeThickness = 1.5,
-                        LineStyle = LineStyle.Solid,
                     };
 
                     foreach (var r in records)

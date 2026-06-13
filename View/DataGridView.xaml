@@ -8,7 +8,7 @@
              xmlns:utils="clr-namespace:HydroExplorer.Utils" 
              d:DataContext="{d:DesignInstance Type=local:HecRasProfileResult}"
              mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800">
+             d:DesignHeight="1650" d:DesignWidth="800">
 
     <UserControl.Resources>
             <hlp:ValueToColorConverter x:Key="ValueToColorConverter"/>
@@ -68,7 +68,7 @@
 
 
         <DataGrid x:Name="dgSimple"
-          Grid.Row="0"
+          Grid.Row="1"
           Grid.RowSpan="2"
           AutoGenerateColumns="False"
           CanUserAddRows="False"
@@ -78,15 +78,11 @@
                 <DataGridTextColumn Header="River Sta"   Binding="{Binding RiverSta}"        Width="60"  ElementStyle="{StaticResource CenterStyle}"/>
                 <DataGridTextColumn Header="Profile"     Binding="{Binding Profile}"         Width="60"  Foreground="Gray" ElementStyle="{StaticResource CenterStyle}"/>
 
-                <DataGridTextColumn Header="QTotal A" Binding="{Binding QTotal}" Width="65" Foreground="Gray"
-                    ElementStyle="{StaticResource CenterStyle}"
-                    CellStyle="{StaticResource ColAStyle}"/>
-
+                <DataGridTextColumn Header="QTotal A"    Binding="{Binding QTotalADisplay}"  Width="65"  Foreground="Gray" ElementStyle="{StaticResource CenterStyle}"/>
                 <DataGridTextColumn Header="WSElev A" Binding="{Binding WSElevA}" Width="68"
                     ElementStyle="{StaticResource CenterStyle}"
                     CellStyle="{StaticResource ColAStyle}"/>
-
-
+           
                 <DataGridTextColumn Header="QTotal B"    Binding="{Binding QTotalBDisplay}"  Width="65"  Foreground="Gray" ElementStyle="{StaticResource CenterStyle}"/>
                 <DataGridTextColumn Header="WSElev B"    Binding="{Binding WSElevBDisplay}"  Width="68"  ElementStyle="{StaticResource CenterStyle}"/>
 

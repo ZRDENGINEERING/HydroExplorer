@@ -9,24 +9,17 @@
       mc:Ignorable="d" 
       d:DesignHeight="450" d:DesignWidth="800">
 
-    
-    
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="36"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="36"/>
-        </Grid.RowDefinitions>
 
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
 
-        
-        
-        
-         
+    <Grid Background="{StaticResource BackgroundBrushDark}">
+        <TextBlock Text="Welcome to TabOutputView!" 
+               HorizontalAlignment="Center"
+               VerticalAlignment="Center"
+               FontSize="24"/>
+
+
+
+
+
     </Grid>
 </UserControl>

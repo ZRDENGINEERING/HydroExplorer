@@ -94,11 +94,8 @@ namespace HydroExplorer.ViewModel.TabItem
                 return;
             }
 
-
             var projFile = Directory.GetFiles(project.FilePath, "*.rasmap").FirstOrDefault()
                 ?? Directory.GetFiles(project.FilePath, "*.prj").FirstOrDefault();
-
-            
 
             if (projFile == null)
             {
@@ -110,8 +107,13 @@ namespace HydroExplorer.ViewModel.TabItem
             if (settings.Projects.TryGetValue(projFile, out var projSettings))
             {
                 projSettings.LastOpened = DateTime.Now;
-                await SettingsRepo.SaveSettings(settings);
             }
+
+            // ← save LastProjPath so it persists across restarts
+            settings.LastProjPath = projFile;
+            settings.ProjPath = projFile;
+            settings.ProjDir = project.FilePath;
+            await SettingsRepo.SaveSettings(settings);
 
             EventBus.PublishProjPath(projFile);
             EventBus.PublishProjPathChanged(projFile);

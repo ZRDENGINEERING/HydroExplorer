@@ -10,7 +10,7 @@ namespace HydroExplorer.ViewModel
         public DiscoveryViewModel DiscoveryVM { get; set; }
         public DataGridViewModel DataGridVM { get; set; }
         public MapViewModel MapVM { get; set; }
-        public TabInfoViewModel TabInfoVM { get; set; }  // ← add this
+        public TabInfoViewModel TabInfoVM { get; set; }
 
         public object _currentView;
         public object CurrentView
@@ -34,7 +34,7 @@ namespace HydroExplorer.ViewModel
             DiscoveryVM = new DiscoveryViewModel();
             DataGridVM = new DataGridViewModel();
             MapVM = new MapViewModel();
-            TabInfoVM = new TabInfoViewModel(settingsRepo);  // ← add this
+            TabInfoVM = new TabInfoViewModel(settingsRepo);
 
             CurrentView = HomeVM;
 
@@ -42,6 +42,22 @@ namespace HydroExplorer.ViewModel
             DiscoveryViewCommand = new RelayCommand(o => { CurrentView = DiscoveryVM; }, o => true);
             DataGridViewCommand = new RelayCommand(o => { CurrentView = DataGridVM; }, o => true);
             MapViewCommand = new RelayCommand(o => { CurrentView = MapVM; }, o => true);
+
+            // Publish AppLoaded after all VMs are constructed so pane subscribers are ready
+            _ = PublishAppLoadedAsync();
+        }
+
+        private async Task PublishAppLoadedAsync()
+        {
+            try
+            {
+                var settings = await _settingsRepo.GetSettingsFresh();
+                EventBus.PublishAppLoaded(settings);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"MainWindowViewModel.PublishAppLoadedAsync error: {ex.Message}");
+            }
         }
 
         public string _selectedImagePath;

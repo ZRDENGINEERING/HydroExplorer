@@ -79,7 +79,7 @@
     <Compile Update="View\TabItem\TabChartView.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Update="View\TabItem\TabPrintView.xaml.cs">
+    <Compile Update="View\TabItem\TabPublishView.xaml.cs">
       <SubType>Code</SubType>
     </Compile>
   </ItemGroup>

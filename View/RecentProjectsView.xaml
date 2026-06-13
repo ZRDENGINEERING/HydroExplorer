@@ -7,18 +7,10 @@
              d:DataContext="{d:DesignInstance Type=vm:TabInfoViewModel}"
              mc:Ignorable="d">
 
-    
     <Grid Background="{StaticResource BackgroundBrushDark}">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="5"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
 
-        
         <!-- Recent Projects -->
-        <GroupBox Grid.Row="0"
-                  Header="RECENT PROJECTS"
+        <GroupBox Header="RECENT PROJECTS"
                   FontSize="12" FontWeight="SemiBold"
                   Background="{StaticResource BackgroundBrushHeader}"
                   BorderBrush="{StaticResource BorderBrush}"
@@ -28,75 +20,20 @@
                     <TextBlock Text="{Binding}"
                                FontSize="12" FontWeight="SemiBold"
                                Foreground="{StaticResource ForegroundBrush}"/>
-                               
-                </DataTemplate>
-            </GroupBox.HeaderTemplate>
-            <ListBox ItemsSource="{Binding RecentProjects}"
-                     SelectedItem="{Binding SelectedRecentProject, Mode=TwoWay}"
-                     Background="{StaticResource BackgroundBrushSidePanels}"
-                     BorderThickness="0"
-                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <StackPanel Orientation="Vertical" Margin="0,2">
-                            <TextBlock Text="{Binding Name}"
-                                       Foreground="{StaticResource ForegroundBrush}"
-                                       FontSize="11" FontWeight="SemiBold"/>
-                            <TextBlock Text="{Binding FilePath}"
-                                       Foreground="{StaticResource ForegroundBrushDark}"
-                                       FontSize="10"
-                                       TextTrimming="CharacterEllipsis"
-                                       ToolTip="{Binding FilePath}"/>
-                            <TextBlock Text="{Binding LastOpened, StringFormat='Last opened: {0:MM/dd/yyyy h:mm tt}'}"
-                                       Foreground="Gray" FontSize="9"/>
-                        </StackPanel>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-                <ListBox.ItemContainerStyle>
-                    <Style TargetType="ListBoxItem">
-                        <Setter Property="Background" Value="Transparent"/>
-                        <Setter Property="Padding" Value="4,3"/>
-                        <Setter Property="Cursor" Value="Hand"/>
-                        <Style.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter Property="Background" Value="{StaticResource BackgroundBrush}"/>
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
-                </ListBox.ItemContainerStyle>
-            </ListBox>
-        </GroupBox>
-
-        <GridSplitter Grid.Row="1" Height="4"
-                      HorizontalAlignment="Stretch"
-                      Background="{StaticResource DividerBrush}"/>
-
-        
-        
-        <!-- Recent HMS Projects -->
-        <GroupBox Grid.Row="2" 
-                  Header="RECENT HMS PROJECTS"
-                  FontSize="12" FontWeight="SemiBold"
-                  Background="{StaticResource BackgroundBrushHeader}"
-                  BorderBrush="{StaticResource BorderBrush}"
-                  BorderThickness="0.8">
-            <GroupBox.HeaderTemplate>
-                <DataTemplate>
-                    <TextBlock Text="{Binding}" VerticalAlignment="Center"
-                               Foreground="{StaticResource ForegroundBrush}"
-                               FontSize="12" FontWeight="SemiBold"/>
                 </DataTemplate>
             </GroupBox.HeaderTemplate>
             <DockPanel>
                 <Button DockPanel.Dock="Bottom"
-                        Content="CLEAR ALL RECENT PROJECTS"
+                        Content="CLEAR RECENT PROJECTS"
                         Command="{Binding ClearAllRecentCommand}"
-                        Margin="0,4,0,0"
-                        Padding="6,3"
+                        Margin="0,2,0,0"
+                        Padding="5,3"
                         HorizontalAlignment="Left"
                         Background="{StaticResource BackgroundBrushSidePanels}"
                         FontSize="8"/>
-                <ListBox ItemsSource="{Binding RecentHmsProjects}"
+                <ListBox ItemsSource="{Binding RecentProjects}"
+                         SelectedItem="{Binding SelectedRecentProject, Mode=TwoWay}"
+                         Background="{StaticResource BackgroundBrushSidePanels}"
                          BorderThickness="0"
                          ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                     <ListBox.ItemTemplate>
@@ -110,6 +47,8 @@
                                            FontSize="10"
                                            TextTrimming="CharacterEllipsis"
                                            ToolTip="{Binding FilePath}"/>
+                                <TextBlock Text="{Binding LastOpened, StringFormat='Last opened: {0:MM/dd/yyyy h:mm tt}'}"
+                                           Foreground="Gray" FontSize="9"/>
                             </StackPanel>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
@@ -128,5 +67,6 @@
                 </ListBox>
             </DockPanel>
         </GroupBox>
+
     </Grid>
 </UserControl>

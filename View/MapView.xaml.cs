@@ -142,8 +142,10 @@ namespace HydroExplorer.View
             _map.Layers.Clear();
 
 
-            var lyr_bing = new TileLayer(KnownTileSources.Create(KnownTileSource.BingHybrid));
-            //lyr_bing.Opacity = 1;
+            var lyr_bing = new TileLayer(KnownTileSources.Create(KnownTileSource.BingHybrid))
+            {
+                Opacity = 0.55
+            };
 
             _map.Layers.Add(lyr_bing);
 

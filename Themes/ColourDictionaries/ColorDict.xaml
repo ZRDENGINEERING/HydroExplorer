@@ -30,7 +30,7 @@
     <Color x:Key="BackgroundColor">#1f1f1f</Color>
     <Color x:Key="ForegroundColorDark">#7B7B7B</Color>
     <Color x:Key="ForegroundColor">DarkGray</Color>
-    <Color x:Key="FooterColor">#a4161a</Color>
+    <Color x:Key="FooterColor">#27324b</Color>
 
     <!-- Brushes (these are what you actually bind to in XAML) -->
     <SolidColorBrush x:Key="DividerBrush" Color="{StaticResource DividerColor}"/>

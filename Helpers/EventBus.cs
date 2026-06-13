@@ -34,8 +34,33 @@
         public static void PublishProfileChanged(string profileName) => ProfileChanged?.Invoke(profileName);
 
 
+        public static event Action<string, string, string>? GeometryPathsResolved;
+        public static void PublishGeometryPathsResolved(string pathSubBasins, string pathXS, string pathBNDY)
+            => GeometryPathsResolved?.Invoke(pathSubBasins, pathXS, pathBNDY);
+
+
 
         public static event Action<string>? TopTabChanged;
         public static void RaiseTopTabChanged(string tabHeader) => TopTabChanged?.Invoke(tabHeader);
+
+
+        public static event Action<string>? ShpPathSelected;
+        public static void PublishShpPath(string path) => ShpPathSelected?.Invoke(path);
+
+
+        public static event Action<UserSettings>? AppLoaded;
+        public static void PublishAppLoaded(UserSettings settings) => AppLoaded?.Invoke(settings);
+
+
+        public static event Action<string, string>? DssRunSelected;
+        public static void PublishDssRunSelected(string dssPath, string runName)
+            => DssRunSelected?.Invoke(dssPath, runName);
+
+
+        public static event Action<string, string>? PlanNamesChanged;
+        public static void PublishPlanNamesChanged(string planA, string planB)
+            => PlanNamesChanged?.Invoke(planA, planB);
+
+
     }
 }
