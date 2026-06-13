@@ -304,15 +304,15 @@ namespace HydroExplorer.View
                 string projRoot = Path.GetFullPath(Path.Combine(
                     Path.GetDirectoryName(projPath ?? string.Empty) ?? string.Empty, ".."));
 
-                //if (!path.StartsWith(projRoot, StringComparison.OrdinalIgnoreCase))
-                //{
-                //    MessageBox.Show(
-                //        $"Selected HMS file should be within the project root folder:\n{projRoot}",
-                //        "Verify HMS Path",
-                //        MessageBoxButton.OK,
-                //        MessageBoxImage.Warning);
-                //    return;
-                //}
+                if (!path.StartsWith(projRoot, StringComparison.OrdinalIgnoreCase))
+                {
+                    MessageBox.Show(
+                        $"Selected HMS file should be within the project root folder:\n{projRoot}",
+                        "Verify HMS Path",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Warning);
+                    return;
+                }
 
                 EventBus.PublishRunPath(path);
 
