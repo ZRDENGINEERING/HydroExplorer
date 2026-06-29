@@ -1,4 +1,5 @@
 ﻿using HydroExplorer.Helpers;
+using Microsoft.Extensions.DependencyInjection;
 using System.Collections.ObjectModel;
 
 
@@ -41,20 +42,19 @@ namespace HydroExplorer.ViewModel.TabItem
 
         public TabControlViewModel()
         {
-            var settingsRepo = new FileSystemUserSettingsRepo();
+            var tabInfoVM = App.ServiceProvider.GetRequiredService<TabInfoViewModel>();
 
             Tabs =
             [
-                new TabItemViewModel { Header = "Info",    Content = new TabInfoViewModel(settingsRepo) },
+                new TabItemViewModel { Header = "Info",    Content = tabInfoVM },
                 new TabItemViewModel { Header = "Main",    Content = new TabMainViewModel() },
                 new TabItemViewModel { Header = "Charts",  Content = null },
-                new TabItemViewModel { Header = "Output",  Content = new TabSettingsViewModel() },
                 new TabItemViewModel { Header = "Publish", Content = new TabPublishViewModel() },
+                new TabItemViewModel { Header = "BlankTop",  Content = new TabSettingsViewModel() }
             ];
 
             SelectedTab = Tabs[0];
             EventBus.RaiseTopTabChanged("Info");
-
         }
     }
 }

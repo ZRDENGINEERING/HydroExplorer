@@ -6,27 +6,26 @@
              xmlns:local="clr-namespace:HydroExplorer"
              xmlns:views="clr-namespace:HydroExplorer.View"
              mc:Ignorable="d"
-             d:DesignHeight="450" d:DesignWidth="150">
+             d:DesignHeight="450" d:DesignWidth="250">
 
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="30"/>
             <RowDefinition Height="3*"/>
             <RowDefinition Height="4"/>
-            <RowDefinition Height="330" MinHeight="32"/>
+            <RowDefinition Height="300" MinHeight="32"/>
         </Grid.RowDefinitions>
 
         <!-- Header -->
         <GroupBox Grid.Row="0"
                   Header="HYDRAULICS"
-                  FontSize="12" FontWeight="SemiBold"
+                  FontSize="12" FontWeight="Bold"
                   Background="{StaticResource BackgroundBrushHeader}"
                   BorderBrush="{StaticResource BorderBrush}"
                   BorderThickness="0.8"/>
 
         <!-- Filtered Tree: .prj files only -->
-        <views:FilteredTreeView Grid.Row="1"
-                                FileExtensionFilter=".prj"/>
+        <views:FilteredTreeView Grid.Row="1" FileExtensionFilter=".prj"/>
 
         <!-- Splitter -->
         <GridSplitter Grid.Row="2" Width="400"
@@ -37,7 +36,7 @@
         <!-- Active Paths -->
         <GroupBox Grid.Row="3"
                   Header="ACTIVE PATHS"
-                  FontSize="12" FontWeight="SemiBold"
+                  FontSize="12" FontWeight="Bold"
                   Foreground="{StaticResource ForegroundBrush}"
                   Background="{StaticResource BackgroundBrushLight}"
                   BorderBrush="{StaticResource BorderBrush}"
@@ -58,8 +57,8 @@
 
                 <TextBlock FontSize="10" Margin="10,4,0,0"
                            Foreground="{StaticResource ForegroundBrush}">Plan Name A:</TextBlock>
+                
                 <ComboBox Name="cboxPlanNameA"
-                          
                           FontSize="10" Background="#543d05" BorderThickness="0"
                           Width="200" Margin="0,0,0,2"
                           Foreground="{StaticResource ForegroundBrushDark}"/>

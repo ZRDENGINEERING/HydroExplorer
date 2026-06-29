@@ -11,14 +11,14 @@
 
         <!-- Recent Projects -->
         <GroupBox Header="RECENT PROJECTS"
-                  FontSize="12" FontWeight="SemiBold"
+                  FontSize="12" FontWeight="Bold"
                   Background="{StaticResource BackgroundBrushHeader}"
                   BorderBrush="{StaticResource BorderBrush}"
                   BorderThickness="0.8">
             <GroupBox.HeaderTemplate>
                 <DataTemplate>
                     <TextBlock Text="{Binding}"
-                               FontSize="12" FontWeight="SemiBold"
+                               FontSize="12" FontWeight="Bold"
                                Foreground="{StaticResource ForegroundBrush}"/>
                 </DataTemplate>
             </GroupBox.HeaderTemplate>
@@ -39,19 +39,20 @@
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <StackPanel Orientation="Vertical" Margin="0,2">
-                                <TextBlock Text="{Binding Name}"
+                                <TextBlock Text="{Binding ProjName}"
                                            Foreground="{StaticResource ForegroundBrush}"
-                                           FontSize="11" FontWeight="SemiBold"/>
-                                <TextBlock Text="{Binding FilePath}"
+                                           FontSize="11" FontWeight="DemiBold"/>
+                                <TextBlock Text="{Binding ProjPath}"
                                            Foreground="{StaticResource ForegroundBrushDark}"
                                            FontSize="10"
                                            TextTrimming="CharacterEllipsis"
-                                           ToolTip="{Binding FilePath}"/>
+                                           ToolTip="{Binding ProjPath}"/>
                                 <TextBlock Text="{Binding LastOpened, StringFormat='Last opened: {0:MM/dd/yyyy h:mm tt}'}"
                                            Foreground="Gray" FontSize="9"/>
                             </StackPanel>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
+
                     <ListBox.ItemContainerStyle>
                         <Style TargetType="ListBoxItem">
                             <Setter Property="Background" Value="Transparent"/>
@@ -61,9 +62,16 @@
                                 <Trigger Property="IsMouseOver" Value="True">
                                     <Setter Property="Background" Value="{StaticResource BackgroundBrush}"/>
                                 </Trigger>
+                                <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                    <Setter Property="Background" Value="{StaticResource BackgroundBrushLight}"/>
+                                    <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                                    <Setter Property="BorderThickness" Value="2,0,0,0"/>
+                                </DataTrigger>
                             </Style.Triggers>
                         </Style>
                     </ListBox.ItemContainerStyle>
+
+
                 </ListBox>
             </DockPanel>
         </GroupBox>

@@ -1,5 +1,7 @@
 ﻿using HydroExplorer.Helpers;
 using HydroExplorer.ViewModel;
+using HydroExplorer.ViewModel.TabItem;
+using Mapsui.Widgets.InfoWidgets;
 using Microsoft.Extensions.DependencyInjection;
 using System.IO;
 using System.Windows;
@@ -18,6 +20,13 @@ namespace HydroExplorer
         {
             base.OnStartup(e);
 
+            System.Diagnostics.PresentationTraceSources.DataBindingSource.Switch.Level =
+            System.Diagnostics.SourceLevels.Critical;
+
+            LoggingWidget.ShowLoggingInMap = Mapsui.Widgets.ActiveMode.No;
+            Mapsui.Logging.Logger.LogDelegate = null;
+
+
             CleanupTempShapefiles();
             TaskScheduler.UnobservedTaskException += (s, args) =>
             {
@@ -34,6 +43,9 @@ namespace HydroExplorer
                 System.Diagnostics.Debug.WriteLine($"Unobserved task exception: {args.Exception}");
                 args.SetObserved();
             };
+
+            CleanupTempShapefiles();
+            _ = CleanupStaleProjectsAsync();
 
             DispatcherUnhandledException += (s, args) =>
             {
@@ -60,11 +72,10 @@ namespace HydroExplorer
 
 
 
-
-
-
             var services = new ServiceCollection();
             services.AddSingleton<IUserSettingsRepo, FileSystemUserSettingsRepo>();
+            services.AddSingleton<TabInfoViewModel>();
+            services.AddSingleton<TabControlViewModel>();
             services.AddSingleton<MainWindowViewModel>();
             services.AddSingleton<MapStateService>();
             services.AddSingleton<PlotViewModel>();
@@ -123,9 +134,47 @@ namespace HydroExplorer
         }
 
 
+        private static async Task CleanupStaleProjectsAsync()
+        {
+            try
+            {
+                var settingsRepo = ServiceProvider?.GetService<IUserSettingsRepo>();
+                if (settingsRepo == null) return;
 
+                var settings = await settingsRepo.GetSettings();
 
+                var stalePaths = settings.Projects.Keys
+                    .Where(path =>
+                    {
+                        string dir = Path.GetDirectoryName(path) ?? string.Empty;
+                        return !File.Exists(path) && !Directory.Exists(dir);
+                    })
+                    .ToList();
 
+                if (stalePaths.Count == 0) return;
+
+                foreach (var path in stalePaths)
+                {
+                    settings.Projects.Remove(path);
+                    System.Diagnostics.Debug.WriteLine($"CleanupStaleProjects: removed '{path}'");
+                }
+
+                // Also clear LastProjPath if it's stale
+                if (!string.IsNullOrEmpty(settings.LastProjPath) &&
+                    !File.Exists(settings.LastProjPath))
+                {
+                    System.Diagnostics.Debug.WriteLine($"CleanupStaleProjects: clearing stale LastProjPath '{settings.LastProjPath}'");
+                    settings.LastProjPath = string.Empty;
+                    settings.ProjPath = string.Empty;
+                }
+
+                await settingsRepo.SaveSettings(settings);
+                System.Diagnostics.Debug.WriteLine($"CleanupStaleProjects: removed {stalePaths.Count} stale entries.");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"CleanupStaleProjects error: {ex.Message}");
+            }
+        }
     }
-
 }

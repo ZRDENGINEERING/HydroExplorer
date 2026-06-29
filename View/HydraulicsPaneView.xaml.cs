@@ -24,48 +24,52 @@ namespace HydroExplorer.View
 
             EventBus.ProjPathSelected += async path =>
             {
+                _isLoading = true;  // suppress SelectionChanged during combo rebuild + restore
+
                 txtBoxProjPath.Text = path;
                 _projDir = Directory.Exists(path) ? path : Path.GetDirectoryName(path) ?? string.Empty;
                 PopulateHdfComboBox(_projDir);
 
-                // Restore saved selections for this project rather than saving empty
-                var settings = await _settingsRepo.GetSettings();
+                var settings = await _settingsRepo.GetSettingsFresh();
                 string projKey = TreeViewControl.NormalizeProjKey(path);
-                if (!string.IsNullOrEmpty(projKey) &&
-                    settings.Projects.TryGetValue(projKey, out var proj))
+
+                try
                 {
-                    _isLoading = true;
-
-                    string? planNameA = _hdfPlanNames.FirstOrDefault(kv =>
-                        kv.Key.Equals(proj.HdfPathA, StringComparison.OrdinalIgnoreCase)).Value;
-                    string? planNameB = _hdfPlanNames.FirstOrDefault(kv =>
-                        kv.Key.Equals(proj.HdfPathB, StringComparison.OrdinalIgnoreCase)).Value;
-                    System.Diagnostics.Debug.WriteLine($"OnAppLoaded restore: PlanA='{planNameA}' PlanB='{planNameB}' ProName='{proj.ProName}'");
-
-                    cboxPlanNameA.SelectedItem = planNameA;
-
-                    var allFiles = (cboxPlanNameA.Tag as List<string>) ?? [];
-                    UpdateHdfPathB(allFiles, proj.HdfPathA, planNameB);
-
-                    txtBoxHdfPathA.Text = proj.HdfPathA;
-                    txtBoxHdfPathB.Text = proj.HdfPathB;
-
-                    if (!string.IsNullOrEmpty(proj.HdfPathA) && File.Exists(proj.HdfPathA))
+                    if (!string.IsNullOrEmpty(projKey) &&
+                        settings.Projects.TryGetValue(projKey, out var proj))
                     {
-                        var profiles = HecRasHdfReader.GetProfileNames(proj.HdfPathA);
-                        cboxProfiles.ItemsSource = profiles;
-                        SelectDefaultProfile(profiles, proj.ProName);
-                    }
+                        string? planNameA = _hdfPlanNames.FirstOrDefault(kv =>
+                            kv.Key.Equals(proj.HdfPathA, StringComparison.OrdinalIgnoreCase)).Value;
+                        string? planNameB = _hdfPlanNames.FirstOrDefault(kv =>
+                            kv.Key.Equals(proj.HdfPathB, StringComparison.OrdinalIgnoreCase)).Value;
 
-                    _isLoading = false;
-                    if (cboxProfiles.SelectedItem is string profile)
-                        EventBus.PublishProfileChanged(profile);
+                        cboxPlanNameA.SelectedItem = planNameA;
+
+                        var allFiles = (cboxPlanNameA.Tag as List<string>) ?? [];
+                        UpdateHdfPathB(allFiles, proj.HdfPathA, planNameB);
+
+                        txtBoxHdfPathA.Text = proj.HdfPathA;
+                        txtBoxHdfPathB.Text = proj.HdfPathB;
+
+                        if (!string.IsNullOrEmpty(proj.HdfPathA) && File.Exists(proj.HdfPathA))
+                        {
+                            var profiles = HecRasHdfReader.GetProfileNames(proj.HdfPathA);
+                            cboxProfiles.ItemsSource = profiles;
+                            SelectDefaultProfile(profiles, proj.ProName);
+                        }
+                    }
+                    // No saved entry yet — combo boxes are already populated empty/default
+                    // from PopulateHdfComboBox above; nothing further to restore.
                 }
-                else
+                finally
                 {
-                    await SaveSettings();
+                    _isLoading = false;
                 }
+
+                if (cboxProfiles.SelectedItem is string profile)
+                    EventBus.PublishProfileChanged(profile);
             };
+
 
             EventBus.HdfFileASelected += (profiles, planName) =>
             {
@@ -79,7 +83,7 @@ namespace HydroExplorer.View
                 txtBoxHdfPathB.Text = planName;
             };
 
-            cboxPlanNameA.SelectionChanged += (s, e) =>
+            cboxPlanNameA.SelectionChanged += async (s, e) =>
             {
                 if (_isLoading) return;
                 if (cboxPlanNameA.SelectedItem is not string planName) return;
@@ -91,14 +95,14 @@ namespace HydroExplorer.View
                 cboxProfiles.ItemsSource = profiles;
                 SelectDefaultProfile(profiles, null);
                 txtBoxHdfPathA.Text = path;
-                // SaveSettings called by cboxProfiles.SelectionChanged after profile is set
                 EventBus.PublishHdfPathChanged();
                 EventBus.PublishPlanNamesChanged(
                     cboxPlanNameA.SelectedItem as string ?? string.Empty,
-                    cboxPlanNameB.SelectedItem as string ?? string.Empty);
+                    planName);
+                await SaveSettings();
             };
 
-            cboxPlanNameB.SelectionChanged += (s, e) =>
+            cboxPlanNameB.SelectionChanged += async (s, e) =>
             {
                 if (_isLoading) return;
                 if (cboxPlanNameB.SelectedItem is not string planName) return;
@@ -108,11 +112,11 @@ namespace HydroExplorer.View
                 cboxProfiles.ItemsSource = profiles;
                 SelectDefaultProfile(profiles, null);
                 txtBoxHdfPathB.Text = path;
-                // SaveSettings called by cboxProfiles.SelectionChanged after profile is set
                 EventBus.PublishHdfPathChanged();
                 EventBus.PublishPlanNamesChanged(
                     cboxPlanNameA.SelectedItem as string ?? string.Empty,
-                    cboxPlanNameB.SelectedItem as string ?? string.Empty);
+                    planName);
+                await SaveSettings();
             };
 
             cboxProfiles.SelectionChanged += async (s, e) =>
@@ -149,7 +153,6 @@ namespace HydroExplorer.View
                         kv.Key.Equals(proj.HdfPathA, StringComparison.OrdinalIgnoreCase)).Value;
                     string? planNameB = _hdfPlanNames.FirstOrDefault(kv =>
                         kv.Key.Equals(proj.HdfPathB, StringComparison.OrdinalIgnoreCase)).Value;
-                    System.Diagnostics.Debug.WriteLine($"OnAppLoaded restore: PlanA='{planNameA}' PlanB='{planNameB}' ProName='{proj.ProName}'");
 
                     // Set A — _isLoading=true so SelectionChanged is suppressed
                     cboxPlanNameA.SelectedItem = planNameA;
@@ -183,6 +186,7 @@ namespace HydroExplorer.View
         private void PopulateHdfComboBox(string projDir)
         {
             if (string.IsNullOrEmpty(projDir) || !Directory.Exists(projDir)) return;
+
 
             var hdfFiles = Directory.GetFiles(projDir, "*.hdf")
                 .Where(f => HdfRegex().IsMatch(Path.GetFileName(f)))
@@ -229,14 +233,12 @@ namespace HydroExplorer.View
         {
             if (_isLoading) return;
 
-            // Debounce — only the last request within 300ms actually saves
             var requestTime = _lastSaveRequest = DateTime.UtcNow;
             await Task.Delay(300);
             if (_lastSaveRequest != requestTime) return;
 
             try
             {
-                // Capture UI values on the UI thread before any await
                 string projPath = TreeViewControl.NormalizeProjKey(txtBoxProjPath.Text);
                 string planNameA = cboxPlanNameA.SelectedItem as string ?? string.Empty;
                 string planNameB = cboxPlanNameB.SelectedItem as string ?? string.Empty;
@@ -244,20 +246,20 @@ namespace HydroExplorer.View
                 string hdfPathA = PlanNameToPath(planNameA) ?? string.Empty;
                 string hdfPathB = PlanNameToPath(planNameB) ?? string.Empty;
 
-                System.Diagnostics.Debug.WriteLine($"SaveSettings: PlanA='{planNameA}' PlanB='{planNameB}' ProName='{proName}'");
-
                 if (string.IsNullOrEmpty(projPath)) return;
 
                 var settings = await _settingsRepo.GetSettings();
 
                 if (!settings.Projects.TryGetValue(projPath, out var proj))
-                    proj = settings.Projects[projPath] = new ProjectSettings { ProjDir = _projDir };
+                    proj = settings.Projects[projPath] = new ProjectSettings { ProjPath = projPath };
 
+                // Only update HDF-related fields — preserve ProjName, HmsPath, etc.
                 proj.HdfPathA = hdfPathA;
                 proj.HdfPathB = hdfPathB;
                 proj.PlanNameA = planNameA;
                 proj.PlanNameB = planNameB;
                 proj.ProName = proName;
+                // ← do NOT touch proj.ProjName, proj.HmsPath, proj.ProjPath, proj.OpenOrder
 
                 await _settingsRepo.SaveSettings(settings);
             }

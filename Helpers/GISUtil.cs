@@ -75,7 +75,6 @@ namespace HydroExplorer.Helpers
 
             if (int.TryParse(stem, out int epsg))
             {
-                // Use cache if available
                 if (_wktCache.TryGetValue(epsg, out string? cached))
                 {
                     System.Diagnostics.Debug.WriteLine($"FetchHECWkt: EPSG:{epsg} from cache.");
@@ -138,6 +137,75 @@ namespace HydroExplorer.Helpers
         {
             var match = EpsgAuthorityRegex().Match(wkt);
             return match.Success && int.TryParse(match.Groups[1].Value, out int epsg) ? epsg : -1;
+        }
+
+        /// <summary>
+        /// Texas's 5 State Plane (NAD83, US survey feet) zones, with their documented
+        /// EPSG area-of-use bounding boxes in WGS84 lon/lat. Sourced from the EPSG
+        /// registry (epsg.io). Used as a last-resort guess when a source shapefile has
+        /// no .prj sidecar at all — never silently assume a single zone (e.g. 2277),
+        /// since picking the wrong adjacent zone can shift a boundary by tens or
+        /// hundreds of miles (e.g. 2277 vs 2278 lands well outside Texas).
+        /// </summary>
+        private static readonly (int Epsg, string Name, double MinLon, double MinLat, double MaxLon, double MaxLat)[] TexasStatePlaneZones =
+        [
+            (2275, "Texas North",         -103.05, 34.56, -100.00, 36.50),
+            (2276, "Texas North Central", -103.07, 31.72,  -94.00, 34.58),
+            (2277, "Texas Central",       -106.66, 29.78,  -93.50, 32.27),
+            (2278, "Texas South Central", -105.00, 27.78,  -93.76, 30.67),
+            (2279, "Texas South",          -99.90, 25.84,  -96.90, 28.40),
+        ];
+
+        /// <summary>
+        /// Guesses which Texas State Plane zone a projected point likely belongs to,
+        /// by transforming it (under each candidate zone's own definition) to WGS84
+        /// and checking which result actually falls within that zone's documented
+        /// area of use. Returns -1 if no zone matches (point likely isn't in Texas,
+        /// or isn't in any State Plane projection at all).
+        /// Intended as a starting suggestion for user confirmation, not a silent
+        /// auto-pick — zone boundaries can be ambiguous near shared edges.
+        /// </summary>
+        public static int GuessTexasStatePlaneZone(Coordinate projectedPoint)
+        {
+            foreach (var zone in TexasStatePlaneZones)
+            {
+                try
+                {
+                    string srcWkt = FetchWkt(zone.Epsg);
+                    if (string.IsNullOrEmpty(srcWkt)) continue;
+
+                    string tgtWkt = FetchWkt(4326);
+                    var transform = CreateTransformation(srcWkt, tgtWkt);
+                    var result = Reproject(projectedPoint, transform);
+
+                    if (result.X >= zone.MinLon && result.X <= zone.MaxLon &&
+                        result.Y >= zone.MinLat && result.Y <= zone.MaxLat)
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"GuessTexasStatePlaneZone: matched EPSG:{zone.Epsg} ({zone.Name}).");
+                        return zone.Epsg;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"GuessTexasStatePlaneZone: EPSG:{zone.Epsg} check failed — {ex.Message}");
+                }
+            }
+
+            System.Diagnostics.Debug.WriteLine("GuessTexasStatePlaneZone: no zone matched.");
+            return -1;
+        }
+
+        /// <summary>
+        /// Convenience overload: guesses the zone from a shapefile's extent centroid.
+        /// </summary>
+        public static int GuessTexasStatePlaneZone(Envelope extent)
+        {
+            var centroid = new Coordinate(
+                (extent.MinX + extent.MaxX) / 2,
+                (extent.MinY + extent.MaxY) / 2);
+            return GuessTexasStatePlaneZone(centroid);
         }
 
         public static ICoordinateTransformation CreateTransformation(string sourceWkt, string targetWkt)

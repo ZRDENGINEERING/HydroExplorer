@@ -13,17 +13,17 @@
             <RowDefinition Height="30"/>
             <RowDefinition Height="3*"/>
             <RowDefinition Height="4"/>
-            <RowDefinition Height="330" MinHeight="32"/>
+            <RowDefinition Height="300" MinHeight="32"/>
         </Grid.RowDefinitions>
 
         <GroupBox Grid.Row="0"
                   Header="HYDROLOGY"
-                  FontSize="12" FontWeight="SemiBold"
+                  FontSize="12" FontWeight="Bold"
                   Background="{StaticResource BackgroundBrushHeader}"
                   BorderBrush="{StaticResource BorderBrush}"
                   BorderThickness="0.8"/>
 
-        <views:FilteredTreeView Grid.Row="1" FileExtensionFilter=".run"/>
+        <views:FilteredTreeView Grid.Row="1" FileExtensionFilter=".hms"/>
 
         <GridSplitter Grid.Row="2" Width="400"
                       ResizeDirection="Rows"
@@ -32,7 +32,7 @@
 
         <GroupBox Grid.Row="3"
                   Header="ACTIVE PATHS"
-                  FontSize="12" FontWeight="SemiBold"
+                  FontSize="12" FontWeight="Bold"
                   Foreground="{StaticResource ForegroundBrush}"
                   Background="{StaticResource BackgroundBrushLight}"
                   BorderBrush="{StaticResource BorderBrush}"

@@ -1,4 +1,5 @@
-﻿using NetTopologySuite.Features;
+﻿using HydroExplorer.Utils;
+using NetTopologySuite.Features;
 using NetTopologySuite.Geometries;
 using NetTopologySuite.IO;
 using PureHDF;
@@ -13,8 +14,7 @@ namespace HydroExplorer.Helpers
 
         public static async Task ExportCLToShp(string projPath, string hdfPath, string outputShpPath)
         {
-            using var file = H5File.OpenRead(hdfPath);
-
+            using var file = HecRasHdfReader.OpenHdf(hdfPath);
 
             // Dump top-level Geometry children
             var geomGroup = file.Group("/Geometry");
@@ -22,8 +22,6 @@ namespace HydroExplorer.Helpers
                 System.Diagnostics.Debug.WriteLine($"Geometry child: '{child.Name}'");
 
             var clGroup = file.Group("/Geometry/River Centerlines");
-
-
 
 
             var clAttributes = clGroup.Dataset("Attributes").Read<Dictionary<string, object>[]>();
@@ -37,12 +35,6 @@ namespace HydroExplorer.Helpers
 
 
 
-
-
-
-
-            //double[] allPoints = clGroup.Dataset("Polyline Points").Read<double[]>();
-            //int[] polyInfo = clGroup.Dataset("Polyline Info").Read<int[]>();
 
             double[] allPoints = clGroup.Dataset("Polyline Points").Read<double[]>();
             int[] polyInfo = clGroup.Dataset("Polyline Info").Read<int[]>();
@@ -63,8 +55,8 @@ namespace HydroExplorer.Helpers
             string srcWkt = await GISUtil.FetchHECWkt(projPath);
             if (string.IsNullOrEmpty(srcWkt))
             {
-                System.Diagnostics.Debug.WriteLine("ExportCLToShp: No source WKT resolved, falling back to EPSG:2277.");
-                srcWkt = GISUtil.FetchWkt(2277);
+                System.Diagnostics.Debug.WriteLine("ExportCLToShp: No source WKT resolved, falling back to EPSG:XXXX.");
+                srcWkt = GISUtil.FetchWkt(2278);
             }
 
             string tgtWkt = GISUtil.FetchWkt(4326);

@@ -1,4 +1,6 @@
-﻿namespace HydroExplorer.Helpers
+﻿using HydroExplorer.Utils;
+
+namespace HydroExplorer.Helpers
 {
     internal class EventBus
     {
@@ -16,13 +18,26 @@
             => HdfFileBSelected?.Invoke(profiles, planNameB);
 
         public static event Action<string>? ProjPathSelected;
-        public static void PublishProjPath(string path) => ProjPathSelected?.Invoke(path);
+        public static void PublishProjPath(string path)
+        {
+            ProjPathSelected?.Invoke(path);
+        }
+
+        public static void PublishProjPathChanged(string projPath)
+        {
+            ProjPathChanged?.Invoke(projPath);
+        }
+
+        public static void PublishRunPath(string path)
+        {
+            RunPathSelected?.Invoke(path);
+        }
 
         public static event Action<string>? ProjPathChanged;
-        public static void PublishProjPathChanged(string projPath) => ProjPathChanged?.Invoke(projPath);
+
+
 
         public static event Action<string>? RunPathSelected;
-        public static void PublishRunPath(string path) => RunPathSelected?.Invoke(path);
 
         public static event Action<string>? HmsPathChanged;
         public static void PublishHmsPathChanged(string path) => HmsPathChanged?.Invoke(path);
@@ -61,6 +76,22 @@
         public static void PublishPlanNamesChanged(string planA, string planB)
             => PlanNamesChanged?.Invoke(planA, planB);
 
+
+        public static event Action<string>? RecentProjectSelected;
+        public static void PublishRecentProjectSelected(string projPath)
+            => RecentProjectSelected?.Invoke(projPath);
+
+
+        public static event Action? MapOverViewReady;
+        public static void PublishMapOverViewReady() => MapOverViewReady?.Invoke();
+
+
+        //USGS SECTION
+        public static event Action<GageResult>? GageDataReady;
+        public static void PublishGageDataReady(GageResult result) => GageDataReady?.Invoke(result);
+
+        //public static event Action<GageResult>? GageDataReady;
+        //public static void PublishGageDataReady(GageResult result) => GageDataReady?.Invoke(result);
 
     }
 }

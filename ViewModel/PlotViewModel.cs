@@ -74,6 +74,21 @@ namespace HydroExplorer.ViewModel
             }
         }
 
+        private PlotModel _plotModelChartsTab;
+        public PlotModel PlotModelChartsTab
+        {
+            get => _plotModelChartsTab;
+            set
+            {
+                if (_plotModelChartsTab != null)
+                {
+                    _plotModelChartsTab.InvalidatePlot(false);
+                }
+                _plotModelChartsTab = value;
+                OnPropertyChanged();
+            }
+        }
+
         private PlotModel _plotModelB = new();
         public PlotModel PlotModelB
         {
@@ -91,7 +106,14 @@ namespace HydroExplorer.ViewModel
         public PlotModel Vm { get => vm1; set => SetProperty(ref vm1, value); }
 
         // ── Reach data ───────────────────────────────────────────────────────
-        public List<WSELTableOxy>? WselData { get; private set; } = [];
+        private List<WSELTableOxy>? _wselData = [];
+        public List<WSELTableOxy>? WselData
+        {
+            get => _wselData;
+            private set { _wselData = value; OnPropertyChanged(); }
+        }
+
+
 
         private Dictionary<string, List<WSELTableOxy>> _dataByReach = [];
 
@@ -101,6 +123,8 @@ namespace HydroExplorer.ViewModel
         public bool HasMultipleReaches => Reaches.Count > 1;
 
         public ICommand ReachSelectionChangedCommand { get; }
+
+
 
 
 
@@ -126,16 +150,6 @@ namespace HydroExplorer.ViewModel
 
                 try
                 {
-                    await Task.Delay(1000, token).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException)
-                {
-                    System.Diagnostics.Debug.WriteLine("PlotViewModel load delay cancelled.");
-                    return; // exit cleanly, don't proceed to LoadDataAsync
-                }
-
-                try
-                {
                     await LoadDataAsync(path, token).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
@@ -157,9 +171,6 @@ namespace HydroExplorer.ViewModel
         {
             if (_dataLoaded) return;
             _dataLoaded = true;
-
-            
-
 
             try
             {
@@ -258,7 +269,7 @@ namespace HydroExplorer.ViewModel
                 var data = WselData;
                 await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
                 {
-                    LoadFromWSELTable(data, project.SelectedReach);
+                    LoadFromWSELTable(data, project.SelectedReaches);
                 });
             }
             catch (OperationCanceledException)
@@ -281,9 +292,14 @@ namespace HydroExplorer.ViewModel
 
 
 
-        public void LoadFromWSELTable(List<WSELTableOxy>? data, string savedReach = "")
+        public void LoadFromWSELTable(List<WSELTableOxy>? data, List<string>? savedReaches = null)
         {
-            if (data == null) return;
+            if (data == null)
+            {
+                Reaches.Clear();
+                OnPropertyChanged(nameof(HasMultipleReaches));
+                return;
+            }
 
             _dataByReach = data
                 .GroupBy(r => string.IsNullOrWhiteSpace(r.Reach) ? "Default" : r.Reach)
@@ -293,9 +309,9 @@ namespace HydroExplorer.ViewModel
             bool isFirst = true;
             foreach (var key in _dataByReach.Keys)
             {
-                bool isSelected = string.IsNullOrWhiteSpace(savedReach)
-                    ? isFirst
-                    : key == savedReach;
+                bool isSelected = savedReaches != null && savedReaches.Count > 0
+                    ? savedReaches.Contains(key, StringComparer.OrdinalIgnoreCase)
+                    : isFirst;  // default: first reach selected
 
                 Reaches.Add(new ReachItem { Name = key, ReachId = key, IsSelected = isSelected });
                 isFirst = false;
@@ -326,7 +342,8 @@ namespace HydroExplorer.ViewModel
                         : Enumerable.Empty<WSELTableOxy>())
                     .ToList();
 
-                PlotModel = CreatePlot(selectedData, _plotMode);  // ← pass mode
+                PlotModel = CreatePlot(selectedData, _plotMode);
+                PlotModelChartsTab = CreatePlot(selectedData, _plotMode);  // separate instance, same data
                 await SaveSelectedReachAsync();
             }
             catch (OperationCanceledException) { }
@@ -345,12 +362,15 @@ namespace HydroExplorer.ViewModel
             {
                 if (_settingsRepo == null || string.IsNullOrEmpty(_projPath)) return;
 
-                var selectedReach = Reaches.FirstOrDefault(r => r.IsSelected)?.ReachId ?? string.Empty;
+                var selectedReaches = Reaches
+                    .Where(r => r.IsSelected)
+                    .Select(r => r.ReachId)
+                    .ToList();
 
                 var settings = await _settingsRepo.GetSettings();
                 if (settings.Projects.TryGetValue(_projPath, out var project))
                 {
-                    project.SelectedReach = selectedReach;
+                    project.SelectedReaches = selectedReaches;
                     await _settingsRepo.SaveSettings(settings);
                 }
             }
@@ -438,7 +458,8 @@ namespace HydroExplorer.ViewModel
 
             foreach (var row in data)
             {
-                var cleaned = row.RiverSta?.Replace(",", "").Trim();
+                var cleaned = row.RiverSta?.Replace(",", "").Replace("*", "").Trim();
+
                 if (!double.TryParse(cleaned,
                         System.Globalization.NumberStyles.Any,
                         System.Globalization.CultureInfo.InvariantCulture,

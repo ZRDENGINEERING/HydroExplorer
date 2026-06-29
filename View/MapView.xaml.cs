@@ -1,6 +1,6 @@
 ﻿using BruTile.Predefined;
-using BruTile.Web;
 using HydroExplorer.Helpers;
+using HydroExplorer.Utils;
 using HydroExplorer.ViewModel;
 using Mapsui;
 using Mapsui.Extensions;
@@ -16,8 +16,12 @@ using Mapsui.Tiling.Layers;
 using Mapsui.UI.Wpf;
 using Mapsui.Widgets.InfoWidgets;
 using Microsoft.Extensions.DependencyInjection;
+using PureHDF;
+using PureHDF.VOL.Native;
 using System.IO;
+using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media.Animation;
 
 
 
@@ -37,18 +41,21 @@ namespace HydroExplorer.View
         private string? _pathBNDY = string.Empty;
         private string? _pathHMS = string.Empty;
         private string? _pathSubBasins = string.Empty;
+        private string? _currentProjPath;
+
+        private GageResult? _currentGage;
 
         private static readonly Color _lblBackGroundColor = new(236, 210, 1, 150);
-
         private static readonly Color _vecCLColor = new(70, 0, 0, 255);
         private static readonly Color _vecBNDYColor = new(70, 138, 138, 255);
         private static readonly Color _vecBNDYFill = new(128, 128, 128, 0);
+        private static readonly Color _txtLBLColor = new(0, 0, 0, 155);
+
+        private static readonly string _tileCachePath = Path.Combine(
+            Path.GetTempPath(), "HydroExplorer", "TileCache");
 
         private readonly SelectionViewModel _selectionVm;
         private readonly WritableLayer _highlightLayer;
-
-        private static readonly Color _txtLBLColor = new(0, 0, 0, 155);
-
         private CancellationTokenSource? _resetMapCts;
 
 
@@ -58,56 +65,129 @@ namespace HydroExplorer.View
             null;
 
 
-
         public MapView()
         {
             InitializeComponent();
 
             _mapState = App.ServiceProvider.GetRequiredService<MapStateService>();
-            _mapState.PathsReady += OnPathsReady;
 
+            _mapControl = new Mapsui.UI.Wpf.MapControl
+            {
+                Background = new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(71, 71, 73)),
+                Opacity = 0
+            };
 
-            _mapControl = new MapControl();
             _map = new Map { CRS = "EPSG:3857" };
 
-            LoggingWidget.ShowLoggingInMap = Mapsui.Widgets.ActiveMode.No;
-
-            _mapControl.MapTapped += OnMapTapped;
-
-            
-
-            _mapControl.Map = _map;
-            _map.Widgets.Clear();
+            var (cx, cy) = SphericalMercator.FromLonLat(-99.0, 31.0);
+            _map.Navigator.CenterOnAndZoomTo(new MPoint(cx, cy), 3000);
 
 
             _highlightLayer = new WritableLayer
             {
                 Name = "Highlight",
-                Style = new VectorStyle
-                {
-                    Outline = new Pen(Color.Yellow, 2),
-                    Fill = null
-                }
+                Style = new VectorStyle { Outline = new Pen(Color.Yellow, 2), Fill = null }
             };
             _map.Layers.Add(_highlightLayer);
 
-
             _selectionVm = App.ServiceProvider.GetRequiredService<SelectionViewModel>();
             _selectionVm.PropertyChanged += OnSelectionChanged;
+
+            _mapControl.Map = _map;
+            _map.Widgets.Clear();
             Content = _mapControl;
 
-            Loaded += async (s, e) => { await ResetMap(); };
+            Loaded += async (s, e) =>
+            {
+                if (_mapState.CurrentPaths == null)
+                    await ResetMapView();
+            };
 
+            EventBus.ProjPathChanged += async path =>
+            {
+                await Dispatcher.InvokeAsync(async () =>
+                {
+                    try { await ResetMapView(path); }
+                    catch (OperationCanceledException) { }
+                    catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"ResetMap error: {ex.Message}"); }
+                });
+            };
 
-            Unloaded += (s, e) => _mapState.PathsReady -= OnPathsReady;
+            EventBus.GageDataReady += gage =>
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    _currentGage = gage;
+                    AddLayerGage();
+                    _mapControl.Refresh();
+                });
+            };
+
+            Unloaded += (s, e) =>
+            {
+                _mapState.PathsReady -= OnPathsReady;
+                EventBus.MapOverViewReady -= OnMapOverViewReady;
+            };
+
+            // Subscribe and replay LAST — after everything is initialized
+            _mapState.PathsReady += OnPathsReady;
+            if (_mapState.CurrentPaths != null)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"MapView constructor: replaying CurrentPaths='{_mapState.CurrentPaths.ProjPath}'");
+                OnPathsReady(_mapState.CurrentPaths);
+            }
         }
+
 
 
         private void OnPathsReady(ProjectPaths paths)
         {
-            Dispatcher.InvokeAsync(async () =>
+            System.Diagnostics.Debug.WriteLine($"MapView.OnPathsReady FIRED");
+
+            if (paths.ProjPath == _currentProjPath)
             {
-                try { await ResetMap(paths); }
+                System.Diagnostics.Debug.WriteLine("MapView.OnPathsReady: same project, skipping reset.");
+                return;
+            }
+
+            _currentProjPath = paths.ProjPath;
+
+
+            Application.Current.Dispatcher.InvokeAsync(async () =>
+            {
+                System.Diagnostics.Debug.WriteLine($"MapView.OnPathsReady dispatcher entered");
+                try
+                {
+                    if (!IsLoaded)
+                    {
+                        System.Diagnostics.Debug.WriteLine("MapView.OnPathsReady: waiting for Loaded...");
+                        var tcs = new TaskCompletionSource<bool>();
+                        void OnLoaded(object s, RoutedEventArgs e) { tcs.TrySetResult(true); }
+                        Loaded += OnLoaded;
+                        await tcs.Task;
+                        Loaded -= OnLoaded;
+                        System.Diagnostics.Debug.WriteLine("MapView.OnPathsReady: Loaded complete.");
+                    }
+
+                    _pathXS = paths.PathXS;
+                    _pathCL = paths.PathCL;
+                    _pathBNDY = paths.PathBNDY;
+                    _pathHdfA = paths.PathHdfA;
+                    _pathHdfB = paths.PathHdfB;
+                    _pathHMS = paths.PathHMS;
+                    _pathSubBasins = paths.PathSubBasins;
+
+                    await ResetMapView(paths.ProjPath);
+                    await InitView();
+
+                    _ = ExportAndReloadCLAsync(_resetMapCts?.Token ?? CancellationToken.None);
+                }
+                catch (OperationCanceledException)
+                {
+                    System.Diagnostics.Debug.WriteLine("MapView.OnPathsReady: cancelled.");
+                }
                 catch (Exception ex)
                 {
                     System.Diagnostics.Debug.WriteLine($"MapView.OnPathsReady error: {ex.Message}");
@@ -116,69 +196,359 @@ namespace HydroExplorer.View
         }
 
 
-
-
-        public async Task ResetMap(ProjectPaths? paths = null)
+        public async Task ResetMapView(string projPath = "")
         {
-            // Use provided paths, or fall back to last known
-            paths ??= _mapState.CurrentPaths;
-            if (paths == null) return;
-
-            _pathXS = paths.PathXS;
-            _pathCL = paths.PathCL;
-            _pathBNDY = paths.PathBNDY;
-            _pathHdfA = paths.PathHdfA;
-            _pathHdfB = paths.PathHdfB;
-            _pathHMS = paths.PathHMS;
-            _pathSubBasins = paths.PathSubBasins;
-            
-
             _resetMapCts?.Cancel();
             _resetMapCts?.Dispose();
             _resetMapCts = new CancellationTokenSource();
             var token = _resetMapCts.Token;
 
+            await Dispatcher.InvokeAsync(() => _mapControl.Opacity = 0);
             await Task.Delay(100, token);
+
             _map.Layers.Clear();
 
+            var tileSource = KnownTileSources.Create(
+                KnownTileSource.BingHybrid,
+                apiKey: null,
+                persistentCache: new BruTile.Cache.FileCache(_tileCachePath, "png"));
 
-            var lyr_bing = new TileLayer(KnownTileSources.Create(KnownTileSource.BingHybrid))
-            {
-                Opacity = 0.55
-            };
-
+            var lyr_bing = new TileLayer(tileSource) { Opacity = 0.55 };
             _map.Layers.Add(lyr_bing);
-
 
             try
             {
                 await AddLayerShpTXCnty();
                 await AddLayerShpBndy();
-                
                 await ExportShpXS();
+
                 var plotVm = App.ServiceProvider.GetRequiredService<PlotViewModel>();
-                if (plotVm.WselData == null) return;
-                await AddLayerShpXS(plotVm.WselData);
+                if (plotVm.WselData != null)
+                {
+                    await AddLayerShpXS(plotVm.WselData);
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("ResetMapView: WselData null — skipping XS layer.");
+                }
 
-                await ExportShpCL();
                 await AddLayerShpCL();
+                AddLayerGage();
+                _map.Layers.Add(_highlightLayer);
 
-                
-
+                // Recompute the camera extent every time layers are rebuilt — previously
+                // only OnPathsReady called InitView(), gated on project change, so it
+                // never fired for a same-project in-place file replacement.
                 await InitView();
+
+                await Dispatcher.InvokeAsync(() => _mapControl.Refresh());
             }
-            catch (OperationCanceledException)
-            {
-                System.Diagnostics.Debug.WriteLine("ResetMap cancelled - newer project selected.");
-            }
+            catch (OperationCanceledException) { return; }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"ResetMap error: {ex.Message}");
+                return;
             }
+
+            await Dispatcher.InvokeAsync(() =>
+            {
+                var anim = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(300));
+                anim.Completed += (_, _) => EventBus.PublishMapOverViewReady();
+                _mapControl.BeginAnimation(OpacityProperty, anim);
+            });
+
+            _ = ExportAndReloadCLAsync(_resetMapCts.Token);
+        }
+
+
+        private async Task InitView()
+        {
+            string? centerPath = Path.Exists(_pathBNDY) ? _pathBNDY
+                               : Path.Exists(_pathXS) ? _pathXS
+                               : null;
+
+            System.Diagnostics.Debug.WriteLine($"InitView: centerPath='{centerPath}' (_pathBNDY='{_pathBNDY}' exists={Path.Exists(_pathBNDY)}, _pathXS='{_pathXS}' exists={Path.Exists(_pathXS)})");
+
+
+            await WaitForStableSizeAsync();
+
+            await Dispatcher.InvokeAsync(() =>
+            {
+                if (centerPath == null)
+                {
+                    // No geometry — return to default Texas view
+                    var (cx, cy) = SphericalMercator.FromLonLat(-99.0, 31.0);
+                    _map.Navigator.CenterOnAndZoomTo(new MPoint(cx, cy), 3000);
+                    _mapControl.Refresh();
+                    return;
+                }
+
+                var shapeFileProvider = new ShapeFile(centerPath, true);
+                if (shapeFileProvider.GetExtent() is not MRect extent) return;
+
+                System.Diagnostics.Debug.WriteLine(
+                    $"InitView: extent from '{centerPath}' = MinX={extent.MinX} MaxX={extent.MaxX} MinY={extent.MinY} MaxY={extent.MaxY}");
+
+
+                var (x, y) = SphericalMercator.FromLonLat(
+                                    (extent.MaxX + extent.MinX) / 2,
+                                    (extent.MaxY + extent.MinY) / 2);
+                var (minX, _) = SphericalMercator.FromLonLat(extent.MinX, extent.MinY);
+                var (maxX, _) = SphericalMercator.FromLonLat(extent.MaxX, extent.MaxY);
+                var (_, minY) = SphericalMercator.FromLonLat(extent.MinX, extent.MinY);
+                var (_, maxY) = SphericalMercator.FromLonLat(extent.MaxX, extent.MaxY);
+
+                double extentW = maxX - minX;
+                double extentH = maxY - minY;
+                double controlW = _mapControl.ActualWidth;
+                double controlH = _mapControl.ActualHeight;
+
+                if (extentW <= 0 || extentH <= 0 || controlW <= 0 || controlH <= 0) return;
+
+                double resolution = Math.Max(extentW / controlW, extentH / controlH) * 1.5;
+                _map.Navigator.CenterOnAndZoomTo(new MPoint(x, y), resolution);
+                _mapControl.Refresh();
+            });
         }
 
 
 
+        private Task WaitForStableSizeAsync()
+        {
+            if (_mapControl.ActualWidth > 0 && _mapControl.ActualHeight > 0)
+                return Task.CompletedTask;
+
+            var tcs = new TaskCompletionSource<bool>();
+
+            void OnSizeChanged(object sender, System.Windows.SizeChangedEventArgs e)
+            {
+                if (_mapControl.ActualWidth > 0 && _mapControl.ActualHeight > 0)
+                {
+                    _mapControl.SizeChanged -= OnSizeChanged;
+                    tcs.TrySetResult(true);
+                }
+            }
+
+            _mapControl.SizeChanged += OnSizeChanged;
+            return tcs.Task;
+        }
+
+
+        private async Task AddLayerShpBndy()
+        {
+            if (!Path.Exists(_pathBNDY)) return;
+
+            var shapeFileProvider = new ShapeFile(_pathBNDY) { CRS = "EPSG:4326" };
+            var dataSource = new ProjectingProvider(shapeFileProvider) { CRS = "EPSG:3857" };
+
+            var shapefileLayer = new Layer("BNDY")
+            {
+                Name = "BNDY",
+                DataSource = dataSource,
+                Tag = new OverViewLayerData { IsMapInfoLayer = true },
+                Style = new StyleCollection
+                {
+                    Styles =
+                    {
+                        new VectorStyle
+                        {
+                            Fill    = new Brush(_vecBNDYFill),
+                            Outline = new Pen(_vecBNDYColor, 7),
+                        },
+                        new VectorStyle
+                        {
+                            Fill    = new Brush(_vecBNDYFill),
+                            Outline = new Pen(Color.Black, 1),
+                        },
+                    }
+                }
+            };
+            _map.Layers.Add(new RasterizingTileLayer(shapefileLayer));
+        }
+
+
+        private async Task AddLayerShpXS(List<WSELTableOxy> wselData)
+        {
+            if (!Path.Exists(_pathXS)) return;
+
+            var xsLayer = new WritableLayer
+            {
+                Name = "XS",
+                Tag = new OverViewLayerData { IsMapInfoLayer = true }
+            };
+
+            using var reader = new NetTopologySuite.IO.ShapefileDataReader(
+                _pathXS, NetTopologySuite.Geometries.GeometryFactory.Default);
+
+            var header = reader.DbaseHeader;
+            int staIdx = -1;
+            for (int i = 0; i < header.Fields.Length; i++)
+            {
+                if (header.Fields[i].Name.Contains("RS", StringComparison.OrdinalIgnoreCase))
+                { staIdx = i + 1; break; }
+            }
+
+            var factory = NetTopologySuite.Geometries.GeometryFactory.Default;
+
+            // O(1) lookup instead of FirstOrDefault on every feature
+            var wselIndex = new Dictionary<string, WSELTableOxy>(StringComparer.OrdinalIgnoreCase);
+            foreach (var w in wselData)
+            {
+                string key = w.RiverSta?.Trim() ?? string.Empty;
+                wselIndex.TryAdd(key, w); // silently skip duplicates
+            }
+
+            while (reader.Read())
+            {
+                var geom = reader.Geometry;
+                var rs = staIdx >= 0 ? reader.GetString(staIdx)?.Trim() : null;
+
+                var coords = geom.Coordinates
+                    .Select(c =>
+                    {
+                        var (px, py) = SphericalMercator.FromLonLat(c.X, c.Y);
+                        return new NetTopologySuite.Geometries.Coordinate(px, py);
+                    })
+                    .ToArray();
+
+                var projectedGeom = factory.CreateLineString(coords);
+                var feature = new GeometryFeature { Geometry = projectedGeom };
+                feature["RS"] = rs;
+
+                var lineColor = wselIndex.TryGetValue(rs ?? string.Empty, out var match) && match.DELTA > 0
+                    ? new Color(220, 50, 50, 255)
+                    : new Color(50, 205, 50, 255);
+
+                feature.Styles.Add(new VectorStyle
+                {
+                    Line = new Pen(lineColor, 1),
+                    Outline = new Pen(lineColor, 1),
+                    Fill = null,
+                    Opacity = 0.85f
+                });
+
+                feature.Styles.Add(new LabelStyle
+                {
+                    LabelColumn = "RS",
+                    ForeColor = Color.White,
+                    BackColor = new Brush(new Color(0, 0, 0, 150)),
+                    CornerRounding = 2,
+                    Font = new Font { FontFamily = "Arial", Size = 6, Bold = false },
+                    HorizontalAlignment = LabelStyle.HorizontalAlignmentEnum.Left,
+                    VerticalAlignment = LabelStyle.VerticalAlignmentEnum.Center,
+                    MaxVisible = 5,
+                    Offset = new Offset { X = 0, Y = 0 }
+                });
+
+                xsLayer.Add(feature);
+            }
+            _map.Layers.Add(xsLayer);
+        }
+
+
+        private async Task AddLayerShpCL()
+        {
+            if (!Path.Exists(_pathCL)) return;
+
+            var shapeFileProvider = new ShapeFile(_pathCL) { CRS = "EPSG:4326" };
+            var dataSource = new ProjectingProvider(shapeFileProvider) { CRS = "EPSG:3857" };
+
+            var shapefileLayer = new Layer("CL")
+            {
+                Name = "CL",
+                DataSource = dataSource,
+                Tag = new OverViewLayerData { IsMapInfoLayer = true },
+                Style = new StyleCollection
+                {
+                    Styles =
+                    {
+                        new VectorStyle
+                        {
+                            Line = new Pen { Color = Color.Blue, Width = 1.5f }
+                        }
+                    }
+                }
+            };
+            _map.Layers.Add(new RasterizingTileLayer(shapefileLayer));
+        }
+
+
+        private Task AddLayerShpTXCnty()
+        {
+            string shapefilePathCnty = "Z:\\10 DEV\\hydroExplorer\\SHP\\TX_CNTY.shp";
+            if (!Path.Exists(shapefilePathCnty)) return Task.CompletedTask;
+
+            var shapeFileProvider = new ShapeFile(shapefilePathCnty) { CRS = "EPSG:4326" };
+            var dataSource = new ProjectingProvider(shapeFileProvider) { CRS = "EPSG:3857" };
+
+            var shapefileLayer = new Layer("CNTY")
+            {
+                Name = "CNTY",
+                DataSource = dataSource,
+                Tag = new OverViewLayerData { IsMapInfoLayer = true },
+                Style = new StyleCollection
+                {
+                    Styles =
+                    {
+                        new VectorStyle
+                        {
+                            Fill    = new Brush(Color.Transparent),
+                            Outline = new Pen(Color.Black, 2),
+                            Opacity = 0.3f
+                        },
+                        new LabelStyle
+                        {
+                            Enabled             = true,
+                            LabelColumn         = "NAME",
+                            BackColor           = new Brush(Color.Transparent),
+                            ForeColor           = new Color(_txtLBLColor),
+                            Font                = new Font { FontFamily = "Eras", Size = 14, Bold = true },
+                            HorizontalAlignment = LabelStyle.HorizontalAlignmentEnum.Center,
+                            VerticalAlignment   = LabelStyle.VerticalAlignmentEnum.Center,
+                            MaxVisible          = 1000,
+                        }
+                    }
+                }
+            };
+            _map.Layers.Add(new RasterizingTileLayer(shapefileLayer));
+            return Task.CompletedTask;
+        }
+
+        private void AddLayerGage()
+        {
+            var existing = _map.Layers.FirstOrDefault(l => l.Name == "USGS_GAGE");
+            if (existing != null)
+                _map.Layers.Remove(existing);
+
+            if (_currentGage is null) return;
+
+            var (x, y) = SphericalMercator.FromLonLat(_currentGage.Lon, _currentGage.Lat);
+            var point = new NetTopologySuite.Geometries.Point(x, y);
+
+            var feature = new GeometryFeature { Geometry = point };
+            feature["label"] = _currentGage.SiteName;
+
+            var gageLayer = new MemoryLayer("USGS_GAGE")
+            {
+                Name = "USGS_GAGE",
+                Features = new[] { feature },
+                Style = new StyleCollection
+                {
+                    Styles =
+            {
+                new SymbolStyle
+                {
+                    SymbolType = SymbolType.Triangle,
+                    Fill = new Brush(Color.FromArgb(255, 30, 144, 255)),
+                    Outline = new Pen(Color.Black, 1),
+                    SymbolScale = 0.4
+                }
+            }
+                }
+            };
+
+            _map.Layers.Add(gageLayer);
+        }
 
 
         private async Task ExportShpXS()
@@ -186,29 +556,87 @@ namespace HydroExplorer.View
             try
             {
                 string? hdfPath = ResolveHdfPath();
-
                 if (string.IsNullOrEmpty(hdfPath)) return;
                 if (string.IsNullOrEmpty(_pathXS)) return;
                 if (File.Exists(_pathXS)) return;
 
-                System.Diagnostics.Debug.WriteLine($"\n XS FILE DOES NOT EXIST...CREATING @ {_pathXS}\n");
-                await ExporterCrossSection.ExportXSToShp(
-                    projPath: Path.GetDirectoryName(hdfPath) ?? string.Empty,
+                System.Diagnostics.Debug.WriteLine($"XS FILE DOES NOT EXIST — CREATING @ {_pathXS}");
+
+                string projDir = Path.GetDirectoryName(hdfPath) ?? string.Empty;
+
+                bool exported = await ExporterCrossSection.ExportXSToShp(
+                    projPath: projDir,
                     hdfPath: hdfPath,
-                    outputShpPath: _pathXS
-                );
+                    outputShpPath: _pathXS);
+
+                if (exported) return;
+
+                // No .prj folder found for this HEC-RAS project — guess the zone from
+                // the HDF's own raw cross-section coordinates and confirm with the user
+                // before committing, same pattern as ExecuteBrowseBndy.
+                var rawExtent = TryReadHdfCrossSectionExtent(hdfPath);
+                int guessedEpsg = rawExtent != null ? GISUtil.GuessTexasStatePlaneZone(rawExtent) : -1;
+
+                if (guessedEpsg <= 0)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        "ExportShpXS: no .prj folder and could not guess a Texas State Plane zone — skipping XS.shp.");
+                    return;
+                }
+
+                var confirm = await Dispatcher.InvokeAsync(() => MessageBox.Show(
+                    $"This HEC-RAS project has no projection (.prj) file. Based on its coordinates, " +
+                    $"it's likely EPSG:{guessedEpsg}. Use this projection for cross sections?",
+                    "Unknown Projection — Confirm Guess",
+                    MessageBoxButton.YesNo, MessageBoxImage.Question));
+
+                if (confirm != MessageBoxResult.Yes) return;
+
+                await ExporterCrossSection.ExportXSToShp(
+                    projPath: projDir,
+                    hdfPath: hdfPath,
+                    outputShpPath: _pathXS,
+                    sourceEpsgOverride: guessedEpsg);
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) { System.Diagnostics.Debug.WriteLine("ExportXS cancelled."); }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"ExportXS error: {ex.Message}"); }
+        }
+
+        /// <summary>
+        /// Reads the raw (unprojected) extent of cross-section points directly from the
+        /// HDF, for CRS zone-guessing when no .prj sidecar/folder exists to tell us
+        /// what those coordinates are in.
+        /// </summary>
+        private static NetTopologySuite.Geometries.Envelope? TryReadHdfCrossSectionExtent(string hdfPath)
+        {
+            try
             {
-                System.Diagnostics.Debug.WriteLine("ExportXS cancelled.");
+                using var file = HecRasHdfReader.OpenHdf(hdfPath);
+                double[] allPoints = file.Dataset("/Geometry/Cross Sections/Polyline Points").Read<double[]>();
+
+                if (allPoints.Length < 2) return null;
+
+                double minX = double.MaxValue, maxX = double.MinValue;
+                double minY = double.MaxValue, maxY = double.MinValue;
+
+                for (int i = 0; i < allPoints.Length; i += 2)
+                {
+                    double x = allPoints[i];
+                    double y = allPoints[i + 1];
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                }
+
+                return new NetTopologySuite.Geometries.Envelope(minX, maxX, minY, maxY);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"ExportXS error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"TryReadHdfCrossSectionExtent failed — {ex.Message}");
+                return null;
             }
         }
-
-
 
 
         private async Task ExportShpCL()
@@ -216,27 +644,51 @@ namespace HydroExplorer.View
             try
             {
                 string? hdfPath = ResolveHdfPath();
-
-
                 if (string.IsNullOrEmpty(hdfPath)) return;
                 if (string.IsNullOrEmpty(_pathCL)) return;
                 if (File.Exists(_pathCL)) return;
 
-                System.Diagnostics.Debug.WriteLine($"\n CL FILE DOES NOT EXIST...CREATING @ {_pathCL}\n");
+                System.Diagnostics.Debug.WriteLine($"CL FILE DOES NOT EXIST — CREATING @ {_pathCL}");
                 await ExporterStream.ExportCLToShp(
                     projPath: Path.GetDirectoryName(hdfPath) ?? string.Empty,
                     hdfPath: hdfPath,
-                    outputShpPath: _pathCL
-                );
+                    outputShpPath: _pathCL);
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) { System.Diagnostics.Debug.WriteLine("ExportCL cancelled."); }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"ExportCL error: {ex.Message}"); }
+        }
+
+
+        private async Task ExportAndReloadCLAsync(CancellationToken token)
+        {
+            bool existed = File.Exists(_pathCL);
+            await ExportShpCL();
+
+            if (!existed && File.Exists(_pathCL))
             {
-                System.Diagnostics.Debug.WriteLine("ExportCL cancelled.");
+                await Dispatcher.InvokeAsync(async () =>
+                {
+                    var old = _map.Layers.FindLayer("CL").FirstOrDefault();
+                    if (old != null) _map.Layers.Remove(old);
+
+                    await AddLayerShpCL();
+                    _mapControl.Refresh();
+                });
             }
-            catch (Exception ex)
+        }
+
+
+        private void OnMapOverViewReady()
+        {
+            Dispatcher.InvokeAsync(async () =>
             {
-                System.Diagnostics.Debug.WriteLine($"ExportCL error: {ex.Message}");
-            }
+                var cts = _resetMapCts;
+                if (cts == null || cts.IsCancellationRequested) return;
+
+                try { await ExportAndReloadCLAsync(cts.Token); }
+                catch (OperationCanceledException) { }
+                catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Deferred CL export error: {ex.Message}"); }
+            });
         }
 
 
@@ -246,7 +698,6 @@ namespace HydroExplorer.View
             if (xsLayer == null) return;
 
             var mapInfo = _mapControl.GetMapInfo(e.ScreenPosition, [xsLayer]);
-
             if (mapInfo?.Feature is not GeometryFeature feature) return;
 
             var rs = feature["RS"]?.ToString();
@@ -256,6 +707,180 @@ namespace HydroExplorer.View
         }
 
 
+        private void OnSelectionChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(SelectionViewModel.SelectedRiverSta))
+                ZoomToStation(_selectionVm.SelectedRiverSta, _selectionVm.SelectedDelta);
+        }
+
+
+        private void ZoomToStation(string? riverSta, double delta)
+        {
+            if (string.IsNullOrEmpty(riverSta)) return;
+            if (!Path.Exists(_pathXS)) return;
+
+            try
+            {
+                using var reader = new NetTopologySuite.IO.ShapefileDataReader(
+                    _pathXS, NetTopologySuite.Geometries.GeometryFactory.Default);
+
+                var header = reader.DbaseHeader;
+                int staIdx = -1;
+                for (int i = 0; i < header.Fields.Length; i++)
+                {
+                    if (header.Fields[i].Name.Contains("RS", StringComparison.OrdinalIgnoreCase))
+                    { staIdx = i + 1; break; }
+                }
+
+                if (staIdx == -1) return;
+
+                while (reader.Read())
+                {
+                    var val = reader.GetString(staIdx)?.Trim();
+                    if (val != riverSta?.Trim()) continue;
+
+                    try
+                    {
+                        var geom = reader.Geometry;
+                        var centroid = geom.Centroid;
+                        var (x, y) = SphericalMercator.FromLonLat(centroid.X, centroid.Y);
+                        var factory = NetTopologySuite.Geometries.GeometryFactory.Default;
+
+                        var coords = geom.Coordinates
+                            .Select(c =>
+                            {
+                                var (px, py) = SphericalMercator.FromLonLat(c.X, c.Y);
+                                return new NetTopologySuite.Geometries.Coordinate(px, py);
+                            })
+                            .ToArray();
+
+                        var projectedGeom = factory.CreateLineString(coords);
+                        var feature = new GeometryFeature { Geometry = projectedGeom };
+                        var highlightColor = new Color(255, 255, 0, 100);
+
+                        _mapControl.Dispatcher.Invoke(() =>
+                        {
+                            _highlightLayer.Style = new VectorStyle
+                            {
+                                Line = new Pen(highlightColor, 3),
+                                Outline = new Pen(highlightColor, 3),
+                                Fill = null
+                            };
+
+                            _highlightLayer.Clear();
+                            _highlightLayer.Add(feature);
+                            _highlightLayer.DataHasChanged();
+                            _map.Navigator.CenterOn(x, y);
+                            _map.Navigator.ZoomTo(1);
+                            _mapControl.Refresh();
+                        });
+                    }
+                    catch (Exception innerEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"ZoomToStation inner error: {innerEx.Message}");
+                    }
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ZoomToStation error: {ex.Message}");
+            }
+        }
+
+
+        private void AddLayerShpZRD()
+        {
+            string shapefilePathZRD = "Z:\\10 DEV\\hydroExplorer\\SHP\\TX_ZRD.shp";
+            if (!Path.Exists(shapefilePathZRD)) return;
+
+            var shapeFileProvider = new ShapeFile(shapefilePathZRD, true) { CRS = "EPSG:4326" };
+            var dataSource = new ProjectingProvider(shapeFileProvider) { CRS = "EPSG:3857" };
+
+            _map.Layers.Add(new RasterizingTileLayer(new Mapsui.Layers.Layer("ZRD")
+            {
+                Name = "PROJECTS",
+                DataSource = dataSource,
+                Tag = new OverViewLayerData { IsMapInfoLayer = true },
+                Style = new StyleCollection
+                {
+                    Styles =
+                    {
+                        new SymbolStyle
+                        {
+                            Fill        = new Brush(Color.Red),
+                            Outline     = new Pen(Color.Black, 1),
+                            SymbolScale = 0.2
+                        },
+                        new LabelStyle
+                        {
+                            LabelColumn         = "projname",
+                            ForeColor           = Color.Black,
+                            BackColor           = new Brush(_lblBackGroundColor),
+                            CornerRounding      = 3,
+                            Font                = new Font { FontFamily = "Eras", Size = 10, Bold = true },
+                            HorizontalAlignment = LabelStyle.HorizontalAlignmentEnum.Center,
+                            VerticalAlignment   = LabelStyle.VerticalAlignmentEnum.Bottom,
+                            MaxVisible          = 100,
+                            Offset              = new Offset { Y = -5 }
+                        }
+                    }
+                }
+            }));
+        }
+
+
+        private static VectorStyle CreateThemeZones() => new()
+        {
+            Outline = new Pen(Color.Gray),
+            Fill = new Brush(Color.Gray),
+            Opacity = 0.15f
+        };
+
+        private static async Task<WmsProvider> CreateWmsProviderAsync()
+        {
+            const string wmsUrl = "https://hazards.fema.gov/arcgis/services/public/NFHLWMS/MapServer/WMSServer?request=GetCapabilities&service=WMS";
+
+            var wmsProvider = await WmsProvider.CreateAsync(wmsUrl);
+            wmsProvider.ContinueOnError = true;
+            wmsProvider.TimeOut = 20000;
+            wmsProvider.CRS = "EPSG:3857";
+            wmsProvider.AddLayer("10");
+            wmsProvider.SetImageFormat(wmsProvider.OutputFormats[1]);
+            return wmsProvider;
+        }
+         
+        private static List<string> GetAllLayerNames(Client.WmsServerLayer layer)
+        {
+            var layerNames = new List<string>();
+            if (!string.IsNullOrEmpty(layer.Name))
+                layerNames.Add(layer.Name);
+
+            foreach (var childLayer in layer.ChildLayers)
+                layerNames.AddRange(GetAllLayerNames(childLayer));
+
+            return layerNames;
+        }
+
+        private string? FindShapefileByName(string searchText)
+        {
+            string? dir = Path.GetDirectoryName(_pathHMS);
+            if (string.IsNullOrEmpty(dir)) return null;
+
+            string mapsPath = Path.GetFullPath(Path.Combine(dir, "maps"));
+            if (!Directory.Exists(mapsPath))
+            {
+                System.Diagnostics.Debug.WriteLine($"MapView Maps folder not found: {mapsPath}");
+                return null;
+            }
+
+            string? match = Directory.GetFiles(mapsPath, "*.shp", SearchOption.AllDirectories)
+                .FirstOrDefault(f => Path.GetFileNameWithoutExtension(f)
+                    .Contains(searchText, StringComparison.OrdinalIgnoreCase));
+
+            if (!Path.Exists(match)) return null;
+            return Path.GetFullPath(match);
+        }
 
         private void UtilInfo()
         {
@@ -284,463 +909,43 @@ namespace HydroExplorer.View
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine("END UtilInfo!! \n");
+                System.Diagnostics.Debug.WriteLine("END UtilInfo!!");
             }
         }
 
-
-        private async Task InitView()
-        {
-            if (!Path.Exists(_pathXS)) return;
-
-            var shapeFileProvider = new ShapeFile(_pathXS, true);
-            if (shapeFileProvider.GetExtent() is MRect extent)
-            {
-                double xx = (extent.MaxX + extent.MinX) / 2;
-                double yy = (extent.MaxY + extent.MinY) / 2;
-
-                var (x, y) = SphericalMercator.FromLonLat(xx, yy);
-                _map.Navigator.CenterOn(x, y);
-
-                _map.Navigator.ZoomTo(25);
-            }
-        }
-
-        private static void UtilInfoTextBox(string infoText)
-        {
+        private static void UtilInfoTextBox(string infoText) =>
             System.Diagnostics.Debug.WriteLine($"infoText: {infoText} \n");
-        }
-
 
         private static void InitInfoWidgets(Map map)
         {
-            //var infoLayer = map.Layers.OfType<MemoryLayer>().FirstOrDefault(l => l.infoLayer);
-            //_targetLayer = map.Layers.FirstOrDefault(f => f.Name == "Layer 3") as WritableLayer;
-            //_editingWidget = map.Widgets.OfType<EditingWidget>().Single();
-            //map.Widgets.Add(new MapInfoWidget(map, [map.Layers.Last()]));
-
             map.Widgets.Add(new MapInfoWidget(map, map.Layers.FindLayer("XS")));
-
-            //map.Widgets.Add(CreateSelectButton());
-
             map.Widgets.Add(new MouseCoordinatesWidget());
-
-
         }
 
-
-
-        private async Task AddLayerShpBndy()
+        private async Task WaitForTilesAsync(CancellationToken token)
         {
-            if (!Path.Exists(_pathBNDY)) return;
+            var tcs = new TaskCompletionSource<bool>();
 
-            var shapeFileProvider = new ShapeFile(_pathBNDY) { CRS = "EPSG:4326" };
-            var dataSource = new ProjectingProvider(shapeFileProvider) { CRS = "EPSG:3857" };
-
-            var shapefileLayer = new Layer("BNDY")
+            void OnMapDataChanged(object? sender, EventArgs e)
             {
-                Name = "BNDY",
-                DataSource = dataSource,
-                Tag = new OverViewLayerData { IsMapInfoLayer = true },
-                Style = new StyleCollection
-                {
-                    Styles =
-                        {
-                            new VectorStyle
-                            {
-                                Fill = new Brush(_vecBNDYFill),
-                                Outline = new Pen(_vecBNDYColor, 7),
-                            },
-                                    new VectorStyle
-                            {
-                                Fill = new Brush(_vecBNDYFill),
-                                Outline = new Pen(Color.Black, 1),
-                            },
-                        }
-                }
-            };
-            _map.Layers.Add(new RasterizingTileLayer(shapefileLayer));
-        }
-
-
-        private async Task AddLayerShpXS(List<WSELTableOxy> wselData)
-        {
-            if (!Path.Exists(_pathXS)) return;
-
-            var xsLayer = new WritableLayer
-            {
-                Name = "XS",
-                Tag = new OverViewLayerData { IsMapInfoLayer = true }
-            };
-            using var reader = new NetTopologySuite.IO.ShapefileDataReader(
-                _pathXS, NetTopologySuite.Geometries.GeometryFactory.Default);
-
-            var header = reader.DbaseHeader;
-            int staIdx = -1;
-            for (int i = 0; i < header.Fields.Length; i++)
-            {
-                if (header.Fields[i].Name.Contains("RS", StringComparison.OrdinalIgnoreCase))
-                {
-                    staIdx = i + 1;
-                    break;
-                }
+                var tileLayer = _map.Layers.OfType<TileLayer>().FirstOrDefault();
+                if (tileLayer?.Extent != null)
+                    tcs.TrySetResult(true);
             }
 
-            var factory = NetTopologySuite.Geometries.GeometryFactory.Default;
-
-            while (reader.Read())
-            {
-                var geom = reader.Geometry;
-                var rs = staIdx >= 0 ? reader.GetString(staIdx)?.Trim() : null;
-
-                var coords = geom.Coordinates
-                    .Select(c =>
-                    {
-                        var (px, py) = SphericalMercator.FromLonLat(c.X, c.Y);
-                        return new NetTopologySuite.Geometries.Coordinate(px, py);
-                    })
-                    .ToArray();
-
-                var projectedGeom = factory.CreateLineString(coords);
-                var feature = new GeometryFeature { Geometry = projectedGeom };
-                feature["RS"] = rs;
-
-                var match = wselData?.FirstOrDefault(w => w.RiverSta?.Trim() == rs);
-                var lineColor = match != null && match.DELTA > 0
-                    ? new Color(220, 50, 50, 255)    // red  — delta positive
-                    : new Color(50, 205, 50, 255);   // green — delta zero/negative
-
-                feature.Styles.Add(new VectorStyle
-                {
-                    Line = new Pen(lineColor, 1),
-                    Outline = new Pen(lineColor, 1),
-                    Fill = null,
-                    Opacity = 0.85f
-                });
-
-                // Add label
-                feature.Styles.Add(new LabelStyle
-                {
-                    LabelColumn = "RS",
-                    ForeColor = Color.White,
-                    BackColor = new Brush(new Color(0, 0, 0, 150)),
-                    CornerRounding = 2,
-                    Font = new Font { FontFamily = "Arial", Size = 6, Bold = false },
-                    HorizontalAlignment = LabelStyle.HorizontalAlignmentEnum.Left,
-                    VerticalAlignment = LabelStyle.VerticalAlignmentEnum.Center,
-                    MaxVisible = 5,
-                    Offset = new Offset { X = 0, Y = 0 }
-                });
-                xsLayer.Add(feature);
-            }
-            _map.Layers.Add(xsLayer);
-        }
-
-
-        private async Task AddLayerShpCL()
-        {
-            if (!Path.Exists(_pathCL)) return;
-
-            //if (File.Exists(_pathBNDY) && File.Exists(_pathSubBasins))
-            //{
-            //    var newer = GetNewerFile(_pathBNDY, _pathSubBasins);
-            //    if (newer?.FullName == _pathBNDY) return;
-            //}
-
-            var shapeFileProvider = new ShapeFile(_pathCL) { CRS = "EPSG:4326" };
-            var dataSource = new ProjectingProvider(shapeFileProvider) { CRS = "EPSG:3857" };
-            var shapefileLayer = new Layer("CL")
-            {
-                Name = "CL",
-                DataSource = dataSource,
-                Tag = new OverViewLayerData { IsMapInfoLayer = true },
-                Style = new StyleCollection
-                {
-                    Styles =
-                        {
-                        new VectorStyle
-                            {
-                    Line = new Pen
-                            {
-                                Color = Color.Blue,
-                                Width = 1.5f,
-                                //PenStyle = PenStyle.Dash
-                            }
-                        }
-                    }
-                }
-            };
-            _map.Layers.Add(new RasterizingTileLayer(shapefileLayer));
-        }
-
-
-
-        private void AddLayerShpZRD()
-        {
-            string shapefilePathZRD = "Z:\\10 DEV\\hydroExplorer\\SHP\\TX_ZRD.shp";
-            var shapeFileProvider = new ShapeFile(shapefilePathZRD, true) { CRS = "EPSG:4326" };
-            var dataSource = new ProjectingProvider(shapeFileProvider) { CRS = "EPSG:3857" };
-            var shapefileLayer = new Mapsui.Layers.Layer("ZRD")
-            {
-                Name = "PROJECTS",
-                DataSource = dataSource,
-                Tag = new OverViewLayerData { IsMapInfoLayer = true },
-                Style = new StyleCollection
-                {
-                    Styles =
-                        {
-                            new SymbolStyle
-                            {
-                                Fill = new Brush(Color.Red),
-                                Outline = new Pen(Color.Black, 1),
-                                SymbolScale = 0.2
-                            },
-                            new LabelStyle
-                            {
-                                LabelColumn = "projname",
-                                ForeColor = Color.Black,
-                                BackColor = new Brush(_lblBackGroundColor),
-                                CornerRounding = 3,
-                                Font = new Font { FontFamily = "Eras", Size = 10 , Bold = true},
-                                HorizontalAlignment = LabelStyle.HorizontalAlignmentEnum.Center,
-                                VerticalAlignment = LabelStyle.VerticalAlignmentEnum.Bottom,
-                                MaxVisible = 100,
-                                Offset = new Offset { Y = -5 }
-                            }
-                        }
-                }
-            };
-            _map.Layers.Add(new RasterizingTileLayer(shapefileLayer));
-        }
-
-
-
-        private static VectorStyle CreateThemeZones()
-        {
-            return new VectorStyle
-            {
-                Outline = new Pen(Color.Gray),
-                Fill = new Brush(Color.Gray),
-                Opacity = 0.15f
-            };
-        }
-
-        private static async Task<WmsProvider> CreateWmsProviderAsync()
-        {
-            const string wmsUrl = "https://hazards.fema.gov/arcgis/services/public/NFHLWMS/MapServer/WMSServer?request=GetCapabilities&service=WMS";
-
-            //const string wmsUrl = "https://hazards.fema.gov/arcgis/rest/services/public/NFHLWMS/MapServer/WMSServer";
-
-            var wmsProvider = await WmsProvider.CreateAsync(wmsUrl);
-            wmsProvider.ContinueOnError = true;
-            wmsProvider.TimeOut = 20000;
-            wmsProvider.CRS = "EPSG:3857";
-            //wmsProvider.AddLayer("Flood Hazard Zones");
-            wmsProvider.AddLayer("10");
-
-            //foreach (var layerName in allLayerNames)
-            //{
-            //    wmsProvider.AddLayer(layerName);
-            //}
-
-            wmsProvider.SetImageFormat(wmsProvider.OutputFormats[1]);
-            return wmsProvider;
-        }
-
-        private static List<string> GetAllLayerNames(Client.WmsServerLayer layer)
-        {
-            var layerNames = new List<string>();
-            // The "Name" property is used in the request, not the "Title"
-            if (!string.IsNullOrEmpty(layer.Name))
-            {
-                layerNames.Add(layer.Name);
-            }
-
-            foreach (var childLayer in layer.ChildLayers)
-            {
-                layerNames.AddRange(GetAllLayerNames(childLayer));
-            }
-
-            return layerNames;
-        }
-
-
-
-        
-
-
-        private string? FindShapefileByName(string searchText)
-        {
-            string? dir = Path.GetDirectoryName(_pathHMS);
-            if (string.IsNullOrEmpty(dir)) return null;
-
-            string mapsPath = Path.GetFullPath(Path.Combine(dir, "maps"));
-
-            if (!Directory.Exists(mapsPath))
-            {
-                System.Diagnostics.Debug.WriteLine($"MapView Maps folder not found: {mapsPath}");
-                return null;
-            }
-
-            string? match = Directory.GetFiles(mapsPath, "*.shp", SearchOption.AllDirectories)
-                .FirstOrDefault(f => Path.GetFileNameWithoutExtension(f)
-                    .Contains(searchText, StringComparison.OrdinalIgnoreCase));
-
-            if (!Path.Exists(match)) return null;
-
-            var fullpath = Path.GetFullPath(match);
-
-            return fullpath;
-        }
-
-
-
-
-
-
-
-
-
-
-
-        private void OnSelectionChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-        {
-            if (e.PropertyName == nameof(SelectionViewModel.SelectedRiverSta))
-                ZoomToStation(_selectionVm.SelectedRiverSta, _selectionVm.SelectedDelta);
-
-        }
-
-
-
-
-
-        private void ZoomToStation(string? riverSta, double delta)
-        {
-            if (string.IsNullOrEmpty(riverSta)) return;
-            if (!Path.Exists(_pathXS)) return;
+            _map.DataChanged += OnMapDataChanged;
 
             try
             {
-                using var reader = new NetTopologySuite.IO.ShapefileDataReader(
-                    _pathXS, NetTopologySuite.Geometries.GeometryFactory.Default);
-
-                var header = reader.DbaseHeader;
-                int staIdx = -1;
-                for (int i = 0; i < header.Fields.Length; i++)
-                {
-                    if (header.Fields[i].Name.Contains("RS", StringComparison.OrdinalIgnoreCase))
-                    {
-                        staIdx = i + 1;
-                        break;
-                    }
-                }
-
-                if (staIdx == -1) return;
-
-                while (reader.Read())
-                {
-                    var val = reader.GetString(staIdx)?.Trim();
-                    if (val == riverSta?.Trim())
-                    {
-
-                        try
-                        {
-                            var geom = reader.Geometry;
-                            var centroid = geom.Centroid;
-                            var (x, y) = SphericalMercator.FromLonLat(centroid.X, centroid.Y);
-                            var factory = NetTopologySuite.Geometries.GeometryFactory.Default;
-                            var coords = geom.Coordinates
-                                .Select(c =>
-                                {
-                                    var (px, py) = SphericalMercator.FromLonLat(c.X, c.Y);
-                                    return new NetTopologySuite.Geometries.Coordinate(px, py);
-                                })
-                                .ToArray();
-
-                            var projectedGeom = factory.CreateLineString(coords);
-                            var feature = new GeometryFeature { Geometry = projectedGeom };
-
-
-                            var highlightColor = delta > 0
-                            ? new Color(0, 0, 255, 255)
-                            : new Color(0, 0, 255, 255);
-
-                            //? new Color(50, 205, 50, 255)
-                            //: new Color(220, 50, 50, 255);
-
-
-                            _mapControl.Dispatcher.Invoke(() =>
-                            {
-                                _highlightLayer.Style = new VectorStyle
-                                {
-                                    Line = new Pen(highlightColor, 3),
-                                    Outline = new Pen(highlightColor, 3),
-                                    Fill = null
-                                };
-
-                                _highlightLayer.Clear();
-                                _highlightLayer.Add(feature);
-                                _highlightLayer.DataHasChanged();
-                                _map.Navigator.CenterOn(x, y);
-                                _map.Navigator.ZoomTo(1);
-                                _mapControl.Refresh();
-                            });
-                        }
-                        catch (Exception innerEx)
-                        {
-                            System.Diagnostics.Debug.WriteLine($"Inner error: {innerEx.Message}");
-                            System.Diagnostics.Debug.WriteLine($"Stack: {innerEx.StackTrace}");
-                        }
-                        return;
-                    }
-                }
+                using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(token);
+                timeoutCts.CancelAfter(TimeSpan.FromSeconds(5));
+                await tcs.Task.WaitAsync(timeoutCts.Token);
             }
-            catch (Exception ex)
+            catch (OperationCanceledException) { }
+            finally
             {
-                System.Diagnostics.Debug.WriteLine($"ZoomToStation error: {ex.Message}");
+                _map.DataChanged -= OnMapDataChanged;
             }
         }
-
-
-        private Task AddLayerShpTXCnty()
-        {
-            string shapefilePathCnty = "Z:\\10 DEV\\hydroExplorer\\SHP\\TX_CNTY.shp";
-
-            if (!Path.Exists(shapefilePathCnty)) return Task.CompletedTask;
-            var shapeFileProvider = new ShapeFile(shapefilePathCnty) { CRS = "EPSG:4326" };
-            var dataSource = new ProjectingProvider(shapeFileProvider) { CRS = "EPSG:3857" };
-            var shapefileLayer = new Layer("CNTY")
-            {
-                Name = "CNTY",
-                DataSource = dataSource,
-                Tag = new OverViewLayerData { IsMapInfoLayer = true },
-                Style = new StyleCollection
-                {
-                    Styles =
-                        {
-                            new VectorStyle
-                            {
-                                Fill = new Brush(Color.Transparent),
-                                Outline = new Pen(Color.Black, 2),
-                                Opacity = 0.3f
-                            },
-                            new LabelStyle
-                            {
-                                Enabled = true,
-                                LabelColumn = "NAME",
-                                BackColor = new Brush(Color.Transparent),
-                                ForeColor = new Color(_txtLBLColor),
-                                Font = new Font { FontFamily = "Eras", Size = 14 , Bold = true},
-                                HorizontalAlignment = LabelStyle.HorizontalAlignmentEnum.Center,
-                                VerticalAlignment = LabelStyle.VerticalAlignmentEnum.Center,
-                                MaxVisible = 1000,
-                            }
-                        }
-                }
-            };
-            _map.Layers.Add(new RasterizingTileLayer(shapefileLayer));
-            return Task.CompletedTask;
-        }
-
     }
 }

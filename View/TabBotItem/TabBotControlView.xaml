@@ -9,37 +9,43 @@
              mc:Ignorable="d"
              d:DesignHeight="550" d:DesignWidth="800">
 
-    
+
     <UserControl.DataContext>
         <vm:TabBotControlViewModel/>
     </UserControl.DataContext>
 
+    <UserControl.Resources>
+        <DataTemplate DataType="{x:Type vm:TabBotChartsViewModel}">
+            <views:TabBotChartsView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:TabBotOutputViewModel}">
+            <views:TabBotOutputView/>
+        </DataTemplate>
+    </UserControl.Resources>
 
+    
+    
+    
     <TabControl ItemsSource="{Binding Tabs}" 
             SelectedItem="{Binding SelectedTab}"
             TabStripPlacement="Bottom"
             Style="{StaticResource NoOffsetTabControl}">
 
-
-        <TabControl.Resources>
-            <DataTemplate DataType="{x:Type vm:TabBotChartsViewModel}">
-                <views:TabBotChartsView/>
-            </DataTemplate>
-
-        <DataTemplate DataType="{x:Type vm:TabBotOutputViewModel}">
-            <views:TabBotOutputView/>
-        </DataTemplate>
-        </TabControl.Resources>
-
+        <TabControl.ItemContainerStyle>
+            <Style TargetType="TabItem" BasedOn="{StaticResource NoOffsetTabItem}">
+                <Setter Property="Header" Value="{Binding Header}"/>
+            </Style>
+        </TabControl.ItemContainerStyle>
 
         <TabControl.ContentTemplate>
             <DataTemplate>
-                <ContentPresenter Content="{Binding Content}"/>
+                <ContentControl Content="{Binding Content}"/>
             </DataTemplate>
         </TabControl.ContentTemplate>
+
     </TabControl>
-    
 
 
-    
+
+
 </UserControl>

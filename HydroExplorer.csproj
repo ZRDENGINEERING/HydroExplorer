@@ -12,7 +12,10 @@
     <None Remove="Images\file.png" />
     <None Remove="Images\folder_closed.ico" />
     <None Remove="Images\folder_open.ico" />
+    <None Remove="Images\hechms.png" />
+    <None Remove="Images\hecras.png" />
     <None Remove="Images\logo_zrd.png" />
+    <None Remove="Images\shp.png" />
   </ItemGroup>
 
   <ItemGroup>
@@ -86,6 +89,12 @@
 
   <ItemGroup>
     <Folder Include="Properties\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Images\hechms.png" />
+    <Resource Include="Images\hecras.png" />
+    <Resource Include="Images\shp.png" />
   </ItemGroup>
 
 </Project>

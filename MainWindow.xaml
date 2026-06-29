@@ -8,29 +8,28 @@
         xmlns:vm="clr-namespace:HydroExplorer.ViewModel"
         xmlns:userControls="clr-namespace:HydroExplorer.View.UserControls"
         mc:Ignorable="d" 
-        Height="1000" Width="1900"
+        Height="900" Width="1600"
         WindowStyle="None"
         AllowsTransparency="True"
         ResizeMode="CanResizeWithGrip"
         BorderBrush="{StaticResource BorderBrush}" BorderThickness="0.8" 
         Background="{StaticResource DividerBrush}"
-        Top="0" Left="-2000">
+        Top="30" Left="-2000">
 
+    
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="25"/>
             <RowDefinition Height="50"/>
             <RowDefinition Height="0.5"/>
-            <RowDefinition Height="1*"/>
-            <RowDefinition Height="1*"/>
-            <RowDefinition Height="1*"/>
+            <RowDefinition Height="520"/>
             <RowDefinition Height="5"/>
-            <RowDefinition Height="*" MinHeight="20"/>
-            <RowDefinition Height="25"/>
+            <RowDefinition Height="*" MinHeight="50"/>
+            <RowDefinition Height="26"/>
         </Grid.RowDefinitions>
 
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="250" MinWidth="20"/>
+            <ColumnDefinition Width="350" MinWidth="20"/>
             <ColumnDefinition Width="5"/>
             <ColumnDefinition Width="*" MinWidth="100"/>
             <ColumnDefinition Width="5"/>
@@ -38,7 +37,7 @@
         </Grid.ColumnDefinitions>
 
         <!-- Custom Title Bar -->
-        <Grid Grid.Column="0" Grid.ColumnSpan="5"
+        <Grid Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="5"
               Height="25" Background="Black"
               VerticalAlignment="Top"
               MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
@@ -69,15 +68,16 @@
 
         <!-- Left Pane: Tabbed -->
         <TabControl Grid.Column="0" Grid.Row="3" Grid.RowSpan="5"
-                    Margin="3,0,0,3"
-                    Style="{StaticResource NoOffsetTabControl}">
-
-            <TabItem Header="HYDROLOGY" Style="{StaticResource NoOffsetTabItem}">
-                <views:HydrologyPaneView/>
-            </TabItem>
+            Margin="3,0,0,3"
+            TabStripPlacement="Left"
+            Style="{StaticResource NoOffsetTabControl}">
 
             <TabItem Header="HYDRAULICS" Style="{StaticResource NoOffsetTabItem}">
                 <views:HydraulicsPaneView/>
+            </TabItem>
+
+            <TabItem Header="HYDROLOGY" Style="{StaticResource NoOffsetTabItem}">
+                <views:HydrologyPaneView/>
             </TabItem>
 
             <TabItem Header="GEOMETRY" Style="{StaticResource NoOffsetTabItem}">
@@ -87,40 +87,40 @@
         </TabControl>
 
         <!-- Left Splitter -->
-        <GridSplitter Grid.Column="1" Grid.Row="3" Grid.RowSpan="5" Width="4"
+        <GridSplitter Grid.Column="1" Grid.Row="3" Grid.RowSpan="3" Width="4"
                       ResizeBehavior="PreviousAndNext"
                       Background="{StaticResource DividerBrush}" ShowsPreview="False"/>
 
         <!-- Center Pane -->
-        <ContentControl Grid.Column="2" Grid.Row="3" Grid.RowSpan="3"
+        <ContentControl Grid.Column="2" Grid.Row="2" Grid.RowSpan="3"
                         Content="{Binding CurrentView}"
                         Margin="0,0,0,0"
                         Background="{StaticResource BackgroundBrushDark}"/>
 
         <!-- Right Splitter -->
-        <GridSplitter Grid.Column="3" Grid.Row="3" Grid.RowSpan="5" Width="4"
+        <GridSplitter Grid.Column="3" Grid.Row="3" Grid.RowSpan="3" Width="4"
                       ResizeBehavior="PreviousAndNext"
                       Background="{StaticResource DividerBrush}" ShowsPreview="False"/>
 
         <!-- Right Pane: Recent Projects -->
-        <views:RecentProjectsView Grid.Column="4" Grid.Row="3" Grid.RowSpan="5"
+        <views:RecentProjectsView Grid.Column="4" Grid.Row="3" Grid.RowSpan="3"
                                   Margin="0,0,3,3"
                                   Background="{StaticResource BackgroundBrushDark}"
                                   DataContext="{Binding TabInfoVM}"/>
 
         <!-- Horizontal Splitter -->
-        <GridSplitter Grid.Column="2" Grid.Row="6" Width="2000"
+        <GridSplitter Grid.Column="2" Grid.Row="4" Width="2000"
                       ResizeDirection="Rows"
                       Background="{StaticResource DividerBrush}" ShowsPreview="True"/>
 
         <!-- Bottom Pane -->
-        <views:BottomView x:Name="BottomView" Grid.Column="2" Grid.Row="7"
+        <views:BottomView x:Name="BottomView" Grid.Column="2" Grid.Row="5"
                           Margin="0,0,3,3"
                           Background="{StaticResource BackgroundBrushDark}"
                           BorderThickness="0.8"/>
 
         <!-- Footer -->
-        <Rectangle Grid.ColumnSpan="5" Grid.Row="8" Fill="{StaticResource FooterBrush}"/>
+        <Rectangle Grid.ColumnSpan="5" Grid.Row="6" Fill="{StaticResource FooterBrush}"/>
 
     </Grid>
 </Window>

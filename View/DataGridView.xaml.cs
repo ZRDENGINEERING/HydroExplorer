@@ -1,11 +1,10 @@
 ﻿using HydroExplorer.Helpers;
-using HydroExplorer.Utils;
 using HydroExplorer.ViewModel;
 using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
+
 
 namespace HydroExplorer.View
 {
@@ -13,10 +12,11 @@ namespace HydroExplorer.View
     {
         private IUserSettingsRepo? _settingsRepo;
         public Dictionary<string, ProjectSettings> ProjSettings { get; set; } = [];
-        public PlotViewModel PlotVm { get; } = new PlotViewModel();
+        public PlotViewModel PlotVm { get; } = App.ServiceProvider.GetRequiredService<PlotViewModel>();
         private readonly SelectionViewModel _selectionVm;
 
-        public string? projDir = string.Empty;
+        private List<WSELTableOxy> _allWselData = [];
+
         public string? projPath = string.Empty;
         public string? hdfPathA = string.Empty;
         public string? hdfPathB = string.Empty;
@@ -35,19 +35,62 @@ namespace HydroExplorer.View
             _selectionVm = App.ServiceProvider.GetRequiredService<SelectionViewModel>();
             _selectionVm.PropertyChanged += OnSelectionChanged;
 
-            Loaded += async (s, e) => await LoadDataGrid(fresh: true);
-            IsVisibleChanged += async (s, e) =>
+            PlotVm.PropertyChanged += OnPlotVmPropertyChanged;
+
+            foreach (var reach in PlotVm.Reaches)
+                reach.PropertyChanged += OnReachSelectionChanged;
+
+            PlotVm.Reaches.CollectionChanged += (s, e) =>
             {
-                if ((bool)e.NewValue)
-                    await LoadDataGrid(fresh: true);
+                // Reaches rebuilt for new project — now safe to filter since
+                // selectedReaches will reflect the new project's reach names.
+                if (e.NewItems != null)
+                    foreach (ReachItem r in e.NewItems)
+                        r.PropertyChanged += OnReachSelectionChanged;
+
+                Dispatcher.Invoke(() =>
+                {
+                    _allWselData = PlotVm.WselData ?? [];
+                    UpdateColumnHeaders();
+                    ApplyReachFilter();
+                });
             };
 
-            Loaded += (s, e) => BuildColumnContextMenu();
+            Loaded += (s, e) =>
+            {
+                // Sync _allWselData from PlotVm in case data was already loaded
+                // before this control was constructed/loaded.
+                if (PlotVm.WselData != null && PlotVm.WselData.Count > 0)
+                {
+                    _allWselData = PlotVm.WselData;
+                    UpdateColumnHeaders();
+                }
+                ApplyReachFilter();
+                BuildColumnContextMenu();
+            };
+
+            IsVisibleChanged += async (s, e) =>
+            {
+                if (!(bool)e.NewValue) return;
+
+                System.Diagnostics.Debug.WriteLine($"DataGridView.IsVisibleChanged: WselData count={PlotVm.WselData?.Count ?? 0}");
+
+
+                await LoadSettingsDataGrid(fresh: true);
+                UpdateColumnHeaders();
+
+                if (PlotVm.WselData != null && PlotVm.WselData.Count > 0)
+                {
+                    _allWselData = PlotVm.WselData;
+                    UpdateColumnHeaders();
+                }
+
+                ApplyReachFilter();
+            };
 
             EventBus.HdfPathChanged += OnHdfPathChanged;
             EventBus.ProfileChanged += OnProfileChanged;
 
-            // Update column headers when plan names change
             EventBus.PlanNamesChanged += (nameA, nameB) => Dispatcher.Invoke(() =>
             {
                 planNameA = nameA;
@@ -69,10 +112,23 @@ namespace HydroExplorer.View
 
             Unloaded += (s, e) =>
             {
-                EventBus.ProjPathChanged -= OnProjPathChanged;
+                PlotVm.PropertyChanged -= OnPlotVmPropertyChanged;
                 EventBus.HdfPathChanged -= OnHdfPathChanged;
                 EventBus.ProfileChanged -= OnProfileChanged;
             };
+        }
+
+        private void OnPlotVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName != nameof(PlotViewModel.WselData)) return;
+
+            // Don't filter yet — Reaches hasn't been rebuilt for the new project.
+            // CollectionChanged on Reaches will trigger ApplyReachFilter once ready.
+            Dispatcher.Invoke(() =>
+            {
+                _allWselData = PlotVm.WselData ?? [];
+                UpdateColumnHeaders();
+            });
         }
 
         private void BuildColumnContextMenu()
@@ -108,7 +164,6 @@ namespace HydroExplorer.View
 
         private async void OnProfileChanged(string profileName)
         {
-            // Use fresh settings so hdfPathA/B are current, then override proName
             await Dispatcher.InvokeAsync(async () => await LoadDataGrid(fresh: true, overrideProName: profileName));
         }
 
@@ -117,43 +172,13 @@ namespace HydroExplorer.View
             try
             {
                 await LoadSettingsDataGrid(fresh);
+                if (overrideProName != null) proName = overrideProName;
                 UpdateColumnHeaders();
-
-                if (overrideProName != null)
-                    proName = overrideProName;
-
-                if (string.IsNullOrEmpty(hdfPathA) || string.IsNullOrEmpty(proName))
-                {
-                    System.Diagnostics.Debug.WriteLine("LoadDataGrid: HDF path A not set, skipping.");
-                    return;
-                }
-
-                List<WSELTableOxy>? wselDataOxy;
-
-                bool hasBothSources = !string.IsNullOrEmpty(hdfPathB);
-
-                if (hasBothSources)
-                {
-                    wselDataOxy = HecRasHdfReader.ReadWSELTableOxy(hdfPathA, hdfPathB, proName);
-                }
-                else
-                {
-                    wselDataOxy = HecRasHdfReader.ReadWSELTableOxySingle(hdfPathA, proName);
-                }
-
-
-                dgSimple.ItemsSource = wselDataOxy;
-                PlotVm.LoadFromWSELTable(wselDataOxy);
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"LoadDataGrid error: {ex.Message}");
             }
-        }
-
-        private async void OnProjPathChanged(string path)
-        {
-            await Dispatcher.InvokeAsync(async () => await LoadDataGrid(fresh: true));
         }
 
         private void OnSelectionChanged(object? sender, PropertyChangedEventArgs e)
@@ -182,7 +207,6 @@ namespace HydroExplorer.View
                 : await _settingsRepo.GetSettings();
 
             projPath = settings.ProjPath;
-            projDir = settings.ProjDir;
 
             if (string.IsNullOrEmpty(projPath)) return;
             if (!settings.Projects.TryGetValue(projPath, out var project)) return;
@@ -217,7 +241,12 @@ namespace HydroExplorer.View
                     double delta = (idx1 >= 0 && idx2 >= 0)
                         ? itemsSourceB[idx2].WSElev - itemsSourceA[idx1].WSElev
                         : 0;
-                    results.Add(new HecRasProfileWselResult { RiverSta = rsta, WSElev = Math.Round(delta, 2), DELTA = Math.Round(delta, 2) });
+                    results.Add(new HecRasProfileWselResult
+                    {
+                        RiverSta = rsta,
+                        WSElev = Math.Round(delta, 2),
+                        DELTA = Math.Round(delta, 2)
+                    });
                 }
             }
             else
@@ -264,6 +293,32 @@ namespace HydroExplorer.View
                 else if (h == "WSElev B" || (h.StartsWith("WSElev (") && h.Contains(nameB)))
                     col.Header = $"WSElev ({nameB})";
             }
+        }
+
+        private void OnReachSelectionChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName != nameof(ReachItem.IsSelected)) return;
+            Dispatcher.Invoke(ApplyReachFilter);
+        }
+
+        private void ApplyReachFilter()
+        {
+            var selectedReaches = PlotVm.Reaches
+                .Where(r => r.IsSelected)
+                .Select(r => r.ReachId)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            System.Diagnostics.Debug.WriteLine(
+                $"ApplyReachFilter: _allWselData={_allWselData.Count} selectedReaches=[{string.Join(",", selectedReaches)}] PlotVm.Reaches={PlotVm.Reaches.Count}");
+
+            dgSimple.ItemsSource = selectedReaches.Count == 0
+                ? _allWselData
+                : _allWselData
+                    .Where(r => !string.IsNullOrWhiteSpace(r.Reach) &&
+                                selectedReaches.Contains(r.Reach))
+                    .ToList();
+
+            System.Diagnostics.Debug.WriteLine($"ApplyReachFilter: dgSimple.ItemsSource count={((System.Collections.IList?)dgSimple.ItemsSource)?.Count ?? 0}");
         }
     }
 

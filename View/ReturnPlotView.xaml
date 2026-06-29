@@ -7,7 +7,37 @@
              mc:Ignorable="d"
              d:DesignHeight="450" d:DesignWidth="800">
     <Grid>
-        <oxy:PlotView Model="{Binding PlotModel}"
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Run picker toolbar -->
+        <DockPanel Grid.Row="0" Margin="4,4,4,2" LastChildFill="True">
+            <Button DockPanel.Dock="Right"
+                    Content="Clear Added"
+                    Command="{Binding ClearAddedRunsCommand}"
+                    Margin="4,0,0,0" Padding="6,2"
+                    FontSize="9"
+                    Background="{StaticResource BackgroundBrushDark}"/>
+
+            <Button DockPanel.Dock="Right"
+                    Content="Add Run"
+                    Command="{Binding AddRunCommand}"
+                    Margin="4,0,0,0" Padding="6,2"
+                    FontSize="9"
+                    Background="{StaticResource BackgroundBrushDark}"/>
+
+            <ComboBox ItemsSource="{Binding AvailableRunNames}"
+                      SelectedItem="{Binding SelectedRunToAdd, Mode=TwoWay}"
+                      Margin="300,0,0,0"
+                      FontSize="9"
+                      Background="#543d05"
+                      BorderThickness="0"/>
+        </DockPanel>
+
+        <oxy:PlotView Grid.Row="1"
+                      Model="{Binding PlotModel}"
                       Background="{StaticResource BackgroundBrushSidePanels}"/>
     </Grid>
 </UserControl>

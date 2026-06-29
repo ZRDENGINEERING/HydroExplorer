@@ -1,4 +1,6 @@
-﻿using System.Windows.Controls;
+﻿using HydroExplorer.ViewModel.TabItem;
+using Microsoft.Extensions.DependencyInjection;
+using System.Windows.Controls;
 
 namespace HydroExplorer.View.TabItem
 {
@@ -7,6 +9,8 @@ namespace HydroExplorer.View.TabItem
         public TabControlView()
         {
             InitializeComponent();
+            DataContext = App.ServiceProvider.GetRequiredService<TabControlViewModel>();
+
         }
     }
 }

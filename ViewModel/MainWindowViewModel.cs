@@ -1,6 +1,7 @@
 ﻿using HydroExplorer.Core;
 using HydroExplorer.Helpers;
 using HydroExplorer.ViewModel.TabItem;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace HydroExplorer.ViewModel
 {
@@ -28,13 +29,14 @@ namespace HydroExplorer.ViewModel
 
         public MainWindowViewModel(IUserSettingsRepo settingsRepo)
         {
+            TabInfoVM = App.ServiceProvider.GetRequiredService<TabInfoViewModel>();
+
             _settingsRepo = settingsRepo;
 
             HomeVM = new HomeViewModel();
             DiscoveryVM = new DiscoveryViewModel();
             DataGridVM = new DataGridViewModel();
             MapVM = new MapViewModel();
-            TabInfoVM = new TabInfoViewModel(settingsRepo);
 
             CurrentView = HomeVM;
 
@@ -51,6 +53,8 @@ namespace HydroExplorer.ViewModel
         {
             try
             {
+                await Task.Delay(1500);
+
                 var settings = await _settingsRepo.GetSettingsFresh();
                 EventBus.PublishAppLoaded(settings);
             }

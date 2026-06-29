@@ -2,6 +2,7 @@
 using HydroExplorer.Helpers;
 using HydroExplorer.Themes;
 using HydroExplorer.Utils;
+using HydroExplorer.View;
 using Microsoft.Extensions.DependencyInjection;
 using OxyPlot;
 using OxyPlot.Axes;
@@ -97,11 +98,16 @@ namespace HydroExplorer.ViewModel.TabItem
                     .GetRequiredService<IUserSettingsRepo>();
                 var settings = await settingsRepo.GetSettings();
 
-                if (string.IsNullOrEmpty(settings.DssPath) || !File.Exists(settings.DssPath))
+                string projPath = TreeViewControl.NormalizeProjKey(settings.LastProjPath);
+                if (string.IsNullOrEmpty(projPath) ||
+                    !settings.Projects.TryGetValue(projPath, out var proj))
+                    return;
+
+                if (string.IsNullOrEmpty(proj.DssPath) || !File.Exists(proj.DssPath))
                     return;
 
                 var allPaths = await Task.Run(() =>
-                    DssHyetographReader.GetAllPaths(settings.DssPath));
+                    DssHyetographReader.GetAllPaths(proj.DssPath));
 
                 var runName = allPaths
                     .Select(p => {
@@ -116,7 +122,7 @@ namespace HydroExplorer.ViewModel.TabItem
                     .FirstOrDefault() ?? string.Empty;
 
                 if (!string.IsNullOrEmpty(runName))
-                    LoadDssDataAsync(settings.DssPath, runName);
+                    LoadDssDataAsync(proj.DssPath, runName);
             }
             catch (Exception ex)
             {

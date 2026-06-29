@@ -1,8 +1,8 @@
 ﻿using HydroExplorer.View;
 using PureHDF;
 using PureHDF.VOL.Native;
-using System.Runtime.InteropServices;
 using System.IO;
+using System.Runtime.InteropServices;
 
 
 
@@ -15,53 +15,6 @@ namespace HydroExplorer.Utils
 
         private const string BasePathAV =
             "/Results/Steady/Output/Output Blocks/Base Output/Steady Profiles/Cross Sections/Additional Variables/";
-        
-
-        public static List<WSELTable> ReadWSELTable(string planPathA, string planPathB, string proName)
-        {
-            using var fileA = H5File.OpenRead(planPathA);
-
-            var river = ReadCrossSectionAttrRiver(fileA);
-            var reach = ReadCrossSectionAttrReach(fileA);
-            var riverSta = ReadCrossSectionAttrStation(fileA);
-            var profile = ReadSteadyProfileNames(fileA);
-
-
-            var profileArr = new string[river.Length];
-
-            int proN = profile.IndexOf(proName);
-            if (proN == -1) proN = 0;
-
-            Array.Fill(profileArr, profile[proN]);
-
-            var qTotalA = fileA.Dataset(BasePathAV + "Flow Total").Read<float[,]>();
-            var wsElevA = fileA.Dataset(BasePath + "Water Surface").Read<float[,]>();
-
-            using var fileB = H5File.OpenRead(planPathB);
-            var qTotalB = fileB.Dataset(BasePathAV + "Flow Total").Read<float[,]>();
-            var wsElevB = fileB.Dataset(BasePath + "Water Surface").Read<float[,]>();
-
-
-            var results = new List<WSELTable>(riverSta.Length);
-
-            for (int i = 0; i < riverSta.Length; i++)
-            {
-                results.Add(new WSELTable
-                {
-                    River = river[i],
-                    Reach = reach[i],
-                    RiverSta = riverSta[i],
-                    Profile = profileArr[proN],
-                    QTotalA = qTotalA[proN, i],
-                    WSElevA = Math.Round(wsElevA[proN, i], 2),
-                    QTotalB = qTotalB[proN, i],
-                    WSElevB = Math.Round(wsElevB[proN, i], 2),
-                    DELTA = Math.Round(wsElevB[proN, i] - (wsElevA[proN, i]), 2)
-                });
-            }
-            return results;
-        }
-
 
         public static List<WSELTableOxy> ReadWSELTableOxy(string? hdfPathA, string? hdfPathB, string proName)
         {
@@ -69,32 +22,57 @@ namespace HydroExplorer.Utils
             bool hasB = !string.IsNullOrEmpty(hdfPathB) && File.Exists(hdfPathB);
 
             if (!hasA && !hasB) return [];
+
+            // Bail if 2D model — no steady results to read
+            string checkPath = hasA ? hdfPathA! : hdfPathB!;
+            var (has1D, has2D) = GetModelDimensions(checkPath);
+            if (has2D && !has1D)
+            {
+                System.Diagnostics.Debug.WriteLine("ReadWSELTableOxy: 2D model detected, skipping.");
+                return [];
+            }
+
             if (!hasB && hasA) return ReadWSELTableOxySingle(hdfPathA!, proName) ?? [];
             if (!hasA && hasB) return ReadWSELTableOxySingle(hdfPathB!, proName) ?? [];
 
-            using var fileA = H5File.OpenRead(hdfPathA!);
-            using var fileB = H5File.OpenRead(hdfPathB!);
+            // Guard: both paths must be valid before opening either file
+            if (!hasA || !hasB) return [];
 
-            // Read geometry from each plan independently
-            var riverA = ReadCrossSectionAttrRiver(fileA);
-            var reachA = ReadCrossSectionAttrReach(fileA);
-            var staA = ReadCrossSectionAttrStation(fileA);
+            using var fileA = OpenHdf(hdfPathA!);
+            using var fileB = OpenHdf(hdfPathB!);
 
-            var staB = ReadCrossSectionAttrStation(fileB);
+            if (!HasSteadyResults(fileA) || !HasSteadyResults(fileB))
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    "ReadWSELTableOxy: one or both plans have no Steady Output results, skipping.");
+                return [];
+            }
+
+            var (riverA, reachA, staA) = ReadCrossSectionAttrs(fileA);
+            var (riverB, reachB, staB) = ReadCrossSectionAttrs(fileB);
+
+            // Guard: attrs must have content
+            if (staA.Length == 0 || staB.Length == 0)
+            {
+                System.Diagnostics.Debug.WriteLine("ReadWSELTableOxy: empty cross-section attrs, skipping.");
+                return [];
+            }
 
             var profileA = ReadSteadyProfileNames(fileA);
             var profileB = ReadSteadyProfileNames(fileB);
+
+            // Guard: profile lists must have content
+            if (profileA.Count == 0 || profileB.Count == 0)
+            {
+                System.Diagnostics.Debug.WriteLine("ReadWSELTableOxy: empty profile names, skipping.");
+                return [];
+            }
 
             int proNA = profileA.IndexOf(proName);
             if (proNA == -1) proNA = 0;
 
             int proNB = profileB.IndexOf(proName);
-            if (proNB == -1)
-            {
-                //System.Diagnostics.Debug.WriteLine(
-                //    $"ReadWSELTableOxy: '{proName}' not in fileB [{string.Join(", ", profileB)}], using 0.");
-                proNB = 0;
-            }
+            if (proNB == -1) proNB = 0;
 
             var qTotalA = fileA.Dataset(BasePathAV + "Flow Total").Read<float[,]>();
             var wsElevA = fileA.Dataset(BasePath + "Water Surface").Read<float[,]>();
@@ -107,26 +85,35 @@ namespace HydroExplorer.Utils
             int rowsA = wsElevA.GetLength(0), colsA = wsElevA.GetLength(1);
             int rowsB = wsElevB.GetLength(0), colsB = wsElevB.GetLength(1);
 
+            // Guard: profile index in bounds
             if (proNA >= rowsA || proNB >= rowsB) return [];
 
-            // Build a lookup from station string → index in Plan B
+            // Guard: column counts must match attr lengths
+            if (colsA != staA.Length || colsB != staB.Length)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"ReadWSELTableOxy: column/attr length mismatch — colsA={colsA} staA={staA.Length}, colsB={colsB} staB={staB.Length}");
+                return [];
+            }
+
+            // Key by River+Reach+Station composite — station number alone is not unique
+            // across a multi-reach model; keying only by station caused cross-reach
+            // misalignment (e.g. Oak Spr Overflow sta 571 matching TAN 3 sta 571).
+            static string CompositeKey(string river, string reach, string sta) =>
+                $"{river.Trim()}|{reach.Trim()}|{sta.Trim()}";
+
             var staBIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             for (int j = 0; j < staB.Length && j < colsB; j++)
-                staBIndex.TryAdd(staB[j].Trim(), j);
+                staBIndex.TryAdd(CompositeKey(riverB[j], reachB[j], staB[j]), j);
 
             var results = new List<WSELTableOxy>();
 
             for (int i = 0; i < staA.Length && i < colsA; i++)
             {
-                string sta = staA[i].Trim();
+                string key = CompositeKey(riverA[i], reachA[i], staA[i]);
 
-                // Find matching cross section in Plan B by station label
-                if (!staBIndex.TryGetValue(sta, out int j))
-                {
-                    System.Diagnostics.Debug.WriteLine(
-                        $"ReadWSELTableOxy: station '{sta}' not found in Plan B — skipping.");
+                if (!staBIndex.TryGetValue(key, out int j))
                     continue;
-                }
 
                 double wselA = Math.Round(wsElevA[proNA, i], 2);
                 double wselB = Math.Round(wsElevB[proNB, j], 2);
@@ -135,7 +122,7 @@ namespace HydroExplorer.Utils
                 {
                     River = riverA[i],
                     Reach = reachA[i],
-                    RiverSta = sta,
+                    RiverSta = staA[i].Trim(),
                     Profile = profileA[proNA],
                     QTotalA = qTotalA[proNA, i],
                     MinChEl = minChEl[proNA, i],
@@ -145,25 +132,31 @@ namespace HydroExplorer.Utils
                     DELTA = Math.Round(wselB - wselA, 2)
                 });
             }
-
             return results;
         }
 
 
-
-        public static List<WSELTableOxy>? ReadWSELTableOxySingle(string planPathA, string proName)
+        public static List<WSELTableOxy>? ReadWSELTableOxySingle(string planPath, string proName)
         {
-            if (string.IsNullOrEmpty(planPathA) || !File.Exists(planPathA))
+            if (string.IsNullOrEmpty(planPath) || !File.Exists(planPath)) return [];
+
+            var (has1D, has2D) = GetModelDimensions(planPath);
+            if (has2D && !has1D)
             {
-                System.Diagnostics.Debug.WriteLine($"ReadWSELTableOxySingle: HDF path missing: '{planPathA}'.");
+                System.Diagnostics.Debug.WriteLine("ReadWSELTableOxySingle: 2D model detected, skipping.");
+                return [];
+            }
+
+            using var fileA = OpenHdf(planPath);
+
+            if (!HasSteadyResults(fileA))
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"ReadWSELTableOxySingle: '{planPath}' has no Steady Output results (unsteady plan or not yet computed), skipping.");
                 return null;
             }
 
-            using var fileA = H5File.OpenRead(planPathA);
-
-            var river = ReadCrossSectionAttrRiver(fileA);
-            var reach = ReadCrossSectionAttrReach(fileA);
-            var riverSta = ReadCrossSectionAttrStation(fileA);
+            var (rivers, reaches, stations) = ReadCrossSectionAttrs(fileA);
             var profileA = ReadSteadyProfileNames(fileA);
 
             int proNA = profileA.IndexOf(proName);
@@ -188,23 +181,23 @@ namespace HydroExplorer.Utils
                 return null;
             }
 
-            int cols = Math.Min(colsA, riverSta.Length);
+            int cols = Math.Min(colsA, stations.Length);
             var results = new List<WSELTableOxy>(cols);
 
             for (int i = 0; i < cols; i++)
             {
                 results.Add(new WSELTableOxy
                 {
-                    River = river[i],
-                    Reach = reach[i],
-                    RiverSta = riverSta[i],
+                    River = rivers[i],
+                    Reach = reaches[i],
+                    RiverSta = stations[i],
                     Profile = profileA[proNA],
                     QTotalA = qTotalA[proNA, i],
                     MinChEl = minChEl[proNA, i],
                     WSElevA = Math.Round(wsElevA[proNA, i], 2),
-                    QTotalB = float.NaN,   // no second source
-                    WSElevB = double.NaN,  // no second source
-                    DELTA = double.NaN   // can't compute
+                    QTotalB = float.NaN,
+                    WSElevB = double.NaN,
+                    DELTA = double.NaN
                 });
             }
 
@@ -242,51 +235,25 @@ namespace HydroExplorer.Utils
 
 
 
-
-        private static string[] ReadCrossSectionAttrRiver(NativeFile file)
+        private static (string[] Rivers, string[] Reaches, string[] Stations) ReadCrossSectionAttrs(NativeFile file)
         {
-            var raw = file.Dataset("/Results/Steady/Output/Geometry Info/Cross Section Attributes").Read<CrossSectionAttr[]>();
-            int rows = raw.Length;
+            var raw = file.Dataset("/Results/Steady/Output/Geometry Info/Cross Section Attributes")
+                          .Read<CrossSectionAttr[]>();
 
-            var strings = new string[rows];
+            var rivers = new string[raw.Length];
+            var reaches = new string[raw.Length];
+            var stations = new string[raw.Length];
 
-            for (int i = 0; i < rows; i++)
+            for (int i = 0; i < raw.Length; i++)
             {
-                strings[i] = raw[i].River
-                    .Trim();
+                rivers[i] = raw[i].River.Trim();
+                reaches[i] = raw[i].Reach.Trim();
+                stations[i] = raw[i].Station.Trim();
             }
-            return strings;
+
+            return (rivers, reaches, stations);
         }
 
-        private static string[] ReadCrossSectionAttrReach(NativeFile file)
-        {
-            var raw = file.Dataset("/Results/Steady/Output/Geometry Info/Cross Section Attributes").Read<CrossSectionAttr[]>();
-            int rows = raw.Length;
-
-            var strings = new string[rows];
-
-            for (int i = 0; i < rows; i++)
-            {
-                strings[i] = raw[i].Reach
-                    .Trim();
-            }
-            return strings;
-        }
-
-        private static string[] ReadCrossSectionAttrStation(NativeFile file)
-        {
-            var raw = file.Dataset("/Results/Steady/Output/Geometry Info/Cross Section Attributes").Read<CrossSectionAttr[]>();
-            int rows = raw.Length;
-
-            var strings = new string[rows];
-
-            for (int i = 0; i < rows; i++)
-            {
-                strings[i] = raw[i].Station
-                    .Trim();
-            }
-            return strings;
-        }
         private static string[] ReadCrossSectionAttrName(NativeFile file)
         {
             var raw = file.Dataset("/Results/Steady/Output/Geometry Info/Cross Section Attributes").Read<CrossSectionAttr[]>();
@@ -317,7 +284,6 @@ namespace HydroExplorer.Utils
 
         private static string[] ReadPlanNames(NativeFile file)
         {
-            //var raw = file.Dataset("/Results/Steady/Output/Geometry Info/Cross Section Attributes").Read<CrossSectionAttr[]>();
             var raw = file.Dataset("/Plan Data/Plan Name").Read<string[]>();
             int rows = raw.Length;
 
@@ -333,28 +299,27 @@ namespace HydroExplorer.Utils
 
         public static List<string> GetProfileNames(string filePath)
         {
-            using var file = H5File.OpenRead(filePath);
+            using var file = OpenHdf(filePath);
             return ReadSteadyProfileNames(file);
         }
 
         public static string GetPlanName(string filePath)
         {
-            using var file = H5File.OpenRead(filePath);
+            using var file = OpenHdf(filePath);
 
             try
             {
                 return file.Group("/Plan Data/Plan Information").Attribute("Plan Name").Read<string>().Trim();
             }
             catch
-                {
-                    //return Path.GetFileNameWithoutExtension(filePath);
-                    return string.Empty;
-                }
+            {
+                return string.Empty;
+            }
         }
 
         public static void InspectPlanData(string filePath)
         {
-            using var file = H5File.OpenRead(filePath);
+            using var file = OpenHdf(filePath);
             var group = file.Group("/Plan Data/Plan Information");
             foreach (var link in group.Children())
             {
@@ -371,17 +336,14 @@ namespace HydroExplorer.Utils
             var raw = file.Dataset("/Geometry/Cross Sections/Station Elevation Values").Read<float[,]>();
             System.Diagnostics.Debug.WriteLine($"staElev........................: {raw[0, 0]}");
 
-            // Initialize min value with the first element of the array
             var minValue = raw[0, 1];
             int rows = raw.GetLength(0);
 
             var minValues = new float[rows];
-            // Loop through the array starting from the second element
             for (int i = 0; i < rows; i++)
             {
                 if (raw[i, 1] < minValue)
                 {
-                    // Update minValue if the current element is smaller
                     minValue = raw[i, 1];
                     minValues[i] = minValue;
                 }
@@ -394,7 +356,6 @@ namespace HydroExplorer.Utils
             var raw = file.Dataset("/Results/Steady/Output/Output Blocks/Base Output/Steady Profiles/Cross Sections/Additional Variables/Maximum Depth Total").Read<float[,]>();
             System.Diagnostics.Debug.WriteLine($"maxDepth........................: {raw[0, 0]}");
 
-            // Initialize min value with the first element of the array
             var maxValue = raw[0, 1];
             int rows = raw.GetLength(0);
             int cols = raw.GetLength(1);
@@ -463,6 +424,65 @@ namespace HydroExplorer.Utils
                 }
             }
             return frVals;
+        }
+
+        internal static NativeFile OpenHdf(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+                throw new ArgumentException("HDF path cannot be null or empty.", nameof(path));
+
+            byte[] bytes = File.ReadAllBytes(path);
+            return H5File.Open(new MemoryStream(bytes));
+        }
+
+        public static bool Is2DModel(string hdfPath)
+        {
+            using var file = OpenHdf(hdfPath);
+            try
+            {
+                var group = file.Group("/Geometry/2D Flow Areas");
+                return group.Children().Any();
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public static (bool has1D, bool has2D) GetModelDimensions(string hdfPath)
+        {
+            using var file = OpenHdf(hdfPath);
+
+            bool has1D = false;
+            bool has2D = false;
+
+            try { has1D = file.Group("/Geometry/Cross Sections").Children().Any(); }
+            catch { }
+
+            try { has2D = file.Group("/Geometry/2D Flow Areas").Children().Any(); }
+            catch { }
+
+            return (has1D, has2D);
+        }
+
+        /// <summary>
+        /// Checks whether this plan has a Steady Output results tree at all —
+        /// an unsteady-flow plan, or a steady plan that hasn't been computed yet,
+        /// will have valid 1D geometry but no /Results/Steady/... group, which
+        /// would otherwise throw an unhandled exception deep inside PureHDF
+        /// when ReadCrossSectionAttrs/ReadSteadyProfileNames try to read from it.
+        /// </summary>
+        private static bool HasSteadyResults(NativeFile file)
+        {
+            try
+            {
+                _ = file.Dataset("/Results/Steady/Output/Geometry Info/Cross Section Attributes");
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }

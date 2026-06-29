@@ -13,20 +13,19 @@
             <RowDefinition Height="30"/>
             <RowDefinition Height="3*"/>
             <RowDefinition Height="4"/>
-            <RowDefinition Height="330" MinHeight="32"/>
+            <RowDefinition Height="300" MinHeight="32"/>
         </Grid.RowDefinitions>
 
         <!-- Header -->
         <GroupBox Grid.Row="0"
                   Header="GEOMETRY"
-                  FontSize="12" FontWeight="SemiBold"
+                  FontSize="12" FontWeight="Bold"
                   Background="{StaticResource BackgroundBrushHeader}"
                   BorderBrush="{StaticResource BorderBrush}"
                   BorderThickness="0.8"/>
 
         <!-- Filtered Tree: .shp files only -->
-        <views:FilteredTreeView Grid.Row="1"
-                                FileExtensionFilter=".shp"/>
+        <views:FilteredTreeView Grid.Row="1" FileExtensionFilter=".shp"/>
 
         <!-- Splitter -->
         <GridSplitter Grid.Row="2" Width="400"
@@ -37,7 +36,7 @@
         <!-- Active Paths -->
         <GroupBox Grid.Row="3"
                   Header="ACTIVE PATHS"
-                  FontSize="12" FontWeight="SemiBold"
+                  FontSize="12" FontWeight="Bold"
                   Foreground="{StaticResource ForegroundBrush}"
                   Background="{StaticResource BackgroundBrushLight}"
                   BorderBrush="{StaticResource BorderBrush}"
@@ -45,55 +44,29 @@
             <StackPanel Background="{StaticResource BackgroundBrushSidePanels}">
 
                 <TextBlock FontSize="10" Margin="10,4,0,0"
-                           Foreground="{StaticResource ForegroundBrush}">Boundary (.shp):</TextBlock>
+           Foreground="{StaticResource ForegroundBrush}">Boundary (.shp):</TextBlock>
                 <DockPanel Margin="15,0,4,4">
                     <Button DockPanel.Dock="Right" Content="..."
-                            Command="{Binding BrowseShpCommand}"
-                            CommandParameter="Boundary"
-                            Width="22" Height="20" Padding="0" FontSize="10"
-                            Background="{StaticResource BackgroundBrushSidePanels}"/>
-                    <TextBox Text="{Binding SelectedBoundaryPath.Name, Mode=OneWay}"
-                             FontSize="8" IsReadOnly="True" BorderThickness="0"
-                             Foreground="{StaticResource ForegroundBrushDark}"/>
+            Command="{Binding BrowseShpCommand}"
+            CommandParameter="Boundary"
+            Width="22" Height="20" Padding="0" FontSize="10"
+            Background="{StaticResource BackgroundBrushSidePanels}"/>
+                    <TextBox Text="{Binding SelectedBoundaryPath.ShpPath, Mode=OneWay}"
+             FontSize="8" IsReadOnly="True" BorderThickness="0"
+             Foreground="{StaticResource ForegroundBrushDark}"/>
                 </DockPanel>
 
                 <TextBlock FontSize="10" Margin="10,4,0,0"
-                           Foreground="{StaticResource ForegroundBrush}">Cross Sections (.shp):</TextBlock>
+           Foreground="{StaticResource ForegroundBrush}">Cross Sections (.shp):</TextBlock>
                 <DockPanel Margin="15,0,4,4">
                     <Button DockPanel.Dock="Right" Content="..."
-                            Command="{Binding BrowseShpCommand}"
-                            CommandParameter="Sections"
-                            Width="22" Height="20" Padding="0" FontSize="10"
-                            Background="{StaticResource BackgroundBrushSidePanels}"/>
-                    <TextBox Text="{Binding SelectedSectionsPath.Name, Mode=OneWay}"
-                             FontSize="8" IsReadOnly="True" BorderThickness="0"
-                             Foreground="{StaticResource ForegroundBrushDark}"/>
-                </DockPanel>
-
-                <TextBlock FontSize="10" Margin="10,4,0,0"
-                           Foreground="{StaticResource ForegroundBrush}">Subbasins (.shp):</TextBlock>
-                <DockPanel Margin="15,0,4,4">
-                    <Button DockPanel.Dock="Right" Content="..."
-                            Command="{Binding BrowseShpCommand}"
-                            CommandParameter="Subbasins"
-                            Width="22" Height="20" Padding="0" FontSize="10"
-                            Background="{StaticResource BackgroundBrushSidePanels}"/>
-                    <TextBox Text="{Binding SelectedSubbasinsPath.Name, Mode=OneWay}"
-                             FontSize="8" IsReadOnly="True" BorderThickness="0"
-                             Foreground="{StaticResource ForegroundBrushDark}"/>
-                </DockPanel>
-
-                <TextBlock FontSize="10" Margin="10,4,0,0"
-                           Foreground="{StaticResource ForegroundBrush}">RAS Geometry (.hdf):</TextBlock>
-                <DockPanel Margin="15,0,4,4">
-                    <Button DockPanel.Dock="Right" Content="..."
-                            Command="{Binding BrowseShpCommand}"
-                            CommandParameter="RasGeometry"
-                            Width="22" Height="20" Padding="0" FontSize="10"
-                            Background="{StaticResource BackgroundBrushSidePanels}"/>
-                    <TextBox Text="{Binding SelectedRasGeometryPath.Name, Mode=OneWay}"
-                             FontSize="8" IsReadOnly="True" BorderThickness="0"
-                             Foreground="{StaticResource ForegroundBrushDark}"/>
+            Command="{Binding BrowseShpCommand}"
+            CommandParameter="Sections"
+            Width="22" Height="20" Padding="0" FontSize="10"
+            Background="{StaticResource BackgroundBrushSidePanels}"/>
+                    <TextBox Text="{Binding SelectedSectionsPath.ShpPath, Mode=OneWay}"
+             FontSize="8" IsReadOnly="True" BorderThickness="0"
+             Foreground="{StaticResource ForegroundBrushDark}"/>
                 </DockPanel>
 
             </StackPanel>

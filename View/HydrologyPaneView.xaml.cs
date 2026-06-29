@@ -1,3 +1,4 @@
+using DotSpatial.Projections.Transforms;
 using HydroExplorer.Helpers;
 using HydroExplorer.Utils;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,9 +23,63 @@ namespace HydroExplorer.View
 
             EventBus.RunPathSelected += path =>
             {
-                txtHmsProjectPath.Text = path;
-                PopulateHmsRunComboBox(path);
+                Dispatcher.Invoke(() =>
+                {
+                    txtHmsProjectPath.Text = path;
+                    PopulateHmsRunComboBox(path);
+                });
             };
+
+            EventBus.ProjPathChanged += async path =>
+            {
+                _lastProjPath = TreeViewControl.NormalizeProjKey(path);
+
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    txtHmsProjectPath.Text = string.Empty;
+                    txtDssFilePath.Text = string.Empty;
+                    cboxHmsRun.ItemsSource = null;
+                    cboxDssRun.ItemsSource = null;
+                });
+
+                await Task.Delay(800);
+
+                var settings = await _settingsRepo.GetSettingsFresh();
+                settings.Projects.TryGetValue(_lastProjPath, out var dbgProj);
+
+                await Dispatcher.InvokeAsync(() =>
+                {
+                    if (!string.IsNullOrEmpty(_lastProjPath) &&
+                        settings.Projects.TryGetValue(_lastProjPath, out var proj))
+                    {
+                        if (!string.IsNullOrEmpty(proj.HmsPath))
+                        {
+                            txtHmsProjectPath.Text = proj.HmsPath;
+                            PopulateHmsRunComboBox(proj.HmsPath);
+                        }
+
+                        var dssPath = proj.DssPath ?? string.Empty;
+                        if (!string.IsNullOrEmpty(dssPath))
+                        {
+                            txtDssFilePath.Text = dssPath;
+                            PopulateDssRunComboBox(dssPath);
+                        }
+                    }
+                });
+            };
+
+            EventBus.HmsPathChanged += path =>
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    if (!string.IsNullOrEmpty(path))
+                    {
+                        txtHmsProjectPath.Text = path;
+                        PopulateHmsRunComboBox(path);
+                    }
+                });
+            };
+
 
             cboxDssRun.SelectionChanged += (s, e) =>
             {
@@ -46,28 +101,39 @@ namespace HydroExplorer.View
             Dispatcher.Invoke(() =>
             {
                 if (!string.IsNullOrEmpty(_lastProjPath) &&
-                    settings.Projects.TryGetValue(_lastProjPath, out var proj) &&
-                    !string.IsNullOrEmpty(proj.HmsPath))
+                    settings.Projects.TryGetValue(_lastProjPath, out var proj))
                 {
-                    txtHmsProjectPath.Text = proj.HmsPath;
-                    PopulateHmsRunComboBox(proj.HmsPath);
-                }
+                    if (!string.IsNullOrEmpty(proj.HmsPath))
+                    {
+                        txtHmsProjectPath.Text = proj.HmsPath;
+                        PopulateHmsRunComboBox(proj.HmsPath);
+                    }
 
-                if (!string.IsNullOrEmpty(settings.DssPath))
-                    txtDssFilePath.Text = settings.DssPath;
+                    if (!string.IsNullOrEmpty(proj?.DssPath))
+                        txtDssFilePath.Text = proj.DssPath;
+                }
             });
 
-            // Call async method outside Dispatcher.Invoke so await can resume freely
-            if (!string.IsNullOrEmpty(settings.DssPath))
-                PopulateDssRunComboBox(settings.DssPath);
+            if (!string.IsNullOrEmpty(_lastProjPath) &&
+                settings.Projects.TryGetValue(_lastProjPath, out var p) &&
+                !string.IsNullOrEmpty(p.DssPath))
+                PopulateDssRunComboBox(p.DssPath);
         }
+
 
         private async void BrowseHmsProject_Click(object sender, RoutedEventArgs e)
         {
+            var settings = await _settingsRepo.GetSettings();
+            string initialDir = string.Empty;
+            if (!string.IsNullOrEmpty(_lastProjPath) &&
+                settings.Projects.TryGetValue(_lastProjPath, out var proj))
+                initialDir = proj.ProjRoot;
+
             var dialog = new OpenFileDialog
             {
                 Title = "Select HMS Project File",
-                Filter = "HMS Run Files (*.run)|*.run|All Files (*.*)|*.*"
+                Filter = "HMS Project Files (*.hms)|*.hms|All Files (*.*)|*.*",
+                InitialDirectory = Directory.Exists(initialDir) ? initialDir : string.Empty
             };
             if (dialog.ShowDialog() != true) return;
             string path = dialog.FileName;
@@ -79,10 +145,17 @@ namespace HydroExplorer.View
 
         private async void BrowseDss_Click(object sender, RoutedEventArgs e)
         {
+            var settings = await _settingsRepo.GetSettings();
+            string initialDir = string.Empty;
+            if (!string.IsNullOrEmpty(_lastProjPath) &&
+                settings.Projects.TryGetValue(_lastProjPath, out var proj))
+                initialDir = proj.ProjRoot;
+
             var dialog = new OpenFileDialog
             {
                 Title = "Select DSS File",
-                Filter = "DSS Files (*.dss)|*.dss|All Files (*.*)|*.*"
+                Filter = "DSS Files (*.dss)|*.dss|All Files (*.*)|*.*",
+                InitialDirectory = Directory.Exists(initialDir) ? initialDir : string.Empty
             };
             if (dialog.ShowDialog() != true) return;
             string path = dialog.FileName;
@@ -98,7 +171,7 @@ namespace HydroExplorer.View
                 ? Path.GetDirectoryName(hmsPath) ?? string.Empty
                 : hmsPath;
             if (!Directory.Exists(dir)) return;
-            var runs = Directory.GetFiles(dir, "*.run", SearchOption.TopDirectoryOnly)
+            var runs = Directory.GetFiles(dir, "*.hms", SearchOption.TopDirectoryOnly)
                 .Select(Path.GetFileName)
                 .ToList();
             cboxHmsRun.ItemsSource = runs;
@@ -129,7 +202,7 @@ namespace HydroExplorer.View
                     .OrderBy(f => f)
                     .ToList();
 
-                System.Diagnostics.Debug.WriteLine($"DSS run names found: {runNames.Count} — {string.Join(", ", runNames)}");
+                //System.Diagnostics.Debug.WriteLine($"DSS run names found: {runNames.Count} — {string.Join(", ", runNames)}");
 
                 // Ensure UI update on dispatcher
                 Application.Current.Dispatcher.Invoke(() =>
@@ -165,10 +238,11 @@ namespace HydroExplorer.View
                 var settings = await _settingsRepo.GetSettingsFresh();
                 if (string.IsNullOrEmpty(_lastProjPath))
                     _lastProjPath = TreeViewControl.NormalizeProjKey(settings.LastProjPath);
+
                 if (string.IsNullOrEmpty(_lastProjPath)) return;
                 if (!settings.Projects.TryGetValue(_lastProjPath, out var proj))
                     proj = settings.Projects[_lastProjPath] = new ProjectSettings
-                    { ProjDir = Path.GetDirectoryName(path) ?? string.Empty };
+                    { ProjPath = Path.GetDirectoryName(path) ?? string.Empty };
                 proj.HmsPath = path;
                 await _settingsRepo.SaveSettings(settings);
             }
@@ -183,16 +257,30 @@ namespace HydroExplorer.View
             try
             {
                 var settings = await _settingsRepo.GetSettingsFresh();
-                settings.DssPath = path;
-                await _settingsRepo.SaveSettings(settings);
+                if (string.IsNullOrEmpty(_lastProjPath))
+                    _lastProjPath = TreeViewControl.NormalizeProjKey(settings.LastProjPath);
+
+                System.Diagnostics.Debug.WriteLine($"[SaveDssPath] path={path}");
+                System.Diagnostics.Debug.WriteLine($"[SaveDssPath] _lastProjPath={_lastProjPath}");
+
+                if (!string.IsNullOrEmpty(_lastProjPath) &&
+                    settings.Projects.TryGetValue(_lastProjPath, out var proj))
+                {
+                    proj.DssPath = path;
+                    await _settingsRepo.SaveSettings(settings);
+                }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"HydrologyPaneView.SaveDssPath error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"SaveDssPath error: {ex.Message}");
             }
         }
 
+
         private void TreeViewItem_RequestBringIntoView(object sender, RequestBringIntoViewEventArgs e)
             => e.Handled = true;
+
+
+        
     }
 }

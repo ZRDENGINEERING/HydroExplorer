@@ -37,15 +37,13 @@ namespace HydroExplorer.View
 
         private readonly object? dummyNode = null;
         private bool _isLoading = false;
-        string? projDir = string.Empty;
         string? projPath = string.Empty;
 
         private DateTime _lastSaveRequest = DateTime.MinValue;
 
         private Dictionary<string, string> _hdfPlanNames = [];
 
-
-
+        private string? _lastPublishedHmsPath;
 
 
         public TreeViewControl()
@@ -164,11 +162,6 @@ namespace HydroExplorer.View
         }
 
 
-        
-
-
-
-
         private async void UserControl_Loaded(object sender, RoutedEventArgs e)
         {
             try
@@ -181,6 +174,8 @@ namespace HydroExplorer.View
                 System.Diagnostics.Debug.WriteLine($"UserControl_Loaded error: {ex.Message}");
             }
         }
+
+
 
 
         private void Folder_Expanded(object sender, RoutedEventArgs e)
@@ -261,27 +256,17 @@ namespace HydroExplorer.View
         }
 
 
-        public void FoldersItem_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+        public async void FoldersItem_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
         {
             if (DataContext is not MainWindowViewModel vm) return;
 
             TreeView tree = (TreeView)sender;
-            TreeViewItem temp = ((TreeViewItem)tree.SelectedItem);
-            if (temp == null) return;
+            if (tree.SelectedItem is not TreeViewItem selectedItem) return;
 
-            string path = "";
-            string sep = "";
-            while (true)
-            {
-                string? header = temp.Header.ToString();
-                if (header!.Contains('\\')) sep = "";
-                path = header + sep + path;
+            string path = selectedItem.Tag?.ToString() ?? string.Empty;
+            if (string.IsNullOrEmpty(path)) return;
 
-                if (temp.Parent.GetType().Equals(typeof(TreeView))) break;
 
-                temp = ((TreeViewItem)temp.Parent);
-                sep = @"\";
-            }
             FileInfo fileInfo = new(path);
             string extension = fileInfo.Extension;
             if (MyRegex().IsMatch(path))
@@ -301,8 +286,14 @@ namespace HydroExplorer.View
 
             else if (extension == ".run")
             {
+                System.Diagnostics.Debug.WriteLine($"[.run selected] path={path}  projPath={projPath}");
+
+
                 string projRoot = Path.GetFullPath(Path.Combine(
                     Path.GetDirectoryName(projPath ?? string.Empty) ?? string.Empty, ".."));
+
+                System.Diagnostics.Debug.WriteLine($"[.run selected] projRoot={projRoot}  starts={path.StartsWith(projRoot, StringComparison.OrdinalIgnoreCase)}");
+
 
                 if (!path.StartsWith(projRoot, StringComparison.OrdinalIgnoreCase))
                 {
@@ -314,9 +305,10 @@ namespace HydroExplorer.View
                     return;
                 }
 
-                EventBus.PublishRunPath(path);
-
+                txtBoxHmsPath.Text = path;
+                await SaveSettings();
             }
+
             else if (extension == ".prj")
             {
                 if (IsHecRasProjectFile(path)) EventBus.PublishProjPath(path);
@@ -326,7 +318,7 @@ namespace HydroExplorer.View
 
 
 
-        private static bool IsHecRasProjectFile(string filePath)
+        internal static bool IsHecRasProjectFile(string filePath)
         {
             try
             {
@@ -445,6 +437,11 @@ namespace HydroExplorer.View
                 rootItem.Items.Add(dummyNode);
                 rootItem.Expanded += new RoutedEventHandler(Folder_Expanded);
                 foldersItem.Items.Add(rootItem);
+
+
+                StartWatcher(rootPath);
+                if (!string.IsNullOrEmpty(projPath))
+                    StartWatcher(projPath);
             }
 
 
@@ -454,7 +451,7 @@ namespace HydroExplorer.View
             settings.LastProjPath = projPath;
             txtBoxProjPath.Text = projPath;
 
-            projDir = Directory.Exists(projPath)
+            string projDir = Directory.Exists(projPath)
                 ? projPath
                 : Path.GetDirectoryName(projPath) ?? string.Empty;
 
@@ -463,6 +460,8 @@ namespace HydroExplorer.View
 
             if (!string.IsNullOrEmpty(projPath) && settings.Projects.TryGetValue(projPath, out var projSettings))
             {
+                txtBoxHmsPath.Text = projSettings.HmsPath;
+
                 _isLoading = true;
 
                 cboxPlanNameA.SelectedItem = cboxPlanNameA.Items
@@ -472,11 +471,18 @@ namespace HydroExplorer.View
                         var path = PlanNameToPath(name);
                         return path?.Equals(projSettings.HdfPathA, StringComparison.OrdinalIgnoreCase) == true;
                     });
-                
-                var allFiles = (cboxPlanNameA.Tag as List<string>) ?? [];
-                UpdateHdfPathB(allFiles, projSettings.HdfPathA);
 
-                // Restore plan name B — match by path, display plan name
+                var allFiles = (cboxPlanNameA.Tag as List<string>) ?? [];
+
+                // Temporarily prevent UpdateHdfPathB from resetting _isLoading
+                var savedB = cboxPlanNameB.SelectedItem as string;
+                List<string> hdfFilesB = [.. allFiles.Where(f =>
+                !f.Equals(projSettings.HdfPathA, StringComparison.OrdinalIgnoreCase))];
+                cboxPlanNameB.ItemsSource = hdfFilesB.Select(f =>
+                    _hdfPlanNames.TryGetValue(f, out var name) ? name : Path.GetFileName(f)).ToList();
+                cboxPlanNameB.Tag = hdfFilesB;
+
+                // Now restore B selection directly
                 cboxPlanNameB.SelectedItem = cboxPlanNameB.Items
                     .Cast<string>()
                     .FirstOrDefault(name =>
@@ -488,6 +494,9 @@ namespace HydroExplorer.View
                 txtBoxHdfPathA.Text = projSettings.HdfPathA;
                 txtBoxHdfPathB.Text = projSettings.HdfPathB;
                 txtBoxHmsPath.Text = projSettings.HmsPath;
+
+
+                _isLoading = false;
 
                 if (!string.IsNullOrEmpty(projSettings.HdfPathA) && File.Exists(projSettings.HdfPathA))
                 {
@@ -558,15 +567,13 @@ namespace HydroExplorer.View
             List<string> hdfFiles = [.. Directory.GetFiles(projTitle, "*.hdf")
         .Where(f => MyRegex1().IsMatch(Path.GetFileName(f)))];
 
-            // Build path → plan name lookup
             _hdfPlanNames = hdfFiles.ToDictionary(
                 f => f,
                 f => { try { return HecRasHdfReader.GetPlanName(f); } catch { return Path.GetFileName(f); } }
             );
 
-            // ComboBox displays plan names, Tag/SelectedValue resolves back to path
             cboxPlanNameA.ItemsSource = hdfFiles.Select(f => _hdfPlanNames[f]).ToList();
-            cboxPlanNameA.Tag = hdfFiles; // keep full paths accessible
+            cboxPlanNameA.Tag = hdfFiles;
 
             UpdateHdfPathB(hdfFiles, null);
         }
@@ -625,15 +632,19 @@ namespace HydroExplorer.View
 
             if (string.IsNullOrEmpty(projDir)) return;
 
+            StartWatcher(projDir);
+
             this.projPath = NormalizeProjKey(projPath);
-            this.projDir = projDir;
 
             PopulateHdfComboBox(projDir);
 
             var settings = await _settingsRepo.GetSettings();
             settings.LastProjPath = projPath;
             settings.ProjPath = projPath;
-            settings.ProjDir = projDir;
+
+            System.Diagnostics.Debug.WriteLine($"[OnProjPathChanged] rawPath={rawPath}");
+            System.Diagnostics.Debug.WriteLine($"[OnProjPathChanged] projPath after normalize={NormalizeProjKey(rawPath)}");
+            System.Diagnostics.Debug.WriteLine($"[OnProjPathChanged] key exists={settings.Projects.ContainsKey(NormalizeProjKey(rawPath))}");
 
             if (settings.Projects.TryGetValue(projPath, out var existingSettings))
             {
@@ -666,9 +677,7 @@ namespace HydroExplorer.View
                     Path.GetDirectoryName(projPath) ?? string.Empty, ".."));
 
                 string storedHms = existingSettings.HmsPath ?? string.Empty;
-                bool hmsValid = !string.IsNullOrEmpty(storedHms)
-                    && File.Exists(storedHms)
-                    && storedHms.StartsWith(projRoot, StringComparison.OrdinalIgnoreCase);
+                bool hmsValid = !string.IsNullOrEmpty(storedHms) && File.Exists(storedHms); // ← just check exists
 
                 txtBoxHmsPath.Text = hmsValid ? storedHms : string.Empty;
                 if (!hmsValid) existingSettings.HmsPath = string.Empty;
@@ -696,7 +705,7 @@ namespace HydroExplorer.View
 
                 settings.Projects[projPath] = new ProjectSettings
                 {
-                    ProjDir = projDir,
+                    ProjPath = projDir,
                     LastOpened = DateTime.Now
                 };
 
@@ -760,8 +769,6 @@ namespace HydroExplorer.View
 
 
 
-
-
         private async Task SaveSettings()
         {
             if (_isLoading) return;
@@ -781,46 +788,62 @@ namespace HydroExplorer.View
 
                 settings.LastProjPath = projPath;
                 settings.ProjPath = projPath;
-                settings.ProjDir = Directory.Exists(projPath)
-                    ? projPath
-                    : Path.GetDirectoryName(projPath) ?? string.Empty;
 
                 var existingLastOpened = settings.Projects.TryGetValue(projPath, out var existing)
                     ? existing.LastOpened
                     : DateTime.Now;
 
-                int openOrder = settings.NextOpenOrder++;
+                int openOrder = settings.NextOpenOrder;
+                settings.NextOpenOrder++;
 
                 string? selectedPlanNameA = cboxPlanNameA.SelectedItem as string;
                 string? selectedPlanNameB = cboxPlanNameB.SelectedItem as string;
                 string? resolvedPathA = PlanNameToPath(selectedPlanNameA);
                 string? resolvedPathB = PlanNameToPath(selectedPlanNameB);
 
-                settings.Projects[projPath] = new ProjectSettings
-                {
-                    ProjDir = settings.ProjDir,
-                    HdfPathA = resolvedPathA ?? string.Empty,
-                    HdfPathB = resolvedPathB ?? string.Empty,
-                    PlanNameA = selectedPlanNameA ?? string.Empty,
-                    PlanNameB = selectedPlanNameB ?? string.Empty,
-                    ProName = cboxProfiles.SelectedItem as string ?? string.Empty,
-                    HmsPath = txtBoxHmsPath.Text,
-                    LastOpened = existingLastOpened,
-                    OpenOrder = openOrder
+                var current = new DirectoryInfo(Path.GetDirectoryName(projPath) ?? string.Empty);
+                while (current?.Parent != null &&
+                       !current.Parent.FullName.Equals(@"C:\Temp", StringComparison.OrdinalIgnoreCase))
+                    current = current.Parent;
 
-                };
+                string projRoot = current?.FullName ?? string.Empty;
+                string projName = current?.Name ?? string.Empty;
 
-                var hmsPath = txtBoxHmsPath.Text;
-                if (!string.IsNullOrEmpty(hmsPath))
-                    settings.HmsProjects[hmsPath] = DateTime.Now;
+                // Update existing entry if present, create new one if not —
+                // never replace the whole object, to preserve fields this UI
+                // doesn't own (SpatialBndyPath, SpatialXsPath, GageSiteNo, etc.)
+                if (!settings.Projects.TryGetValue(projPath, out var proj))
+                    proj = settings.Projects[projPath] = new ProjectSettings();
+
+                proj.ProjName = projName;
+                proj.ProjRoot = projRoot;
+                proj.HdfPathA = resolvedPathA ?? string.Empty;
+                proj.HdfPathB = resolvedPathB ?? string.Empty;
+                proj.PlanNameA = selectedPlanNameA ?? string.Empty;
+                proj.PlanNameB = selectedPlanNameB ?? string.Empty;
+                proj.ProName = cboxProfiles.SelectedItem as string ?? string.Empty;
+                proj.HmsPath = txtBoxHmsPath.Text;
+                proj.LastOpened = existingLastOpened;
+                proj.OpenOrder = openOrder;
+
+                settings.ProjName = projName;
 
                 await _settingsRepo.SaveSettings(settings);
+
+                var hmsPath = txtBoxHmsPath.Text;
+                if (!string.IsNullOrEmpty(hmsPath) && hmsPath != _lastPublishedHmsPath)
+                {
+                    _lastPublishedHmsPath = hmsPath;
+                    EventBus.PublishRunPath(hmsPath);
+                }
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"SaveSettings error: {ex.Message}");
             }
         }
+
+
 
         private void TreeViewItem_RequestBringIntoView(object sender, RequestBringIntoViewEventArgs e)
         {
@@ -837,16 +860,147 @@ namespace HydroExplorer.View
         {
             if (string.IsNullOrEmpty(projPath)) return projPath;
 
-            // If it's a .prj, check if a .rasmap sibling exists — prefer that as the key
-            if (projPath.EndsWith(".prj", StringComparison.OrdinalIgnoreCase))
+            // .prj is the canonical key — every project has one. .rasmap is optional
+            // and informational only (used to derive project info), so a .rasmap path
+            // gets resolved to its sibling .prj when one exists.
+            if (projPath.EndsWith(".rasmap", StringComparison.OrdinalIgnoreCase))
             {
                 string dir = Path.GetDirectoryName(projPath) ?? string.Empty;
                 string stem = Path.GetFileNameWithoutExtension(projPath);
-                string rasmap = Path.Combine(dir, stem + ".rasmap");
-                if (File.Exists(rasmap)) return rasmap;
+
+                // Look for a HEC-RAS project file with the same stem first
+                string candidatePrj = Path.Combine(dir, stem + ".prj");
+                if (File.Exists(candidatePrj))
+                    return candidatePrj;
+
+                // Fallback: any valid HEC-RAS .prj in the same folder
+                var anyPrj = Directory.Exists(dir)
+                    ? Directory.GetFiles(dir, "*.prj").FirstOrDefault(IsHecRasProjectFile)
+                    : null;
+                if (anyPrj != null) return anyPrj;
             }
 
             return projPath;
+        }
+
+
+        private FileSystemWatcher? _watcher;
+
+        private void StartWatcher(string rootPath)
+        {
+            _watcher?.Dispose();
+
+            if (string.IsNullOrEmpty(rootPath) || !Directory.Exists(rootPath)) return;
+
+            _watcher = new FileSystemWatcher(rootPath)
+            {
+                IncludeSubdirectories = true,
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName,
+                EnableRaisingEvents = true
+            };
+
+            _watcher.Created += OnFileSystemChanged;
+            _watcher.Deleted += OnFileSystemChanged;
+            _watcher.Renamed += OnFileSystemChanged;
+        }
+
+        private CancellationTokenSource? _refreshCts;
+
+        private async void OnFileSystemChanged(object sender, FileSystemEventArgs e)
+        {
+            // Debounce: cancel any pending refresh and wait for things to settle
+            _refreshCts?.Cancel();
+            _refreshCts = new CancellationTokenSource();
+            var token = _refreshCts.Token;
+
+            try
+            {
+                await Task.Delay(500, token);
+
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    RefreshTreeView();
+                });
+            }
+            catch (OperationCanceledException) { }
+        }
+
+        private void RefreshTreeView()
+        {
+            foreach (TreeViewItem root in foldersItem.Items.OfType<TreeViewItem>())
+                RefreshExpandedNodes(root);
+
+            // Re-scan for new .hdf files in the project folder
+            if (!string.IsNullOrEmpty(projPath))
+                PopulateHdfComboBox(projPath);
+        }
+
+        private void RefreshExpandedNodes(TreeViewItem item)
+        {
+            if (!item.IsExpanded) return;
+
+            string fullPath = item.Tag?.ToString() ?? string.Empty;
+            if (!Directory.Exists(fullPath)) return;
+
+            // Snapshot what's currently shown so we can diff
+            var existingDirs = item.Items.OfType<TreeViewItem>()
+                .Where(i => Directory.Exists(i.Tag?.ToString() ?? string.Empty))
+                .ToDictionary(i => i.Tag!.ToString()!, i => i);
+
+            var existingFiles = item.Items.OfType<TreeViewItem>()
+                .Where(i => File.Exists(i.Tag?.ToString() ?? string.Empty))
+                .ToDictionary(i => i.Tag!.ToString()!, i => i);
+
+            // --- Directories ---
+            var currentDirs = new HashSet<string>(
+                Directory.GetDirectories(fullPath),
+                StringComparer.OrdinalIgnoreCase);
+
+            // Add new dirs
+            foreach (var dir in currentDirs.Where(d => !existingDirs.ContainsKey(d)))
+            {
+                TreeViewItem sub = new() { Header = GetFileFolderName(dir), Tag = dir };
+                sub.Items.Add(null); // keep lazy-load behavior
+                sub.Expanded += Folder_Expanded;
+                item.Items.Add(sub);
+            }
+
+            // Remove deleted dirs
+            foreach (var (path, node) in existingDirs.Where(kv => !currentDirs.Contains(kv.Key)))
+                item.Items.Remove(node);
+
+            // --- Files (.prj / .run only) ---
+            var currentFiles = new HashSet<string>(
+                Directory.GetFiles(fullPath)
+                    .Where(f =>
+                        f.EndsWith(".hms", StringComparison.OrdinalIgnoreCase) ||
+                        f.EndsWith(".prj", StringComparison.OrdinalIgnoreCase)),
+                StringComparer.OrdinalIgnoreCase);
+
+            // Add new files
+            foreach (var file in currentFiles.Where(f => !existingFiles.ContainsKey(f)))
+            {
+                item.Items.Add(new TreeViewItem
+                {
+                    Header = GetFileFolderName(file),
+                    Tag = file
+                });
+            }
+
+            // Remove deleted files
+            foreach (var (path, node) in existingFiles.Where(kv => !currentFiles.Contains(kv.Key)))
+                item.Items.Remove(node);
+
+            // Recurse into already-expanded children
+            foreach (TreeViewItem child in item.Items.OfType<TreeViewItem>().Where(c => c.IsExpanded))
+                RefreshExpandedNodes(child);
+        }
+
+        private void UserControl_Unloaded(object sender, RoutedEventArgs e)
+        {
+            _watcher?.Dispose();
+            _refreshCts?.Cancel();
+            _refreshCts?.Dispose();
         }
 
 

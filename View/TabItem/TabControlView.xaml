@@ -9,41 +9,43 @@
              mc:Ignorable="d"
              d:DesignHeight="450" d:DesignWidth="800">
 
-    <UserControl.DataContext>
-        <vm:TabControlViewModel/>
-    </UserControl.DataContext>
-    
-    
+
+    <UserControl.Resources>
+        <DataTemplate DataType="{x:Type vm:TabInfoViewModel}">
+            <views:TabInfoView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:TabMainViewModel}">
+            <views:TabMainView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:TabChartViewModel}">
+            <views:TabChartView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:TabPublishViewModel}">
+            <views:TabPublishView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:TabSettingsViewModel}">
+            <views:TabBlankTopView/>
+        </DataTemplate>
+    </UserControl.Resources>
+
     
     <TabControl ItemsSource="{Binding Tabs}" 
-                SelectedItem="{Binding SelectedTab}"
-                Style="{StaticResource NoOffsetTabControl}">
+            SelectedItem="{Binding SelectedTab}"
+            Style="{StaticResource NoOffsetTabControl}">
 
-        <TabControl.Resources>
-            <DataTemplate DataType="{x:Type vm:TabInfoViewModel}">
-                <views:TabInfoView/>
-            </DataTemplate>
-            <DataTemplate DataType="{x:Type vm:TabMainViewModel}">
-                <views:TabMainView/>
-            </DataTemplate>
-            <DataTemplate DataType="{x:Type vm:TabChartViewModel}">
-                <views:TabChartView/>
-            </DataTemplate>
-            <DataTemplate DataType="{x:Type vm:TabPublishViewModel}">
-                <views:TabPublishView/>
-            </DataTemplate>
-            <DataTemplate DataType="{x:Type vm:TabSettingsViewModel}">
-                <views:TabOutputView/>
-            </DataTemplate>
-        </TabControl.Resources>
-       
+        <TabControl.ItemContainerStyle>
+            <Style TargetType="TabItem" BasedOn="{StaticResource NoOffsetTabItem}">
+                <Setter Property="Header" Value="{Binding Header}"/>
+            </Style>
+        </TabControl.ItemContainerStyle>
 
         <TabControl.ContentTemplate>
             <DataTemplate>
-                <ContentPresenter Content="{Binding Content}"/>
+                <ContentControl Content="{Binding Content}"/>
             </DataTemplate>
         </TabControl.ContentTemplate>
+
     </TabControl>
-    
-    
+
+
 </UserControl>

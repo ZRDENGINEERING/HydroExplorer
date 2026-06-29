@@ -9,7 +9,6 @@
              x:Name="Root"
              d:DesignHeight="450" d:DesignWidth="800">
 
-    
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
     </UserControl.Resources>
@@ -19,13 +18,17 @@
             <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="3"/>
             <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="3"/>
+            <!-- Reach selector panel — auto-sized, hidden when single reach -->
+            <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
 
-        
-        <!-- Return Plot — Charts/Info tabs -->
-        <local:ReturnPlotView Grid.Column="0"
-                          Visibility="{Binding ShowLP3Plot, 
-                                       Converter={StaticResource BoolToVisibilityConverter}}"/>
+        <!-- Left plot — Charts/Info tab -->
+        <oxy:PlotView Grid.Column="0"
+                  Model="{Binding PlotVm.PlotModelChartsTab}"
+                  Background="{StaticResource BackgroundBrushSidePanels}"
+                  Visibility="{Binding ShowLP3Plot,
+                               Converter={StaticResource BoolToVisibilityConverter}}"/>
 
         <!-- Profile Plot full width — Main tab only -->
         <oxy:PlotView Grid.Column="0" Grid.ColumnSpan="3"
@@ -34,7 +37,7 @@
                   Visibility="{Binding ShowProfilePlot,
                                Converter={StaticResource BoolToVisibilityConverter}}"/>
 
-        <!-- Splitter -->
+        <!-- Splitter between left and right plots -->
         <GridSplitter Grid.Column="1" Width="3"
                   HorizontalAlignment="Stretch"
                   Background="{StaticResource DividerBrush}"
@@ -47,9 +50,42 @@
                   Background="{StaticResource BackgroundBrushSidePanels}"
                   Visibility="{Binding ShowLP3Plot,
                                Converter={StaticResource BoolToVisibilityConverter}}"/>
-    
-    
+
+        <!-- Splitter before reach panel -->
+        <GridSplitter Grid.Column="3" Width="3"
+                  HorizontalAlignment="Stretch"
+                  Background="{StaticResource DividerBrush}"
+                  Visibility="{Binding PlotVm.HasMultipleReaches,
+                               Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+        <!-- Reach selector — only visible when model has multiple reaches -->
+        <Border Grid.Column="4"
+                MinWidth="110"
+                Background="{StaticResource BackgroundBrushSidePanels}"
+                Visibility="{Binding PlotVm.HasMultipleReaches,
+                             Converter={StaticResource BoolToVisibilityConverter}}">
+            <StackPanel Margin="6,6,6,0">
+                <TextBlock Text="REACHES"
+                           FontSize="9"
+                           FontWeight="Bold"
+                           Foreground="{StaticResource ForegroundBrushDark}"
+                           Margin="0,0,0,6"/>
+                <ItemsControl ItemsSource="{Binding PlotVm.Reaches}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <CheckBox Content="{Binding Name}"
+                                      IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                      Command="{Binding DataContext.PlotVm.ReachSelectionChangedCommand,
+                                                RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                      FontSize="9"
+                                      Foreground="{StaticResource ForegroundBrush}"
+                                      Margin="0,2,0,2"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
     </Grid>
-    
-    
+
 </UserControl>

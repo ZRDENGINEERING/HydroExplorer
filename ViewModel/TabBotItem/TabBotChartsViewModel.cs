@@ -47,7 +47,7 @@ namespace HydroExplorer.ViewModel.TabBotItem
             PlotVm = App.ServiceProvider.GetRequiredService<PlotViewModel>();
             LP3Vm = new LP3PlotViewModel();
 
-            // Set initial state
+
             var current = TabControlViewModel.CurrentTopTab;
             ShowProfilePlot = current == "Main";
             ShowLP3Plot = current == "Charts" || current == "Info";

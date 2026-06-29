@@ -5,16 +5,13 @@
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
       xmlns:local="clr-namespace:HydroExplorer.View.TabItem"
       xmlns:view="clr-namespace:HydroExplorer.View"
-      mc:Ignorable="d" 
-      d:DesignHeight="450" d:DesignWidth="800">
+      mc:Ignorable="d">
 
 
     <Grid Background="{StaticResource BackgroundBrushDark}">
 
         <Grid.RowDefinitions>
-            <RowDefinition Height="1*"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
         <Grid.ColumnDefinitions>
@@ -24,10 +21,10 @@
         </Grid.ColumnDefinitions>
 
         <!-- Map Pane -->
-        <view:MapView Grid.Column="0" Grid.Row="0" Height="Auto" Width="Auto" Margin="2,2,0,2"/>
+        <view:MapView Grid.Column="0" Grid.Row="0" Margin="2,2,0,2"/>
 
         <!-- Splitter -->
-        <GridSplitter Grid.Column="1" Grid.Row="0" Width="4" 
+        <GridSplitter Grid.Column="1" Grid.Row="0" Width="5" 
               ResizeBehavior="PreviousAndNext"
               Background="{StaticResource DividerBrush}"
               ShowsPreview="False"/>

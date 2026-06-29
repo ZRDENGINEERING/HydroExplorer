@@ -1,5 +1,6 @@
-﻿using System.Windows.Controls;
-using HydroExplorer.ViewModel.TabBotItem;
+﻿using HydroExplorer.ViewModel.TabBotItem;
+using System.Windows;
+using System.Windows.Controls;
 
 
 namespace HydroExplorer.View.TabBotItem
@@ -19,5 +20,7 @@ namespace HydroExplorer.View.TabBotItem
                 }
             };
         }
+
+        
     }
 }

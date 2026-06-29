@@ -6,27 +6,43 @@ using NetTopologySuite.Precision;
 using System.Diagnostics;
 using System.IO;
 using NetTopologySuite.Operation.OverlayNG;
-
-
-
 namespace HydroExplorer.Helpers
 {
     internal static class ExporterBndy
     {
-        public static async Task ExportBNDY(string pathSubBasins, string pathBNDY, string pathTMP)
+        /// <summary>
+        /// Dissolves and reprojects a shapefile into a boundary shapefile.
+        /// If the source has no .prj sidecar and sourceEpsgOverride isn't supplied,
+        /// falls back to EPSG:2278 (Texas South Central) — callers without a known source
+        /// CRS should resolve one first (e.g. via GISUtil.GuessTexasStatePlaneZone)
+        /// and pass it in explicitly, since silently assuming a single zone can
+        /// place the result hundreds of miles off for projects outside that zone.
+        /// </summary>
+        public static async Task ExportBNDY(string pathSubBasins, string pathBNDY, string pathTMP, int? sourceEpsgOverride = null)
         {
             string tmpShp = GetTempShpPath();
             try
             {
                 await GeoDissolve(inputShp: pathSubBasins, outputShp: tmpShp);
-
                 string tmpPrj = Path.ChangeExtension(tmpShp, ".prj");
-                string srcWkt = File.Exists(tmpPrj)
-                    ? File.ReadAllText(tmpPrj)
-                    : GISUtil.FetchWkt(2277);
+
+                string srcWkt;
+                if (sourceEpsgOverride.HasValue)
+                {
+                    srcWkt = GISUtil.FetchWkt(sourceEpsgOverride.Value);
+                    Debug.WriteLine($"ExportBNDY: using explicit source override EPSG={sourceEpsgOverride.Value}");
+                }
+                else if (File.Exists(tmpPrj))
+                {
+                    srcWkt = File.ReadAllText(tmpPrj);
+                }
+                else
+                {
+                    srcWkt = GISUtil.FetchWkt(2277);
+                    Debug.WriteLine("ExportBNDY: no .prj and no override supplied — defaulting to EPSG:2277.");
+                }
 
                 Debug.WriteLine($"ExportBNDY: srcWkt EPSG={GISUtil.TryGetEpsgFromWkt(srcWkt)}");
-
                 await UtilReproject(
                     inputShp: tmpShp,
                     outputShp: pathBNDY,
@@ -38,21 +54,15 @@ namespace HydroExplorer.Helpers
                 Debug.WriteLine($"ExportBNDY error: {ex.Message}");
             }
         }
-
-
         public static async Task GeoDissolve(string inputShp, string outputShp, string? dissolveField = null)
         {
             if (inputShp == null) return;
-
             var factory = new GeometryFactory();
             var reader = new ShapefileDataReader(inputShp, factory);
-
             string? srcPrj = null;
             string inputPrjPath = Path.ChangeExtension(inputShp, ".prj");
             if (File.Exists(inputPrjPath))
                 srcPrj = File.ReadAllText(inputPrjPath);
-
-            // --- 1. Read everything up front ---
             var allGeoms = new List<(object key, Geometry geom)>();
             while (reader.Read())
             {
@@ -64,17 +74,14 @@ namespace HydroExplorer.Helpers
                         .FirstOrDefault(x => x.f.Name.Equals(dissolveField, StringComparison.OrdinalIgnoreCase)).i;
                     key = reader.GetValue(fieldIndex + 1) ?? DBNull.Value;
                 }
-
                 var geom = reader.Geometry;
                 if (geom != null && !geom.IsEmpty)
                     allGeoms.Add((key, geom));
             }
             reader.Close();
-
-            // --- 2. Group + pre-validate + precision-reduce in parallel ---
-            var pm = new PrecisionModel(10); // 2 decimal places for State Plane feet
+            var pm = new PrecisionModel(10);
             var reducer = new GeometryPrecisionReducer(pm) { ChangePrecisionModel = true };
-            
+
             var groups = allGeoms
                 .AsParallel()
                 .GroupBy(x => x.key)
@@ -91,14 +98,10 @@ namespace HydroExplorer.Helpers
                         .Where(geom => geom != null && !geom.IsEmpty)
                         .ToList()
                 );
-
-            // --- 3. Union each group ---
             var outputFeatures = new List<IFeature>();
-
             foreach (var kvp in groups)
             {
                 Debug.WriteLine($"Dissolving group: {kvp.Key} ({kvp.Value.Count} geometries)");
-
                 Geometry? dissolved = null;
                 try
                 {
@@ -122,29 +125,21 @@ namespace HydroExplorer.Helpers
                         catch { Debug.WriteLine($"Skipping geometry {i}"); }
                     }
                 }
-
-                // --- 4. Simplify result, then re-validate ---
                 if (dissolved != null && !dissolved.IsEmpty)
                 {
                     dissolved = NetTopologySuite.Simplify.TopologyPreservingSimplifier
                         .Simplify(dissolved, 0.5);
-
                     if (!dissolved.IsValid)
                         dissolved = dissolved.Buffer(0);
                 }
-
                 if (dissolved == null || dissolved.IsEmpty) continue;
-
                 var attributes = new AttributesTable();
                 if (dissolveField != null)
                     attributes.Add(dissolveField, kvp.Key);
                 else
                     attributes.Add("id", 1);
-
                 outputFeatures.Add(new Feature(dissolved, attributes));
             }
-
-            // --- 5. Write output shapefile ---
             var dbaseHeader = new DbaseFileHeader { NumRecords = outputFeatures.Count };
             if (dissolveField != null)
             {
@@ -159,29 +154,21 @@ namespace HydroExplorer.Helpers
             {
                 dbaseHeader.AddColumn("id", 'N', 10, 0);
             }
-
             var writer = new ShapefileDataWriter(outputShp, factory) { Header = dbaseHeader };
             writer.Write(outputFeatures);
-
             if (srcPrj != null)
                 File.WriteAllText(Path.ChangeExtension(outputShp, ".prj"), srcPrj);
         }
-
-
         private static Geometry SnapRoundingUnion(List<Geometry> geoms, PrecisionModel pm)
         {
             var reducer = new GeometryPrecisionReducer(pm) { ChangePrecisionModel = true };
-
             var reduced = geoms
                 .Select(g => reducer.Reduce(g))
                 .Where(g => g != null && !g.IsEmpty)
                 .Select(g => g.IsValid ? g : g.Buffer(0))
                 .ToList();
-
             return UnaryUnionOp.Union(reduced);
         }
-
-
         public static async Task UtilReproject(
             string inputShp,
             string outputShp,
@@ -189,7 +176,6 @@ namespace HydroExplorer.Helpers
             string? srcWktOverride = null)
         {
             string srcWkt;
-
             if (srcWktOverride != null)
             {
                 srcWkt = srcWktOverride;
@@ -210,28 +196,21 @@ namespace HydroExplorer.Helpers
                     : GISUtil.FetchWkt(2277);
                 Debug.WriteLine($"UtilReproject: using sidecar .prj, EPSG:{GISUtil.TryGetEpsgFromWkt(srcWkt)}");
             }
-
             string tgtWkt = GISUtil.FetchWkt(4326);
             var transform = GISUtil.CreateTransformation(srcWkt, tgtWkt);
-
             var reader = new ShapefileDataReader(inputShp, GeometryFactory.Default);
             var factory = new GeometryFactory();
-
-            // Sanity check
             reader.Read();
             var testRaw = reader.Geometry.EnvelopeInternal.Centre;
             var testReprojected = GISUtil.Reproject(testRaw, transform);
             Debug.WriteLine($"UtilReproject centre raw:         {testRaw.X:F4}, {testRaw.Y:F4}");
             Debug.WriteLine($"UtilReproject centre reprojected: {testReprojected.X:F6}, {testReprojected.Y:F6}");
             reader.Reset();
-
             var features = new List<IFeature>();
-
             while (reader.Read())
             {
                 var geom = reader.Geometry;
                 Geometry reprojected;
-
                 if (geom is Point)
                 {
                     reprojected = factory.CreatePoint(GISUtil.Reproject(geom.Coordinate, transform));
@@ -247,7 +226,6 @@ namespace HydroExplorer.Helpers
                         .Select(c => GISUtil.Reproject(c, transform)).ToArray();
                     if (!shell.First().Equals2D(shell.Last()))
                         shell = [.. shell, shell.First()];
-
                     var holes = pg.Holes.Select(hole =>
                     {
                         var hc = hole.Coordinates.Select(c => GISUtil.Reproject(c, transform)).ToArray();
@@ -255,7 +233,6 @@ namespace HydroExplorer.Helpers
                             hc = [.. hc, hc.First()];
                         return factory.CreateLinearRing(hc);
                     }).ToArray();
-
                     reprojected = factory.CreatePolygon(factory.CreateLinearRing(shell), holes);
                 }
                 else if (geom is MultiPolygon mp)
@@ -274,24 +251,18 @@ namespace HydroExplorer.Helpers
                 {
                     reprojected = geom;
                 }
-
                 var attributes = new AttributesTable();
                 for (int i = 0; i < reader.DbaseHeader.Fields.Length; i++)
                     attributes.Add(reader.DbaseHeader.Fields[i].Name, reader.GetValue(i + 1));
-
                 features.Add(new Feature(reprojected, attributes));
             }
-
             var writer = new ShapefileDataWriter(outputShp, GeometryFactory.Default)
             {
                 Header = reader.DbaseHeader
             };
             writer.Write(features);
-
             GISUtil.WriteShpPrj(outputShp, 4326);
         }
-
-
         private static string GetTempShpPath()
         {
             string tmpDir = @"C:\Temp";

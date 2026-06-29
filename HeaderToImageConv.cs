@@ -30,6 +30,18 @@ namespace HydroExplorer
             else if (new FileInfo(path).Attributes.HasFlag(FileAttributes.Directory))
                 image = "/Images/folder_closed.ico";
 
+            else if (path.EndsWith(".prj", StringComparison.OrdinalIgnoreCase))
+                image = "/Images/hecras.png";
+
+            else if (path.EndsWith(".hms", StringComparison.OrdinalIgnoreCase))
+                image = "/Images/hechms.png";
+
+            else if (path.EndsWith(".shp", StringComparison.OrdinalIgnoreCase))
+                image = "/Images/shp.png";
+
+            else if (new FileInfo(path).Attributes.HasFlag(FileAttributes.Directory))
+                image = "/Images/folder_closed.ico";
+
             //BitmapImage myImage = new BitmapImage(new Uri("Z:/10 DEV/hydroExplorer/Images/folder_closed.png"));
             BitmapImage myImage = new(new Uri($"pack://application:,,,{image}"));
             return myImage;

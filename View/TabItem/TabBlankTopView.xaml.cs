@@ -1,8 +1,8 @@
 ﻿namespace HydroExplorer.View.TabItem
 {
-    public partial class TabOutputView
+    public partial class TabBlankTopView
     {
-        public TabOutputView()
+        public TabBlankTopView()
         {
             InitializeComponent();
         }

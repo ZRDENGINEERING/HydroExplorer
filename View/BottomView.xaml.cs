@@ -9,7 +9,6 @@ namespace HydroExplorer.View
         public BottomView()
         {
             InitializeComponent();
-            DataContext = App.ServiceProvider.GetRequiredService<MainWindowViewModel>();
         }
     }
 }

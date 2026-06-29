@@ -49,23 +49,20 @@ namespace HydroExplorer.Utils
                         StringComparison.OrdinalIgnoreCase))
                     .ToList();
 
-                if (!paths.Any())
+                if (paths.Count == 0)
                 {
-                    System.Diagnostics.Debug.WriteLine(
-                        $"DssHydrographReader: no paths for partC='{partC}'");
+                    System.Diagnostics.Debug.WriteLine($"DssHydrographReader: no paths for partC='{partC}'");
                     return results;
                 }
 
                 var selected = MatchRun(paths, runName);
-                System.Diagnostics.Debug.WriteLine(
-                    $"DssHydrographReader.ReadByPartC({partC}): {selected.FullPath}");
+                //System.Diagnostics.Debug.WriteLine($"DssHydrographReader.ReadByPartC({partC}): {selected.FullPath}");
 
                 return ReadTimeSeries(dss, selected.FullPath);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine(
-                    $"DssHydrographReader.ReadByPartC({partC}) error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"DssHydrographReader.ReadByPartC({partC}) error: {ex.Message}");
                 return results;
             }
         }

@@ -8,26 +8,28 @@
              xmlns:vm="clr-namespace:HydroExplorer.ViewModel" 
              mc:Ignorable="d" 
              Loaded="UserControl_Loaded"
-             d:DesignHeight="450" d:DesignWidth="150">
+             Unloaded="UserControl_Unloaded"
+             d:DesignWidth="150">
 
 
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="30"/>
-            <RowDefinition Height="3*"/>
+            <RowDefinition Height="*"/>
             <RowDefinition Height="4"/>
-            <RowDefinition Height="330" MinHeight="32"/>
+            <RowDefinition Height="400" MinHeight="32"/>
         </Grid.RowDefinitions>
 
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" MinWidth="50"/>
         </Grid.ColumnDefinitions>
 
+        
 
         <!-- Header -->
         <GroupBox Grid.Row="0"
                   Header="PROJECT EXPLORER"
-                  FontSize="12" FontWeight="SemiBold"
+                  FontSize="12" FontWeight="Bold"
                   Background="{StaticResource BackgroundBrushHeader}"
                   BorderBrush="{StaticResource BorderBrush}"
                   BorderThickness="0.8">
@@ -82,7 +84,7 @@
 
         <GroupBox Grid.Row="3"
                   Header="ACTIVE PATHS" 
-                  FontSize="12" FontWeight="SemiBold"
+                  FontSize="12" FontWeight="Bold"
                   Foreground="{StaticResource ForegroundBrush}"
                   Background="{StaticResource BackgroundBrushLight}"
                   BorderBrush="{StaticResource BorderBrush}"

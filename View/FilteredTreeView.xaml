@@ -4,37 +4,175 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:HydroExplorer"
+             xmlns:view="clr-namespace:HydroExplorer.View"
              mc:Ignorable="d"
              d:DesignHeight="300" d:DesignWidth="150"
              Loaded="UserControl_Loaded">
 
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+        <!-- Implicit template — applied automatically whenever a TreeNodeInfo
+             appears as Header content, no HeaderTemplate setter needed -->
+        <DataTemplate DataType="{x:Type view:TreeNodeInfo}">
+            <Grid Margin="2,0,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Icon -->
+                <Image Grid.Column="0" Width="18" Margin="1"
+                       Source="{Binding Path,
+                                Converter={x:Static local:HeaderToImageConv.Instance}}"/>
+
+                <!-- Label with ellipsis and full-path tooltip -->
+                <TextBlock Grid.Column="1"
+                           VerticalAlignment="Center"
+                           Margin="2,0,0,0"
+                           Text="{Binding DisplayName}"
+                           TextTrimming="CharacterEllipsis"
+                           ToolTip="{Binding Path}"/>
+
+                <!-- Checkbox — far right, only visible for checkable items -->
+                <CheckBox Grid.Column="2"
+                          Margin="8,0,2,0"
+                          VerticalAlignment="Center"
+                          IsChecked="{Binding IsChecked, Mode=TwoWay}"
+                          Visibility="{Binding IsCheckable,
+                                       Converter={StaticResource BoolToVis}}"
+                          Checked="CheckBox_Checked"
+                          Unchecked="CheckBox_Unchecked"/>
+            </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
+
     <TreeView x:Name="foldersItem"
+              HorizontalContentAlignment="Stretch"
               SelectedItemChanged="FoldersItem_SelectedItemChanged"
               MouseMove="FoldersItem_MouseMove"
               Background="{StaticResource BackgroundBrushSidePanels}"
               BorderBrush="{StaticResource BorderBrush}"
               BorderThickness="0.8">
-        <TreeView.Resources>
+
+        <TreeView.ItemContainerStyle>
             <Style TargetType="{x:Type TreeViewItem}"
                    BasedOn="{StaticResource {x:Type TreeViewItem}}">
+
+                <!-- All Setters must come before Style.Triggers -->
                 <Setter Property="FontSize" Value="10"/>
+                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                 <EventSetter Event="RequestBringIntoView" Handler="TreeViewItem_RequestBringIntoView"/>
-                <Setter Property="HeaderTemplate">
+
+                <Setter Property="Template">
                     <Setter.Value>
-                        <DataTemplate>
-                            <StackPanel Orientation="Horizontal" Margin="2,0,0,0">
-                                <Image Width="18" Margin="1"
-                                       Source="{Binding RelativeSource={RelativeSource
-                                           Mode=FindAncestor, AncestorType={x:Type TreeViewItem}},
-                                           Path=Tag,
-                                           Converter={x:Static local:HeaderToImageConv.Instance}}"/>
-                                <TextBlock VerticalAlignment="Center" Text="{Binding}"/>
-                            </StackPanel>
-                        </DataTemplate>
+                        <ControlTemplate TargetType="{x:Type TreeViewItem}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition MinWidth="19" Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition/>
+                                </Grid.RowDefinitions>
+
+                                <Rectangle x:Name="HorLn"
+                                           Stroke="{DynamicResource ABrush.Tone7.Border.Static}"
+                                           SnapsToDevicePixels="True"
+                                           Height="1"
+                                           Margin="9,1,0,0"/>
+
+                                <Rectangle x:Name="VerLn"
+                                           Fill="{DynamicResource ABrush.Tone7.Border.Static}"
+                                           Stroke="{DynamicResource ABrush.Tone7.Border.Static}"
+                                           SnapsToDevicePixels="true"
+                                           Width="1"
+                                           Grid.RowSpan="2"/>
+
+                                <ToggleButton x:Name="Expander"
+                                              ClickMode="Press"
+                                              IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}}"
+                                              Style="{StaticResource ExpandCollapseToggleStyle}"
+                                              VerticalAlignment="Center"/>
+
+                                <Border x:Name="Bd"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                        Background="{TemplateBinding Background}"
+                                        Grid.Column="1"
+                                        Grid.ColumnSpan="2"
+                                        Padding="{TemplateBinding Padding}"
+                                        SnapsToDevicePixels="true"
+                                        HorizontalAlignment="Stretch"
+                                        Height="20">
+                                    <ContentPresenter x:Name="PART_Header"
+                                                      ContentSource="Header"
+                                                      HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                      SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                                </Border>
+
+                                <ItemsPresenter x:Name="ItemsHost"
+                                                Grid.Column="1"
+                                                Grid.ColumnSpan="2"
+                                                Grid.Row="1"/>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsExpanded" Value="False">
+                                    <Setter Property="Visibility" TargetName="ItemsHost" Value="Collapsed"/>
+                                </Trigger>
+                                <MultiTrigger>
+                                    <MultiTrigger.Conditions>
+                                        <Condition Property="HasItems" Value="False"/>
+                                    </MultiTrigger.Conditions>
+                                    <Setter Property="Visibility" TargetName="Expander" Value="Hidden"/>
+                                    <Setter Property="Visibility" TargetName="HorLn" Value="Visible"/>
+                                    <Setter Property="Grid.RowSpan" TargetName="VerLn" Value="2"/>
+                                    <Setter Property="Grid.Row" TargetName="VerLn" Value="0"/>
+                                </MultiTrigger>
+                                <MultiTrigger>
+                                    <MultiTrigger.Conditions>
+                                        <Condition Property="IsExpanded" Value="False"/>
+                                        <Condition Property="HasItems" Value="True"/>
+                                    </MultiTrigger.Conditions>
+                                    <Setter Property="Visibility" TargetName="VerLn" Value="Collapsed"/>
+                                </MultiTrigger>
+                                <Trigger Property="HasItems" Value="True">
+                                    <Setter Property="Visibility" TargetName="Expander" Value="Visible"/>
+                                    <Setter Property="Visibility" TargetName="HorLn" Value="Hidden"/>
+                                    <Setter Property="Grid.RowSpan" TargetName="VerLn" Value="1"/>
+                                    <Setter Property="Grid.Row" TargetName="VerLn" Value="2"/>
+                                </Trigger>
+                                <!-- Hover bound to Bd directly — IsMouseOver on Bd only
+                                     fires when the mouse is physically over this row,
+                                     not when it is over any child items below it -->
+                                <DataTrigger Binding="{Binding IsMouseOver, ElementName=Bd}" Value="True">
+                                    <Setter Property="Background" TargetName="Bd" Value="{DynamicResource TreeViewItem.MouseOver.Background}"/>
+                                    <Setter Property="BorderBrush" TargetName="Bd" Value="{DynamicResource TreeViewItem.MouseOver.Border}"/>
+                                </DataTrigger>
+                                <!-- No IsSelected highlight — active item is shown via
+                                     IsChecked background on the DataTemplate Grid -->
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Disabled}"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
                     </Setter.Value>
                 </Setter>
+
+                <Style.Triggers>
+                    <Trigger Property="IsSelected" Value="True">
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="Foreground" Value="{DynamicResource ABrush.Foreground.Static}"/>
+                    </Trigger>
+                </Style.Triggers>
+
             </Style>
-        </TreeView.Resources>
+        </TreeView.ItemContainerStyle>
+
     </TreeView>
 
 </UserControl>

@@ -24,7 +24,7 @@ namespace HydroExplorer.ViewModel.TabBotItem
             Tabs =
             [
                 _chartTab,
-            new TabBotItemViewModel { Header = "Output", Content = new TabBotOutputViewModel() },
+            new TabBotItemViewModel { Header = "BlankBot", Content = new TabBotOutputViewModel() },
         ];
 
             SelectedTab = Tabs[0];

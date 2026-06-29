@@ -6,10 +6,8 @@ namespace HydroExplorer.Helpers
     public class UserSettings
     {
         public string LastProjPath { get; set; } = string.Empty;
+        public string ProjName { get; set; } = string.Empty;
         public string ProjPath { get; set; } = string.Empty;
-        public string ProjDir { get; set; } = string.Empty;
-
-        public string DssPath { get; set; } = string.Empty;
         public int NextOpenOrder { get; set; } = 0;
 
         public Dictionary<string, ProjectSettings> Projects { get; set; } = [];
@@ -35,16 +33,39 @@ namespace HydroExplorer.Helpers
 
     public class ProjectSettings
     {
-        public string ProjDir { get; set; } = string.Empty;
+        public string ProjName { get; set; } = string.Empty;
+        public string ProjRoot { get; set; } = string.Empty;
+        public string ProjPath { get; set; } = string.Empty;
+        public string ModelName { get; set; } = string.Empty;
+        public string DssPath { get; set; } = string.Empty;
         public string HdfPathA { get; set; } = string.Empty;
         public string HdfPathB { get; set; } = string.Empty;
         public string PlanNameA { get; set; } = string.Empty;
         public string PlanNameB { get; set; } = string.Empty;
         public string ProName { get; set; } = string.Empty;
         public string HmsPath { get; set; } = string.Empty;
-        public string SelectedReach { get; set; } = string.Empty;
+        public List<string> SelectedReaches { get; set; } = [];
         public DateTime LastOpened { get; set; } = DateTime.MinValue;
         public int OpenOrder { get; set; } = 0;
+
+        // Resolved Spatial folder paths — written by MapOverView.BuildPaths once known,
+        // since the Spatial folder sits next to the project file, not necessarily at ProjRoot
+        // (ProjRoot can be several directories higher for deeply nested projects).
+        public string SpatialBndyPath { get; set; } = string.Empty;
+        public string SpatialXsPath { get; set; } = string.Empty;
+
+        // Set true if the user declines the NHD HU12 boundary fallback prompt,
+        // so we don't keep re-asking every time this project is opened.
+        public bool NhdBoundaryDeclined { get; set; } = false;
+
+        // USGS nearest-gage — static identity/location, fetched once ever per project
+        public string GageSiteNo { get; set; } = string.Empty;
+        public string GageName { get; set; } = string.Empty;
+        public double GageLat { get; set; } = 0;
+        public double GageLon { get; set; } = 0;
+        public double GageDistanceMiles { get; set; } = 0;
+        public string GageHucCode { get; set; } = string.Empty;
+        public double? GageDrainageAreaSqMi { get; set; } = null;
     }
 
 
@@ -70,8 +91,13 @@ namespace HydroExplorer.Helpers
     {
         public string Name { get; set; } = string.Empty;
         public string FilePath { get; set; } = string.Empty;
+        public string ProjName { get; set; } = string.Empty;
+        public string ProjPath { get; set; } = string.Empty;
         public DateTime LastOpened { get; set; }
         public int OpenOrder { get; set; }
+        public string ProjectType { get; set; } = "RAS";
+        public string? HmsRunFile { get; set; }
+        public bool IsActive { get; set; }
     }
 
 
@@ -93,6 +119,14 @@ namespace HydroExplorer.Helpers
                 if (_cache != null) return Task.FromResult(_cache);
 
                 if (!File.Exists(_settingsFilePath))
+                {
+                    _cache = new UserSettings();
+                    SaveSettingsInternal(_cache);
+                    return Task.FromResult(_cache);
+                }
+
+                var fileInfo = new FileInfo(_settingsFilePath);
+                if (fileInfo.Length == 0)
                 {
                     _cache = new UserSettings();
                     SaveSettingsInternal(_cache);

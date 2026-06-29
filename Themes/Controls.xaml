@@ -3092,7 +3092,7 @@
     </Style>
 
     <Style TargetType="{x:Type TabItem}">
-        <Setter Property="Header" Value="{Binding Header}"/>
+        <Setter Property="Header" Value="{Binding Header, FallbackValue='', TargetNullValue=''}"/>
         <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}"/>
         <Setter Property="Foreground" Value="{StaticResource ABrush.Foreground.Static}"/>
         <Setter Property="Background" Value="{DynamicResource TabItem.Static.Background}"/>
@@ -3660,18 +3660,38 @@
                             <Setter Property="Background" TargetName="mainBorder" Value="{DynamicResource TabItem.MouseOver.Background}"/>
                             <Setter Property="BorderBrush" TargetName="mainBorder" Value="{DynamicResource TabItem.MouseOver.Background}"/>
                         </DataTrigger>
+
                         <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource Self}}" Value="True">
-                            <!--SELECTED TAB COLOR-->
-                            <Setter Property="Background" TargetName="mainBorder" Value="{DynamicResource ABrush.Tone4.Background.Disabled}"/> 
+                            <Setter Property="Background" TargetName="mainBorder" Value="{DynamicResource ABrush.Tone4.Background.Disabled}"/>
                             <Setter Property="BorderBrush" TargetName="mainBorder" Value="{DynamicResource ABrush.Tone4.Background.Disabled}"/>
                             <Setter Property="Visibility" TargetName="PART_SelectionBorder" Value="Visible"/>
                         </DataTrigger>
-                        
-                        
+
                         <DataTrigger Binding="{Binding TabStripPlacement, RelativeSource={RelativeSource AncestorType={x:Type TabControl}}}" Value="Bottom">
                             <Setter Property="VerticalAlignment" TargetName="PART_SelectionBorder" Value="Top"/>
                             <Setter Property="Margin" TargetName="contentPresenter" Value="10,4,10,4"/>
                         </DataTrigger>
+
+                        <DataTrigger Binding="{Binding TabStripPlacement, RelativeSource={RelativeSource AncestorType={x:Type TabControl}}}" Value="Left">
+                            <Setter Property="Margin" TargetName="contentPresenter" Value="4,10,4,10"/>
+                            <Setter Property="LayoutTransform" TargetName="contentPresenter">
+                                <Setter.Value>
+                                    <RotateTransform Angle="90"/>
+                                </Setter.Value>
+                            </Setter>
+                            <Setter Property="HorizontalAlignment" TargetName="PART_SelectionBorder" Value="Right"/>
+                            <Setter Property="VerticalAlignment" TargetName="PART_SelectionBorder" Value="Stretch"/>
+                            <Setter Property="Width" TargetName="PART_SelectionBorder" Value="1"/>
+                            <Setter Property="Height" TargetName="PART_SelectionBorder" Value="Auto"/>
+                        </DataTrigger>
+
+                        <MultiDataTrigger>
+                            <MultiDataTrigger.Conditions>
+                                <Condition Binding="{Binding IsSelected, RelativeSource={RelativeSource Self}}" Value="True"/>
+                                <Condition Binding="{Binding TabStripPlacement, RelativeSource={RelativeSource AncestorType={x:Type TabControl}}}" Value="Left"/>
+                            </MultiDataTrigger.Conditions>
+                            <Setter Property="BorderThickness" TargetName="mainBorder" Value="0,0,0,1"/>
+                        </MultiDataTrigger>
 
                         <DataTrigger Binding="{Binding IsEnabled, RelativeSource={RelativeSource Self}}" Value="False">
                             <Setter Property="Opacity" TargetName="contentPresenter" Value="0.56"/>
@@ -3942,6 +3962,7 @@
                             <Setter Property="Height" TargetName="RowDefinition0" Value="*"/>
                             <Setter Property="Height" TargetName="RowDefinition1" Value="0"/>
                             <Setter Property="Margin" TargetName="headerPanel" Value="2,2,0,2"/>
+                            <Setter Property="BorderThickness" TargetName="contentPanel" Value="1,0,0,0"/>
                         </Trigger>
                         <Trigger Property="TabStripPlacement" Value="Right">
                             <Setter Property="Grid.Row" TargetName="headerPanel" Value="0"/>
@@ -4663,10 +4684,10 @@
                         </Trigger>
 
 
-                        <Trigger Property="IsMouseOver" Value="true">
+                        <DataTrigger Binding="{Binding IsMouseOver, ElementName=Bd}" Value="True">
                             <Setter Property="Background" TargetName="Bd" Value="{DynamicResource TreeViewItem.MouseOver.Background}"/>
                             <Setter Property="BorderBrush" TargetName="Bd" Value="{DynamicResource TreeViewItem.MouseOver.Border}"/>
-                        </Trigger>
+                        </DataTrigger>
 
 
 
