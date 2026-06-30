@@ -177,40 +177,29 @@ namespace HydroExplorer.ViewModel.TabItem
             string sourcePath = dialog.FileName;
             if (!File.Exists(sourcePath)) return;
 
-            // No .prj sidecar means we don't know the source CRS — guess from the
-            // shapefile's own raw extent rather than silently assuming a fixed zone,
-            // since picking the wrong adjacent zone can place the result hundreds
-            // of miles off (confirmed: 2277 vs 2278 mismatch landed near Nebraska).
-            int? sourceEpsgOverride = null;
+            string projKey = PathHelpers.NormalizeProjKey(settings.LastProjPath);
+
+            // CRS resolution shares GeometryExportCoordinator's cache with XS/river/
+            // standard BNDY export — if a zone's already been resolved for this
+            // project, reuse it silently instead of re-guessing or re-prompting.
+            // Confirmation is silenced project-wide (see GeometryExportCoordinator),
+            // so a guess here is auto-accepted the same way.
             string sourcePrjPath = Path.ChangeExtension(sourcePath, ".prj");
 
             if (!File.Exists(sourcePrjPath))
             {
-                var extent = TryReadShpExtent(sourcePath);
-                int guessedEpsg = extent != null ? GISUtil.GuessTexasStatePlaneZone(extent) : -1;
+                int? epsg = await GeometryExportCoordinator.ResolveSourceEpsgFromShapefileAsync(
+                    SettingsRepo, projKey, sourcePath, "project boundary source");
 
-                string promptMessage = guessedEpsg > 0
-                    ? $"This shapefile has no projection (.prj) file. Based on its coordinates, " +
-                      $"it's likely EPSG:{guessedEpsg}. Use this projection?\n\n" +
-                      $"(Choose No to cancel and add a .prj file manually.)"
-                    : "This shapefile has no projection (.prj) file, and a Texas State Plane " +
-                      "zone could not be determined from its coordinates.\n\n" +
-                      "Cancel and add a .prj file manually before retrying.";
-
-                if (guessedEpsg <= 0)
+                if (epsg is not > 0)
                 {
                     Application.Current.Dispatcher.Invoke(() => MessageBox.Show(
-                        promptMessage, "Unknown Projection", MessageBoxButton.OK, MessageBoxImage.Warning));
+                        "This shapefile has no projection (.prj) file, and a Texas State Plane " +
+                        "zone could not be determined from its coordinates.\n\n" +
+                        "Add a .prj file manually before retrying.",
+                        "Unknown Projection", MessageBoxButton.OK, MessageBoxImage.Warning));
                     return;
                 }
-
-                var confirm = Application.Current.Dispatcher.Invoke(() => MessageBox.Show(
-                    promptMessage, "Unknown Projection — Confirm Guess",
-                    MessageBoxButton.YesNo, MessageBoxImage.Question));
-
-                if (confirm != MessageBoxResult.Yes) return;
-
-                sourceEpsgOverride = guessedEpsg;
             }
 
             string pathTMP = Path.Combine(@"C:\Temp", $"tmp_{Guid.NewGuid():N}.shp");
@@ -221,7 +210,8 @@ namespace HydroExplorer.ViewModel.TabItem
                     pathSubBasins: sourcePath,
                     pathTMP: pathTMP,
                     pathBNDY: bndyPath,
-                    sourceEpsgOverride: sourceEpsgOverride
+                    settingsRepo: SettingsRepo,
+                    projKey: projKey
                 );
 
                 if (!File.Exists(bndyPath))
@@ -263,37 +253,6 @@ namespace HydroExplorer.ViewModel.TabItem
             finally
             {
                 GISUtil.DeleteShapefileIfExists(pathTMP);
-            }
-        }
-
-        /// <summary>
-        /// Reads just the bounding envelope of a shapefile's geometries, without
-        /// any reprojection — used to get a raw-coordinate centroid for zone guessing
-        /// when no .prj sidecar exists to tell us what those coordinates even are.
-        /// </summary>
-        private static Envelope? TryReadShpExtent(string shpPath)
-        {
-            try
-            {
-                var reader = new ShapefileDataReader(shpPath, new GeometryFactory());
-                Envelope? extent = null;
-
-                while (reader.Read())
-                {
-                    var env = reader.Geometry.EnvelopeInternal;
-                    if (extent is null)
-                        extent = env.Copy();
-                    else
-                        extent.ExpandToInclude(env);
-                }
-                reader.Close();
-
-                return extent;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"TryReadShpExtent failed for '{shpPath}' — {ex.Message}");
-                return null;
             }
         }
 
