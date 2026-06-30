@@ -8,7 +8,6 @@ namespace HydroExplorer.Helpers
         public string LastProjPath { get; set; } = string.Empty;
         public string ProjName { get; set; } = string.Empty;
         public string ProjPath { get; set; } = string.Empty;
-        public int NextOpenOrder { get; set; } = 0;
 
         public Dictionary<string, ProjectSettings> Projects { get; set; } = [];
         public Dictionary<string, DateTime> HmsProjects { get; set; } = [];
@@ -53,6 +52,14 @@ namespace HydroExplorer.Helpers
         // (ProjRoot can be several directories higher for deeply nested projects).
         public string SpatialBndyPath { get; set; } = string.Empty;
         public string SpatialXsPath { get; set; } = string.Empty;
+        public string SpatialRiverPath { get; set; } = string.Empty;
+
+        // Source EPSG for HEC-RAS geometry exports (XS/river centerlines) when the
+        // project has no .prj sidecar folder. Set once — either guessed via
+        // GISUtil.GuessTexasStatePlaneZone and confirmed by the user, or resolved
+        // from an actual .prj — so later exports (e.g. river after XS) don't have
+        // to re-guess or re-prompt for the same project.
+        public int? SourceEpsg { get; set; } = null;
 
         // Set true if the user declines the NHD HU12 boundary fallback prompt,
         // so we don't keep re-asking every time this project is opened.

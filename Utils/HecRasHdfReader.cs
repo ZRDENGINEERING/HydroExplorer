@@ -300,6 +300,14 @@ namespace HydroExplorer.Utils
         public static List<string> GetProfileNames(string filePath)
         {
             using var file = OpenHdf(filePath);
+
+            if (!HasSteadyResults(file))
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"GetProfileNames: '{filePath}' has no Steady Output results, returning empty.");
+                return [];
+            }
+
             return ReadSteadyProfileNames(file);
         }
 

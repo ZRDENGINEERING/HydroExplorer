@@ -44,11 +44,12 @@
                                            FontSize="11" FontWeight="DemiBold"/>
                                 <TextBlock Text="{Binding ProjPath}"
                                            Foreground="{StaticResource ForegroundBrushDark}"
-                                           FontSize="10"
-                                           TextTrimming="CharacterEllipsis"
-                                           ToolTip="{Binding ProjPath}"/>
+                                           FontSize="8"
+                                           ToolTip="{Binding ProjPath}"
+                                           TextWrapping="Wrap"/>
                                 <TextBlock Text="{Binding LastOpened, StringFormat='Last opened: {0:MM/dd/yyyy h:mm tt}'}"
-                                           Foreground="Gray" FontSize="9"/>
+                                           Foreground="{StaticResource ForegroundBrushBlue}"
+                                           FontSize="9"/>
                             </StackPanel>
                         </DataTemplate>
                     </ListBox.ItemTemplate>

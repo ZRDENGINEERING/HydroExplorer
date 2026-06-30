@@ -1,5 +1,4 @@
-﻿using DotSpatial.Projections.Transforms;
-using HydroExplorer.Core;
+﻿using HydroExplorer.Core;
 using HydroExplorer.Helpers;
 using Microsoft.Win32;
 using NetTopologySuite.Geometries;
@@ -10,6 +9,7 @@ using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Input;
+
 
 namespace HydroExplorer.ViewModel.TabItem
 {
@@ -53,6 +53,15 @@ namespace HydroExplorer.ViewModel.TabItem
             get => _selectedSectionsPath;
             set { _selectedSectionsPath = value; OnPropertyChanged(nameof(SelectedSectionsPath)); }
         }
+
+
+        private GeometryPathEntry? _selectedRiverPath;
+        public GeometryPathEntry? SelectedRiverPath
+        {
+            get => _selectedRiverPath;
+            set { _selectedRiverPath = value; OnPropertyChanged(nameof(SelectedRiverPath)); }
+        }
+
 
         private GeometryPathEntry? _selectedSubbasinsPath;
         public GeometryPathEntry? SelectedSubbasinsPath
@@ -100,6 +109,9 @@ namespace HydroExplorer.ViewModel.TabItem
                     break;
                 case "Sections":
                     SelectedSectionsPath = null;
+                    break;
+                case "River":
+                    SelectedRiverPath = null;
                     break;
                 case "Subbasins":
                     SelectedSubbasinsPath = null;
@@ -291,6 +303,8 @@ namespace HydroExplorer.ViewModel.TabItem
 
             if (string.Equals(layerType, "Sections", StringComparison.OrdinalIgnoreCase))
                 initialDir = SelectedSectionsPath?.Directory ?? string.Empty;
+            else if (string.Equals(layerType, "River", StringComparison.OrdinalIgnoreCase))
+                initialDir = SelectedRiverPath?.Directory ?? string.Empty;
             else if (string.Equals(layerType, "Subbasins", StringComparison.OrdinalIgnoreCase))
                 initialDir = SelectedSubbasinsPath?.Directory ?? string.Empty;
             else if (string.Equals(layerType, "Boundary", StringComparison.OrdinalIgnoreCase))
@@ -335,6 +349,8 @@ namespace HydroExplorer.ViewModel.TabItem
                         activeProj.SpatialBndyPath = shpPath;
                     else if (string.Equals(layerType, "Sections", StringComparison.OrdinalIgnoreCase))
                         activeProj.SpatialXsPath = shpPath;
+                    else if (string.Equals(layerType, "River", StringComparison.OrdinalIgnoreCase))
+                        activeProj.SpatialRiverPath = shpPath;
                 }
 
                 await SettingsRepo.SaveSettings(settings);
@@ -362,6 +378,8 @@ namespace HydroExplorer.ViewModel.TabItem
 
                 if (string.Equals(layerType, "Sections", StringComparison.OrdinalIgnoreCase))
                     SelectedSectionsPath = entry;
+                else if (string.Equals(layerType, "River", StringComparison.OrdinalIgnoreCase))
+                    SelectedRiverPath = entry;
                 else if (string.Equals(layerType, "Subbasins", StringComparison.OrdinalIgnoreCase))
                     SelectedSubbasinsPath = entry;
                 else if (string.Equals(layerType, "Boundary", StringComparison.OrdinalIgnoreCase))
@@ -430,6 +448,9 @@ namespace HydroExplorer.ViewModel.TabItem
                     case "Sections":
                         SelectedSectionsPath = entry;
                         break;
+                    case "River":
+                        SelectedRiverPath = entry;
+                        break;
                     case "Subbasins":
                         SelectedSubbasinsPath = entry;
                         break;
@@ -437,7 +458,7 @@ namespace HydroExplorer.ViewModel.TabItem
             });
         }
 
-        private void OnGeometryPathsResolved(string pathSubBasins, string pathXS, string pathBNDY)
+        private void OnGeometryPathsResolved(string pathSubBasins, string pathXS, string pathRiver, string pathBNDY)
         {
             Application.Current.Dispatcher.Invoke(() =>
             {
@@ -461,6 +482,7 @@ namespace HydroExplorer.ViewModel.TabItem
                     SelectedSubbasinsPath = null;
                 }
 
+
                 if (!string.IsNullOrEmpty(pathXS) && File.Exists(pathXS))
                 {
                     SelectedSectionsPath = new GeometryPathEntry
@@ -475,6 +497,25 @@ namespace HydroExplorer.ViewModel.TabItem
                 {
                     SelectedSectionsPath = null;
                 }
+
+
+                if (!string.IsNullOrEmpty(pathRiver) && File.Exists(pathRiver))
+                {
+                    SelectedRiverPath = new GeometryPathEntry
+                    {
+                        ShpPath = pathRiver,
+                        Name = Path.GetFileName(pathRiver),
+                        Directory = Path.GetDirectoryName(pathRiver) ?? string.Empty,
+                        LayerType = "River"
+                    };
+                }
+                else
+                {
+                    SelectedRiverPath = null;
+                }
+
+
+
 
                 if (!string.IsNullOrEmpty(pathBNDY) && File.Exists(pathBNDY))
                 {

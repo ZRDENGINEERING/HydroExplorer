@@ -32,7 +32,7 @@ namespace HydroExplorer.View
 
             EventBus.ProjPathChanged += async path =>
             {
-                _lastProjPath = TreeViewControl.NormalizeProjKey(path);
+                _lastProjPath = PathHelpers.NormalizeProjKey(path);
 
                 await Dispatcher.InvokeAsync(() =>
                 {
@@ -90,13 +90,13 @@ namespace HydroExplorer.View
 
             EventBus.ProjPathSelected += path =>
             {
-                _lastProjPath = TreeViewControl.NormalizeProjKey(path);
+                _lastProjPath = PathHelpers.NormalizeProjKey(path);
             };
         }
 
         private void OnAppLoaded(UserSettings settings)
         {
-            _lastProjPath = TreeViewControl.NormalizeProjKey(settings.LastProjPath);
+            _lastProjPath = PathHelpers.NormalizeProjKey(settings.LastProjPath);
 
             Dispatcher.Invoke(() =>
             {
@@ -237,7 +237,7 @@ namespace HydroExplorer.View
             {
                 var settings = await _settingsRepo.GetSettingsFresh();
                 if (string.IsNullOrEmpty(_lastProjPath))
-                    _lastProjPath = TreeViewControl.NormalizeProjKey(settings.LastProjPath);
+                    _lastProjPath = PathHelpers.NormalizeProjKey(settings.LastProjPath);
 
                 if (string.IsNullOrEmpty(_lastProjPath)) return;
                 if (!settings.Projects.TryGetValue(_lastProjPath, out var proj))
@@ -258,7 +258,7 @@ namespace HydroExplorer.View
             {
                 var settings = await _settingsRepo.GetSettingsFresh();
                 if (string.IsNullOrEmpty(_lastProjPath))
-                    _lastProjPath = TreeViewControl.NormalizeProjKey(settings.LastProjPath);
+                    _lastProjPath = PathHelpers.NormalizeProjKey(settings.LastProjPath);
 
                 System.Diagnostics.Debug.WriteLine($"[SaveDssPath] path={path}");
                 System.Diagnostics.Debug.WriteLine($"[SaveDssPath] _lastProjPath={_lastProjPath}");

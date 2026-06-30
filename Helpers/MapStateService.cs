@@ -15,7 +15,7 @@
     public record ProjectPaths(
         string ProjPath,
         string PathXS,
-        string PathCL,
+        string PathRiver,
         string PathBNDY,
         string PathHdfA,
         string PathHdfB,

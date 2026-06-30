@@ -1,6 +1,7 @@
 using HydroExplorer.Helpers;
 using HydroExplorer.Utils;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileSystemGlobbing;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -13,6 +14,8 @@ namespace HydroExplorer.View
         public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
         protected void OnPropertyChanged([System.Runtime.CompilerServices.CallerMemberName] string? name = null)
             => PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(name));
+
+
 
         public string Path { get; init; } = string.Empty;
         public string DisplayName { get; init; } = string.Empty;
@@ -38,9 +41,13 @@ namespace HydroExplorer.View
         private readonly IUserSettingsRepo _settingsRepo;
         private bool _initialized = false;
 
+        private FileSystemWatcher? _watcher;
+        private CancellationTokenSource? _refreshCts;
+
         public FilteredTreeView()
         {
             InitializeComponent();
+
             _settingsRepo = App.ServiceProvider.GetRequiredService<IUserSettingsRepo>();
 
             EventBus.AppLoaded += OnAppLoaded;
@@ -77,6 +84,16 @@ namespace HydroExplorer.View
                     await ExpandToPath(targetPath);
                 });
             };
+
+            Unloaded += (s, e) =>
+            {
+                _watcher?.Dispose();
+                _refreshCts?.Cancel();
+                _refreshCts?.Dispose();
+            };
+
+
+
         }
 
         // ── Init ─────────────────────────────────────────────────────────────
@@ -136,18 +153,193 @@ namespace HydroExplorer.View
                 rootItem.Items.Add(_dummyNode);
                 rootItem.Expanded += Folder_Expanded;
                 foldersItem.Items.Add(rootItem);
+
+                StartWatcher(rootPath);
             }
 
             if (!string.IsNullOrEmpty(expandToDir))
                 await ExpandToPath(expandToDir);
         }
 
+
+
+        private void StartWatcher(string rootPath)
+        {
+            _watcher?.Dispose();
+
+            if (string.IsNullOrEmpty(rootPath) || !Directory.Exists(rootPath)) return;
+
+            _watcher = new FileSystemWatcher(rootPath)
+            {
+                IncludeSubdirectories = true,
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName,
+                EnableRaisingEvents = true
+            };
+
+            _watcher.Created += OnFileSystemChanged;
+            _watcher.Deleted += OnFileSystemChanged;
+            _watcher.Renamed += OnFileSystemChanged;
+        }
+
+        private async void OnFileSystemChanged(object sender, FileSystemEventArgs e)
+        {
+        //    System.Diagnostics.Debug.WriteLine($"FilteredTreeView ({FileExtensionFilter}): FileSystemEvent {e.ChangeType} '{e.FullPath}'" +
+        //(e is RenamedEventArgs re ? $" (was '{re.OldFullPath}')" : ""));
+
+            _refreshCts?.Cancel();
+            _refreshCts = new CancellationTokenSource();
+            var token = _refreshCts.Token;
+
+            try
+            {
+                await Task.Delay(500, token);
+                await Dispatcher.InvokeAsync(RefreshTree);
+                //System.Diagnostics.Debug.WriteLine($"FilteredTreeView ({FileExtensionFilter}): RefreshTree completed");
+
+            }
+            catch (OperationCanceledException) { }
+        }
+
+        private void RefreshTree()
+        {
+            foreach (TreeViewItem root in foldersItem.Items.OfType<TreeViewItem>())
+                RefreshExpandedNode(root);
+        }
+
+        /// <summary>
+        /// Diffs an expanded node's children against the current filesystem state,
+        /// adding/removing items as needed. Only touches already-expanded nodes —
+        /// collapsed nodes will re-scan naturally on next expand via Folder_Expanded.
+        /// </summary>
+        private void RefreshExpandedNode(TreeViewItem item)
+        {
+            if (item.Tag is not TreeNodeInfo info) return;
+
+            // Refresh any node that's already been populated (real children present,
+            // not just the lazy-load dummy placeholder) — not just currently-expanded
+            // ones. Otherwise a collapsed-but-previously-populated folder shows stale
+            // cached items the next time it's expanded, since Folder_Expanded's guard
+            // only rebuilds when it sees the dummy null placeholder.
+            bool isPopulated = item.Items.Count != 1 || item.Items[0] != null;
+            if (!isPopulated) return;
+
+            string fullPath = info.Path;
+            if (!Directory.Exists(fullPath)) return;
+
+            bool isRoot = fullPath.TrimEnd('\\').Equals(@"C:\Temp", StringComparison.OrdinalIgnoreCase);
+
+            if (FileExtensionFilter is ".run" or ".prj")
+                RefreshPrjRunNode(item, fullPath, isRoot);
+            else
+                RefreshShpNode(item, fullPath);
+
+            // Recurse into all populated children, regardless of expand state
+            foreach (TreeViewItem child in item.Items.OfType<TreeViewItem>())
+                RefreshExpandedNode(child);
+        }
+
+        private void RefreshPrjRunNode(TreeViewItem item, string fullPath, bool isRoot)
+        {
+            if (isRoot)
+            {
+                var existingDirs = item.Items.OfType<TreeViewItem>()
+                    .Where(i => i.Tag is TreeNodeInfo n && n.IsFolder)
+                    .ToDictionary(i => ((TreeNodeInfo)i.Tag).Path, i => i, StringComparer.OrdinalIgnoreCase);
+
+                var currentDirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                try
+                {
+                    foreach (var dir in Directory.GetDirectories(fullPath))
+                        if (DirectoryContainsFilter(dir))
+                            currentDirs.Add(dir);
+                }
+                catch { return; }
+
+                foreach (var dir in currentDirs.Where(d => !existingDirs.ContainsKey(d)))
+                    item.Items.Add(MakeFolderItem(dir));
+
+                foreach (var (path, node) in existingDirs.Where(kv => !currentDirs.Contains(kv.Key)))
+                    item.Items.Remove(node);
+
+                return;
+            }
+
+            var existingFiles = item.Items.OfType<TreeViewItem>()
+                .Where(i => i.Tag is TreeNodeInfo n && !n.IsFolder)
+                .ToDictionary(i => ((TreeNodeInfo)i.Tag).Path, i => i, StringComparer.OrdinalIgnoreCase);
+
+            HashSet<string> currentFiles;
+            try
+            {
+                currentFiles = FileExtensionFilter == ".prj"
+                    ? new HashSet<string>(
+                        Directory.GetFiles(fullPath, "*.prj", SearchOption.AllDirectories)
+                            .Where(f => HecRasPrjReader.IsHecRasProjectFile(f)),
+                        StringComparer.OrdinalIgnoreCase)
+                    : new HashSet<string>(
+                        Directory.GetFiles(fullPath, "*.hms", SearchOption.AllDirectories),
+                        StringComparer.OrdinalIgnoreCase);
+            }
+            catch { return; }
+
+            foreach (var file in currentFiles.Where(f => !existingFiles.ContainsKey(f)))
+                item.Items.Add(MakeFileItem(file));
+
+            foreach (var (path, node) in existingFiles.Where(kv => !currentFiles.Contains(kv.Key)))
+                item.Items.Remove(node);
+        }
+
+        private void RefreshShpNode(TreeViewItem item, string fullPath)
+        {
+            var existingDirs = item.Items.OfType<TreeViewItem>()
+                .Where(i => i.Tag is TreeNodeInfo n && n.IsFolder)
+                .ToDictionary(i => ((TreeNodeInfo)i.Tag).Path, i => i, StringComparer.OrdinalIgnoreCase);
+
+            var existingFiles = item.Items.OfType<TreeViewItem>()
+                .Where(i => i.Tag is TreeNodeInfo n && !n.IsFolder)
+                .ToDictionary(i => ((TreeNodeInfo)i.Tag).Path, i => i, StringComparer.OrdinalIgnoreCase);
+
+            HashSet<string> currentDirs = [];
+            HashSet<string> currentFiles = [];
+
+            try
+            {
+                bool hasFilesHere = Directory.GetFiles(fullPath)
+                    .Any(f => f.EndsWith(FileExtensionFilter, StringComparison.OrdinalIgnoreCase));
+
+                if (!hasFilesHere)
+                {
+                    foreach (var dir in Directory.GetDirectories(fullPath))
+                        if (DirectoryContainsFilter(dir))
+                            currentDirs.Add(dir);
+                }
+
+                foreach (var file in Directory.GetFiles(fullPath))
+                    if (Path.GetFileName(file).EndsWith(FileExtensionFilter, StringComparison.OrdinalIgnoreCase))
+                        currentFiles.Add(file);
+            }
+            catch { return; }
+
+            foreach (var dir in currentDirs.Where(d => !existingDirs.ContainsKey(d)))
+                item.Items.Add(MakeFolderItem(dir));
+            foreach (var (path, node) in existingDirs.Where(kv => !currentDirs.Contains(kv.Key)))
+                item.Items.Remove(node);
+
+            foreach (var file in currentFiles.Where(f => !existingFiles.ContainsKey(f)))
+                item.Items.Add(MakeFileItem(file));
+            foreach (var (path, node) in existingFiles.Where(kv => !currentFiles.Contains(kv.Key)))
+                item.Items.Remove(node);
+        }
+
+
+
+
         private string ResolveTargetPath(UserSettings settings)
         {
             if (TargetPathResolver != null)
                 return TargetPathResolver(settings);
 
-            string projPath = TreeViewControl.NormalizeProjKey(settings.LastProjPath);
+            string projPath = PathHelpers.NormalizeProjKey(settings.LastProjPath);
 
             if (FileExtensionFilter == ".prj" || FileExtensionFilter == ".hms")
             {
@@ -171,6 +363,9 @@ namespace HydroExplorer.View
 
                     if (!string.IsNullOrEmpty(shpProj.SpatialXsPath))
                         return Path.GetDirectoryName(shpProj.SpatialXsPath) ?? string.Empty;
+
+                    if (!string.IsNullOrEmpty(shpProj.SpatialRiverPath))
+                        return Path.GetDirectoryName(shpProj.SpatialRiverPath) ?? string.Empty;
                 }
 
                 var latest = settings.ShpPaths
@@ -192,7 +387,7 @@ namespace HydroExplorer.View
             var info = new TreeNodeInfo
             {
                 Path = filePath,
-                DisplayName = TreeViewControl.GetFileFolderName(filePath),
+                DisplayName = PathHelpers.GetFileFolderName(filePath),
                 IsFolder = false,
                 IsCheckable = checkable,
                 IsChecked = IsCurrentlyActive(filePath)
@@ -206,7 +401,7 @@ namespace HydroExplorer.View
             var info = new TreeNodeInfo
             {
                 Path = dirPath,
-                DisplayName = TreeViewControl.GetFileFolderName(dirPath),
+                DisplayName = PathHelpers.GetFileFolderName(dirPath),
                 IsFolder = true,
                 IsCheckable = false
             };
@@ -227,7 +422,7 @@ namespace HydroExplorer.View
             try
             {
                 var settings = _settingsRepo.GetSettings().GetAwaiter().GetResult();
-                string projPath = TreeViewControl.NormalizeProjKey(settings.LastProjPath);
+                string projPath = PathHelpers.NormalizeProjKey(settings.LastProjPath);
                 var ext = Path.GetExtension(filePath).ToLowerInvariant();
 
                 return ext switch
@@ -237,7 +432,8 @@ namespace HydroExplorer.View
                               string.Equals(filePath, p.HmsPath, StringComparison.OrdinalIgnoreCase),
                     ".shp" => settings.Projects.TryGetValue(projPath, out var sp) &&
                               (string.Equals(filePath, sp.SpatialBndyPath, StringComparison.OrdinalIgnoreCase) ||
-                               string.Equals(filePath, sp.SpatialXsPath, StringComparison.OrdinalIgnoreCase)),
+                              string.Equals(filePath, sp.SpatialXsPath, StringComparison.OrdinalIgnoreCase) ||
+                               string.Equals(filePath, sp.SpatialRiverPath, StringComparison.OrdinalIgnoreCase)),
                     _ => false
                 };
             }
@@ -276,7 +472,7 @@ namespace HydroExplorer.View
                 {
                     var files = FileExtensionFilter == ".prj"
                         ? Directory.GetFiles(fullPath, "*.prj", SearchOption.AllDirectories)
-                            .Where(f => IsHecRasProjectFile(f))
+                            .Where(f => HecRasPrjReader.IsHecRasProjectFile(f))
                         : FileExtensionFilter == ".hms"
                             ? Directory.GetFiles(fullPath, "*.hms", SearchOption.AllDirectories)
                             : Directory.GetFiles(fullPath, "*.run", SearchOption.AllDirectories);
@@ -337,23 +533,26 @@ namespace HydroExplorer.View
             switch (ext)
             {
                 case ".prj":
-                    System.Diagnostics.Debug.WriteLine($"[FilteredTreeView .prj] path={path}");
-                    if (IsHecRasProjectFile(path))
+                    //System.Diagnostics.Debug.WriteLine($"[FilteredTreeView .prj] path={path}");
+                    if (HecRasPrjReader.IsHecRasProjectFile(path))
                     {
-                        EventBus.PublishProjPath(path);
+                        // SaveProjPathAsync publishes EventBus.ProjPathSelected itself
+                        // (with the normalized path) at the end — don't also publish
+                        // here, or every .prj selection fires ProjPathSelected twice
+                        // for every subscriber (HydraulicsPaneView, TabInfoViewModel, etc.).
                         await SaveProjPathAsync(path);
                         SetSingleActive(path);
                     }
                     break;
-                
+
                 case ".hms":
-                    System.Diagnostics.Debug.WriteLine($"[FilteredTreeView .hms] path={path}");
+                    //System.Diagnostics.Debug.WriteLine($"[FilteredTreeView .hms] path={path}");
                     await SaveHmsPathAsync(path);
                     SetSingleActive(path);
                     break;
 
                 case ".run":
-                    System.Diagnostics.Debug.WriteLine($"[FilteredTreeView .run] path={path}");
+                    //System.Diagnostics.Debug.WriteLine($"[FilteredTreeView .run] path={path}");
                     await SaveRunPathAsync(path);
                     SetSingleActive(path);
                     break;
@@ -392,9 +591,10 @@ namespace HydroExplorer.View
             switch (ext)
             {
                 case ".prj":
-                    if (isChecked && IsHecRasProjectFile(path))
+                    if (isChecked && HecRasPrjReader.IsHecRasProjectFile(path))
                     {
-                        EventBus.PublishProjPath(path);
+                        // Same fix as FoldersItem_SelectedItemChanged — SaveProjPathAsync
+                        // already publishes ProjPathSelected, so don't publish twice here.
                         await SaveProjPathAsync(path);
                     }
                     break;
@@ -521,7 +721,7 @@ namespace HydroExplorer.View
 
         private async Task SaveProjPathAsync(string projPath)
         {
-            string normalizedPath = TreeViewControl.NormalizeProjKey(projPath);
+            string normalizedPath = PathHelpers.NormalizeProjKey(projPath);
             var settings = await _settingsRepo.GetSettingsFresh();
             settings.LastProjPath = normalizedPath;
             settings.ProjPath = normalizedPath;
@@ -615,24 +815,13 @@ namespace HydroExplorer.View
 
         // ── Utilities ─────────────────────────────────────────────────────────
 
-        private static bool IsHecRasProjectFile(string filePath)
-        {
-            try
-            {
-                using var reader = new StreamReader(filePath);
-                return reader.ReadLine()?.Trim()
-                    .StartsWith("Proj Title", StringComparison.OrdinalIgnoreCase) == true;
-            }
-            catch { return false; }
-        }
-
         private bool DirectoryContainsFilter(string dir)
         {
             try
             {
                 if (FileExtensionFilter == ".prj")
                     return Directory.GetFiles(dir, "*.prj", SearchOption.AllDirectories)
-                        .Any(f => IsHecRasProjectFile(f));
+                        .Any(f => HecRasPrjReader.IsHecRasProjectFile(f));
 
                 return Directory.GetFiles(dir, "*" + FileExtensionFilter, SearchOption.AllDirectories)
                     .Length > 0;

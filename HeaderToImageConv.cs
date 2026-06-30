@@ -1,4 +1,5 @@
-﻿using HydroExplorer.View;
+﻿using HydroExplorer.Helpers;
+using HydroExplorer.View;
 using System.Globalization;
 using System.IO;
 using System.Windows.Data;
@@ -20,7 +21,7 @@ namespace HydroExplorer
             if (path == null)
                 return null;
 
-            var name = TreeViewControl.GetFileFolderName(path);
+            var name = PathHelpers.GetFileFolderName(path);
 
             var image = "/Images/file.png";
 

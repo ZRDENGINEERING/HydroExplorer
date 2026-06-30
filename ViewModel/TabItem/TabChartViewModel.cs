@@ -98,7 +98,7 @@ namespace HydroExplorer.ViewModel.TabItem
                     .GetRequiredService<IUserSettingsRepo>();
                 var settings = await settingsRepo.GetSettings();
 
-                string projPath = TreeViewControl.NormalizeProjKey(settings.LastProjPath);
+                string projPath = PathHelpers.NormalizeProjKey(settings.LastProjPath);
                 if (string.IsNullOrEmpty(projPath) ||
                     !settings.Projects.TryGetValue(projPath, out var proj))
                     return;

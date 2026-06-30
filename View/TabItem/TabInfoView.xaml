@@ -70,14 +70,17 @@
 
 
             <TextBlock Text="USGS Info:" FontSize="12" Margin="0,10,0,0"/>
-            <TextBlock FontSize="10" Margin="10,0,0,0">
-                <Run Text="Site Number: " Foreground="{StaticResource ForegroundBrushDark}"/>
-                <Run Text="{Binding UsgsNumber}" Foreground="{StaticResource ForegroundBrush}" FontWeight="Bold"/>
-            </TextBlock>
+            
             <TextBlock FontSize="10" Margin="10,0,0,0">
                 <Run Text="Station Name: " Foreground="{StaticResource ForegroundBrushDark}"/>
                 <Run Text="{Binding UsgsStationName}" Foreground="{StaticResource ForegroundBrush}" FontWeight="Bold"/>
             </TextBlock>
+
+            <TextBlock FontSize="10" Margin="10,0,0,0">
+                <Run Text="Site Number: " Foreground="{StaticResource ForegroundBrushDark}"/>
+                <Run Text="{Binding UsgsNumber}" Foreground="{StaticResource ForegroundBrush}" FontWeight="Bold"/>
+            </TextBlock>
+
             <TextBlock FontSize="10" Margin="10,0,0,0">
                 <Run Text="HUC Code: " Foreground="{StaticResource ForegroundBrushDark}"/>
                 <Run Text="{Binding HucCode}" Foreground="{StaticResource ForegroundBrush}" FontWeight="Bold"/>

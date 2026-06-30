@@ -1,12 +1,8 @@
 ﻿using OxyPlot;
-using OxyPlot.SkiaSharp;
-using OxyPlot.Wpf;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using System.IO;
-using System.Reflection.Metadata;
-
 
 
 public static class HydroReportGenerator

@@ -43,42 +43,35 @@
                   BorderThickness="0.8">
             <StackPanel Background="{StaticResource BackgroundBrushSidePanels}">
 
-                <TextBlock FontSize="10" Margin="10,4,0,0"
-                           Foreground="{StaticResource ForegroundBrush}">Proj Path:</TextBlock>
-                <DockPanel Margin="15,0,4,4">
-                    <Button DockPanel.Dock="Right" Content="..."
-                            Click="BrowseProjPath_Click"
-                            Width="22" Height="20" Padding="0" FontSize="10"
-                            Background="{StaticResource BackgroundBrushSidePanels}"/>
-                    <TextBox Name="txtBoxProjPath"
-                             FontSize="8" IsReadOnly="True" BorderThickness="0"
-                             Foreground="{StaticResource ForegroundBrushDark}"/>
-                </DockPanel>
 
-                <TextBlock FontSize="10" Margin="10,4,0,0"
-                           Foreground="{StaticResource ForegroundBrush}">Plan Name A:</TextBlock>
-                
+                <TextBlock FontSize="10" Margin="10,4,0,6">
+                    <Run Text="Plan Name A: " Foreground="{StaticResource ForegroundBrush}"/>
+                    <Run Text="{Binding ElementName=txtBoxHdfPathA, Path=Text}" Foreground="{StaticResource ForegroundBrushDark}"/>
+                </TextBlock>
+
+                <TextBox Name="txtBoxHdfPathA" Visibility="Collapsed"/>
+
                 <ComboBox Name="cboxPlanNameA"
-                          FontSize="10" Background="#543d05" BorderThickness="0"
-                          Width="200" Margin="0,0,0,2"
-                          Foreground="{StaticResource ForegroundBrushDark}"/>
-                <TextBox Name="txtBoxHdfPathA"
-                         FontSize="8" IsReadOnly="True" BorderThickness="0"
-                         Width="220" HorizontalAlignment="Left" Margin="15,0,0,6"
-                         Foreground="{StaticResource ForegroundBrushDark}"/>
+                    FontSize="10" Background="#543d05" BorderThickness="0"
+                    Width="200" Margin="0,0,0,10"
+                    Foreground="{StaticResource ForegroundBrushDark}"/>
 
-                <TextBlock FontSize="10" Margin="10,4,0,0"
-                           Foreground="{StaticResource ForegroundBrush}">Plan Name B:</TextBlock>
+
+
+                <TextBlock FontSize="10" Margin="10,4,0,6">
+                    <Run Text="Plan Name B: " Foreground="{StaticResource ForegroundBrush}"/>
+                    <Run Text="{Binding ElementName=txtBoxHdfPathB, Path=Text}" Foreground="{StaticResource ForegroundBrushDark}"/>
+                </TextBlock>
+
+                <TextBox Name="txtBoxHdfPathB" Visibility="Collapsed"/>
+
                 <ComboBox Name="cboxPlanNameB"
-                          
-                          FontSize="10" Background="#543d05" BorderThickness="0"
-                          Width="200" Margin="0,0,0,2"
-                          Foreground="{StaticResource ForegroundBrushDark}"/>
-                <TextBox Name="txtBoxHdfPathB"
-                         FontSize="8" IsReadOnly="True" BorderThickness="0"
-                         Width="220" HorizontalAlignment="Left" Margin="15,0,0,6"
-                         Foreground="{StaticResource ForegroundBrushDark}"/>
+                    FontSize="10" Background="#543d05" BorderThickness="0"
+                    Width="200" Margin="0,0,0,10"
+                    Foreground="{StaticResource ForegroundBrushDark}"/>
 
+                
+                
                 <TextBlock FontSize="10" Margin="10,4,0,0"
                            Foreground="{StaticResource ForegroundBrush}">Profile:</TextBlock>
                 <ComboBox Name="cboxProfiles"

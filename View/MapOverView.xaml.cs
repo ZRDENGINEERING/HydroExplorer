@@ -35,6 +35,7 @@ namespace HydroExplorer.View
         private readonly Map _map;
 
         private string? _pathXS = string.Empty;
+        private string? _pathRiver = string.Empty;
         private string? _pathBNDY = string.Empty;
         private string? _pathHdfA = string.Empty;
         private string? _pathHdfB = string.Empty;
@@ -77,7 +78,7 @@ namespace HydroExplorer.View
             var (cx, cy) = SphericalMercator.FromLonLat(-99.0, 31.0);
             _map.Navigator.CenterOnAndZoomTo(new MPoint(cx, cy), 3000);
 
-         
+
 
             AppDomain.CurrentDomain.FirstChanceException += (s, e) =>
             {
@@ -134,6 +135,7 @@ namespace HydroExplorer.View
                 EventBus.PublishGeometryPathsResolved(
                     pathSubBasins: _pathSubBasins ?? string.Empty,
                     pathXS: _pathXS ?? string.Empty,
+                    pathRiver: _pathRiver ?? string.Empty,
                     pathBNDY: _pathBNDY ?? string.Empty
                 );
             }
@@ -150,15 +152,12 @@ namespace HydroExplorer.View
             if (sameProject)
             {
                 System.Diagnostics.Debug.WriteLine("ResetMap: same project, skipping visual refresh.");
-                // Gage can still need (re)adding even on a same-project call (e.g. first
-                // load where the map didn't redraw but the gage layer was never added yet).
                 await FetchAndAddGageLayer();
                 return;
             }
 
             _currentProjPath = resolvedProjPath;
 
-            // ── Full visual reset only if the project actually changed ──────────────
             await Dispatcher.InvokeAsync(() => _mapControl.Opacity = 0);
 
             _map.Layers.Clear();
@@ -180,9 +179,6 @@ namespace HydroExplorer.View
                 await AddLayerShpBndy();
                 await InitView();
 
-                // Gage layer added AFTER Layers.Clear() and the base layers, so it
-                // survives the redraw instead of being wiped out by Clear() if it
-                // had been added earlier in the method.
                 await FetchAndAddGageLayer();
 
                 await Dispatcher.InvokeAsync(() => _mapControl.Refresh());
@@ -223,13 +219,12 @@ namespace HydroExplorer.View
 
             try
             {
-                // Timeout fallback — don't hang forever if offline
                 using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(token);
                 timeoutCts.CancelAfter(TimeSpan.FromSeconds(5));
 
                 await tcs.Task.WaitAsync(timeoutCts.Token);
             }
-            catch (OperationCanceledException) { /* timeout or reset — fade in anyway */ }
+            catch (OperationCanceledException) { }
             finally
             {
                 _map.DataChanged -= OnMapDataChanged;
@@ -274,9 +269,6 @@ namespace HydroExplorer.View
                 }
             }
 
-            // Neither BNDY nor XS available for this project — reset to the
-            // Texas-wide default view rather than leaving the map at whatever
-            // extent the previous project showed.
             await Application.Current.Dispatcher.InvokeAsync(() => { },
                 System.Windows.Threading.DispatcherPriority.Loaded);
 
@@ -300,7 +292,7 @@ namespace HydroExplorer.View
                 Features = new[] { new GeometryFeature { Geometry = poly } },
                 Style = new VectorStyle
                 {
-                    Fill = new Brush(new Color(30, 30, 30, opacity)), // dark gray, semi-transparent
+                    Fill = new Brush(new Color(30, 30, 30, opacity)),
                     Outline = null
                 }
             };
@@ -348,14 +340,8 @@ namespace HydroExplorer.View
 
         private void InitInfoWidgets()
         {
-            //var infoLayer = map.Layers.OfType<MemoryLayer>().FirstOrDefault(l => l.infoLayer);
-            //_targetLayer = map.Layers.FirstOrDefault(f => f.Name == "Layer 3") as WritableLayer;
-            //_editingWidget = map.Widgets.OfType<EditingWidget>().Single();
-            //map.Widgets.Add(new MapInfoWidget(map, [map.Layers.Last()]));
-
             _map.Widgets.Add(new MapInfoWidget(_map, _map.Layers.FindLayer("XS")));
             _map.Widgets.Add(new MouseCoordinatesWidget());
-            //map.Widgets.Add(CreateSelectButton());
         }
 
 
@@ -365,7 +351,6 @@ namespace HydroExplorer.View
             if (!Path.Exists(shapefilePath)) return Task.CompletedTask;
 
             var shapefileSource = new ShapeFile(shapefilePath, true);
-            //var dataSource = new ProjectingProvider(shapeFileProvider) { CRS = "EPSG:3857" };
 
             var shapefileLayer = new Layer("TX_SPZ")
             {
@@ -488,7 +473,6 @@ namespace HydroExplorer.View
         public static ILayer CreateProjectedShapefileLayer(string shapefilePath)
         {
             var provider = new ShapeFile(shapefilePath, true) { CRS = "EPSG:4326" };
-            // Wrap in a ProjectingProvider to reproject to Web Mercator (3857)
             var projectingProvider = new ProjectingProvider(provider) { CRS = "EPSG:3857" };
 
             var vectorLayer = new Layer("ShapefileLayer")
@@ -660,10 +644,18 @@ namespace HydroExplorer.View
 
             try
             {
+                // Resolve the same settings repo / project key used by XS and river
+                // export, so BNDY's CRS resolution shares the ProjectSettings.SourceEpsg
+                // cache instead of guessing independently or defaulting to a fixed zone.
+                var settingsRepo = App.ServiceProvider.GetRequiredService<IUserSettingsRepo>();
+                string projKey = PathHelpers.NormalizeProjKey(_currentProjPath ?? string.Empty);
+
                 await ExporterBndy.ExportBNDY(
                     pathSubBasins: _pathSubBasins,
                     pathTMP: pathTMP,
-                    pathBNDY: _pathBNDY
+                    pathBNDY: _pathBNDY,
+                    settingsRepo: settingsRepo,
+                    projKey: projKey
                 );
             }
             catch (Exception ex)
@@ -770,14 +762,17 @@ namespace HydroExplorer.View
                 if (!Directory.Exists(spatialPath))
                     Directory.CreateDirectory(spatialPath);
 
-                // Only fill in the standard convention path if nothing's already saved —
-                // a manually-browsed selection (via ExecuteBrowseShp) should never be
-                // silently overwritten on a later load.
                 bool needsSave = false;
 
                 if (string.IsNullOrEmpty(projSettings.SpatialXsPath))
                 {
                     projSettings.SpatialXsPath = Path.Combine(spatialPath, "XS.shp");
+                    needsSave = true;
+                }
+
+                if (string.IsNullOrEmpty(projSettings.SpatialRiverPath))
+                {
+                    projSettings.SpatialRiverPath = Path.Combine(spatialPath, "River.shp");
                     needsSave = true;
                 }
 
@@ -788,6 +783,7 @@ namespace HydroExplorer.View
                 }
 
                 _pathXS = projSettings.SpatialXsPath;
+                _pathRiver = projSettings.SpatialRiverPath;
                 _pathBNDY = projSettings.SpatialBndyPath;
 
                 if (needsSave)
@@ -797,7 +793,6 @@ namespace HydroExplorer.View
                 _pathHdfB = projSettings.HdfPathB;
                 _pathHMS = projSettings.HmsPath;
 
-                // Fallback — find HMS by matching ProjRoot
                 if (string.IsNullOrEmpty(_pathHMS) || !File.Exists(_pathHMS))
                 {
                     _pathHMS = settings.Projects
@@ -809,7 +804,6 @@ namespace HydroExplorer.View
                         .FirstOrDefault() ?? string.Empty;
                 }
 
-                // ── Auto-discover HdfPathB if missing ────────────────────────
                 if (string.IsNullOrEmpty(_pathHdfB) || !File.Exists(_pathHdfB))
                 {
                     string projDir = Directory.Exists(projPath)
@@ -827,7 +821,6 @@ namespace HydroExplorer.View
                     }
                 }
 
-                // ── Warn if no HDF found at all ──────────────────────────────────────
                 if ((string.IsNullOrEmpty(_pathHdfA) || !File.Exists(_pathHdfA)) &&
                     (string.IsNullOrEmpty(_pathHdfB) || !File.Exists(_pathHdfB)))
                     await ValidateProjectFiles(projPath, settings);
@@ -857,15 +850,13 @@ namespace HydroExplorer.View
                 _mapState.Publish(new ProjectPaths(
                     ProjPath: projPath,
                     PathXS: _pathXS ?? "",
-                    PathCL: Path.Combine(Path.GetDirectoryName(_pathXS ?? "") ?? "", "CL.shp"),
+                    PathRiver: Path.Combine(Path.GetDirectoryName(_pathXS ?? "") ?? "", "RIVER.shp"),
                     PathBNDY: _pathBNDY ?? "",
                     PathHdfA: _pathHdfA ?? "",
                     PathHdfB: _pathHdfB ?? "",
                     PathHMS: _pathHMS ?? "",
                     PathSubBasins: _pathSubBasins ?? ""
                 ));
-
-                System.Diagnostics.Debug.WriteLine($"BuildPaths: Publish fired for '{projPath}'");
 
             }
             catch (OperationCanceledException)
@@ -943,16 +934,6 @@ namespace HydroExplorer.View
             string projRoot = Path.GetFullPath(
                 Path.Combine(Path.GetDirectoryName(projPath) ?? string.Empty, ".."));
 
-            //if (!selectedPath.StartsWith(projRoot, StringComparison.OrdinalIgnoreCase))
-            //{
-            //    MessageBox.Show(
-            //        $"Selected file should be within the project root folder:\n{projRoot}",
-            //        "Verify HMS Path",
-            //        MessageBoxButton.OK,
-            //        MessageBoxImage.Warning);
-            //    //return false;
-            //}
-
             _pathHMS = selectedPath;
 
             settings.Projects[settings.ProjPath].HmsPath = _pathHMS;
@@ -975,7 +956,6 @@ namespace HydroExplorer.View
         {
             if (string.IsNullOrEmpty(_pathHMS))
             {
-                System.Diagnostics.Debug.WriteLine("FindShapefileByName: _pathHMS is empty.");
                 return null;
             }
 
@@ -1019,7 +999,7 @@ namespace HydroExplorer.View
 
         [GeneratedRegex(@"\.p\d+\.hdf$", RegexOptions.IgnoreCase, "en-US")]
         private static partial Regex HdfFileRegex();
-       
+
 
         private async Task FetchAndAddGageLayer()
         {
@@ -1070,17 +1050,6 @@ namespace HydroExplorer.View
                     Outline = new Pen(Color.Black, 1),
                     SymbolScale = 0.4
                 },
-                //new LabelStyle
-                //{
-                //    LabelColumn = "label",
-                //    ForeColor = Color.Black,
-                //    BackColor = new Brush(_colorLblBackGround),
-                //    CornerRounding = 3,
-                //    Font = new Font { FontFamily = "Eras", Size = 10, Bold = true },
-                //    HorizontalAlignment = LabelStyle.HorizontalAlignmentEnum.Center,
-                //    VerticalAlignment = LabelStyle.VerticalAlignmentEnum.Top,
-                //    Offset = new Offset { Y = 8 }
-                //}
             }
                 }
             };

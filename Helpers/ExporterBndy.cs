@@ -6,19 +6,29 @@ using NetTopologySuite.Precision;
 using System.Diagnostics;
 using System.IO;
 using NetTopologySuite.Operation.OverlayNG;
+
+
 namespace HydroExplorer.Helpers
 {
     internal static class ExporterBndy
     {
         /// <summary>
         /// Dissolves and reprojects a shapefile into a boundary shapefile.
-        /// If the source has no .prj sidecar and sourceEpsgOverride isn't supplied,
-        /// falls back to EPSG:2278 (Texas South Central) — callers without a known source
-        /// CRS should resolve one first (e.g. via GISUtil.GuessTexasStatePlaneZone)
-        /// and pass it in explicitly, since silently assuming a single zone can
-        /// place the result hundreds of miles off for projects outside that zone.
+        /// CRS resolution priority: sourceEpsgOverride (if supplied) > temp dissolve
+        /// output's own .prj sidecar (if GeoDissolve managed to carry one over) >
+        /// GeometryExportCoordinator's cached/guessed EPSG for this project (shared
+        /// with XS/river export, so BNDY reuses whatever zone was already resolved
+        /// rather than guessing again or silently defaulting to a single zone).
+        /// settingsRepo/projKey are required to reach that cache — pass the same
+        /// values used for XS/river export (e.g. from MapOverView).
         /// </summary>
-        public static async Task ExportBNDY(string pathSubBasins, string pathBNDY, string pathTMP, int? sourceEpsgOverride = null)
+        public static async Task ExportBNDY(
+            string pathSubBasins,
+            string pathBNDY,
+            string pathTMP,
+            IUserSettingsRepo settingsRepo,
+            string projKey,
+            int? sourceEpsgOverride = null)
         {
             string tmpShp = GetTempShpPath();
             try
@@ -38,8 +48,26 @@ namespace HydroExplorer.Helpers
                 }
                 else
                 {
-                    srcWkt = GISUtil.FetchWkt(2277);
-                    Debug.WriteLine("ExportBNDY: no .prj and no override supplied — defaulting to EPSG:2277.");
+                    // No .prj carried over from the dissolve step — resolve via the
+                    // same cached/guessed EPSG flow XS and river export use, instead
+                    // of silently defaulting to a single zone (EPSG:2277), which can
+                    // place the result hundreds of miles off for projects outside it.
+                    int? epsg = await GeometryExportCoordinator.ResolveSourceEpsgFromShapefileAsync(
+                        settingsRepo,
+                        projKey,
+                        pathSubBasins,
+                        "project boundary");
+
+                    if (epsg is > 0)
+                    {
+                        srcWkt = GISUtil.FetchWkt(epsg.Value);
+                        Debug.WriteLine($"ExportBNDY: no .prj — resolved EPSG:{epsg.Value} via GeometryExportCoordinator.");
+                    }
+                    else
+                    {
+                        Debug.WriteLine("ExportBNDY: no .prj and could not resolve/guess a source EPSG — aborting.");
+                        return;
+                    }
                 }
 
                 Debug.WriteLine($"ExportBNDY: srcWkt EPSG={GISUtil.TryGetEpsgFromWkt(srcWkt)}");
@@ -173,7 +201,9 @@ namespace HydroExplorer.Helpers
             string inputShp,
             string outputShp,
             string? hecRasProjPath = null,
-            string? srcWktOverride = null)
+            string? srcWktOverride = null,
+            IUserSettingsRepo? settingsRepo = null,
+            string? projKey = null)
         {
             string srcWkt;
             if (srcWktOverride != null)
@@ -191,10 +221,35 @@ namespace HydroExplorer.Helpers
             else
             {
                 string sidecarPrj = Path.ChangeExtension(inputShp, ".prj");
-                srcWkt = File.Exists(sidecarPrj)
-                    ? File.ReadAllText(sidecarPrj)
-                    : GISUtil.FetchWkt(2277);
-                Debug.WriteLine($"UtilReproject: using sidecar .prj, EPSG:{GISUtil.TryGetEpsgFromWkt(srcWkt)}");
+                if (File.Exists(sidecarPrj))
+                {
+                    srcWkt = File.ReadAllText(sidecarPrj);
+                    Debug.WriteLine($"UtilReproject: using sidecar .prj, EPSG:{GISUtil.TryGetEpsgFromWkt(srcWkt)}");
+                }
+                else if (settingsRepo != null && !string.IsNullOrEmpty(projKey))
+                {
+                    // No sidecar .prj and no explicit override — resolve via the same
+                    // cached/guessed EPSG flow as XS/river/BNDY export, instead of
+                    // silently defaulting to a single zone.
+                    int? epsg = await GeometryExportCoordinator.ResolveSourceEpsgFromShapefileAsync(
+                        settingsRepo, projKey, inputShp, "reprojected shapefile");
+
+                    if (epsg is > 0)
+                    {
+                        srcWkt = GISUtil.FetchWkt(epsg.Value);
+                        Debug.WriteLine($"UtilReproject: no sidecar .prj — resolved EPSG:{epsg.Value} via GeometryExportCoordinator.");
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException(
+                            $"UtilReproject: no sidecar .prj for '{inputShp}' and could not resolve/guess a source EPSG.");
+                    }
+                }
+                else
+                {
+                    throw new InvalidOperationException(
+                        $"UtilReproject: no sidecar .prj for '{inputShp}', no override, and no settingsRepo/projKey supplied to resolve one.");
+                }
             }
             string tgtWkt = GISUtil.FetchWkt(4326);
             var transform = GISUtil.CreateTransformation(srcWkt, tgtWkt);

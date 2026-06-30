@@ -49,9 +49,9 @@ namespace HydroExplorer.Helpers
         public static void PublishProfileChanged(string profileName) => ProfileChanged?.Invoke(profileName);
 
 
-        public static event Action<string, string, string>? GeometryPathsResolved;
-        public static void PublishGeometryPathsResolved(string pathSubBasins, string pathXS, string pathBNDY)
-            => GeometryPathsResolved?.Invoke(pathSubBasins, pathXS, pathBNDY);
+        public static event Action<string, string, string, string>? GeometryPathsResolved;
+        public static void PublishGeometryPathsResolved(string pathSubBasins, string pathXS, string pathRiver, string pathBNDY)
+            => GeometryPathsResolved?.Invoke(pathSubBasins, pathXS, pathRiver, pathBNDY);
 
 
 

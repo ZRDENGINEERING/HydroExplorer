@@ -35,41 +35,79 @@
 
         <!-- Active Paths -->
         <GroupBox Grid.Row="3"
-                  Header="ACTIVE PATHS"
-                  FontSize="12" FontWeight="Bold"
-                  Foreground="{StaticResource ForegroundBrush}"
-                  Background="{StaticResource BackgroundBrushLight}"
-                  BorderBrush="{StaticResource BorderBrush}"
-                  BorderThickness="0.8">
+          Header="ACTIVE PATHS"
+          FontSize="12" FontWeight="Bold"
+          Foreground="{StaticResource ForegroundBrush}"
+          Background="{StaticResource BackgroundBrushLight}"
+          BorderBrush="{StaticResource BorderBrush}"
+          BorderThickness="0.8">
             <StackPanel Background="{StaticResource BackgroundBrushSidePanels}">
 
                 <TextBlock FontSize="10" Margin="10,4,0,0"
-           Foreground="{StaticResource ForegroundBrush}">Boundary (.shp):</TextBlock>
-                <DockPanel Margin="15,0,4,4">
-                    <Button DockPanel.Dock="Right" Content="..."
-            Command="{Binding BrowseShpCommand}"
-            CommandParameter="Boundary"
-            Width="22" Height="20" Padding="0" FontSize="10"
-            Background="{StaticResource BackgroundBrushSidePanels}"/>
-                    <TextBox Text="{Binding SelectedBoundaryPath.ShpPath, Mode=OneWay}"
-             FontSize="8" IsReadOnly="True" BorderThickness="0"
-             Foreground="{StaticResource ForegroundBrushDark}"/>
-                </DockPanel>
+                   Foreground="{StaticResource ForegroundBrush}">Sub-Basin Boundary (.shp):</TextBlock>
+                <Grid Margin="15,0,4,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0"
+                       Text="{Binding SelectedBoundaryPath.ShpPath, Mode=OneWay}"
+                       FontSize="8" TextWrapping="Wrap"
+                       Foreground="{StaticResource ForegroundBrushDark}"/>
+                    <Button Grid.Column="1" Content="..."
+                    Command="{Binding BrowseShpCommand}"
+                    CommandParameter="Boundary"
+                    Width="22" Height="20" Padding="0" FontSize="10"
+                    VerticalAlignment="Top"
+                    Background="{StaticResource BackgroundBrushSidePanels}"/>
+                </Grid>
+
+                
+                <TextBlock FontSize="10" Margin="10,4,0,0"
+                   Foreground="{StaticResource ForegroundBrush}">River (.shp):</TextBlock>
+                <Grid Margin="15,0,4,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0"
+                       Text="{Binding SelectedRiverPath.ShpPath, Mode=OneWay}"
+                       FontSize="8" TextWrapping="Wrap"
+                       Foreground="{StaticResource ForegroundBrushDark}"/>
+                    <Button Grid.Column="1" Content="..."
+                    Command="{Binding BrowseShpCommand}"
+                    CommandParameter="River"
+                    Width="22" Height="20" Padding="0" FontSize="10"
+                    VerticalAlignment="Top"
+                    Background="{StaticResource BackgroundBrushSidePanels}"/>
+                </Grid>
+
 
                 <TextBlock FontSize="10" Margin="10,4,0,0"
-           Foreground="{StaticResource ForegroundBrush}">Cross Sections (.shp):</TextBlock>
-                <DockPanel Margin="15,0,4,4">
-                    <Button DockPanel.Dock="Right" Content="..."
-            Command="{Binding BrowseShpCommand}"
-            CommandParameter="Sections"
-            Width="22" Height="20" Padding="0" FontSize="10"
-            Background="{StaticResource BackgroundBrushSidePanels}"/>
-                    <TextBox Text="{Binding SelectedSectionsPath.ShpPath, Mode=OneWay}"
-             FontSize="8" IsReadOnly="True" BorderThickness="0"
-             Foreground="{StaticResource ForegroundBrushDark}"/>
-                </DockPanel>
+                   Foreground="{StaticResource ForegroundBrush}">Cross Sections (.shp):</TextBlock>
+                                <Grid Margin="15,0,4,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                       Text="{Binding SelectedSectionsPath.ShpPath, Mode=OneWay}"
+                       FontSize="8" TextWrapping="Wrap"
+                       Foreground="{StaticResource ForegroundBrushDark}"/>
+                                    <Button Grid.Column="1" Content="..."
+                    Command="{Binding BrowseShpCommand}"
+                    CommandParameter="Sections"
+                    Width="22" Height="20" Padding="0" FontSize="10"
+                    VerticalAlignment="Top"
+                    Background="{StaticResource BackgroundBrushSidePanels}"/>
+                </Grid>
+
+
+
 
             </StackPanel>
         </GroupBox>
+        
+        
     </Grid>
 </UserControl>

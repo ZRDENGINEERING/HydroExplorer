@@ -113,25 +113,25 @@ namespace HydroExplorer.Utils
         }
 
         /// <summary>
-        /// Reads BNDY.shp for a project and returns its extent centroid as (lon, lat).
+        /// Reads RIVER.shp for a project and returns its extent centroid as (lon, lat).
         /// Uses the path already resolved and cached by MapOverView.BuildPaths in
-        /// ProjectSettings.SpatialBndyPath — avoids re-deriving the Spatial directory
+        /// ProjectSettings.SpatialRiverPath — avoids re-deriving the Spatial directory
         /// independently, which previously caused a mismatch for deeply nested projects
         /// where ProjRoot sits several directories above the actual project file.
         /// </summary>
         private static (double lon, double lat)? GetProjectCentroid(ProjectSettings projSettings)
         {
-            string bndyPath = projSettings.SpatialBndyPath;
+            string pathRiver = projSettings.SpatialRiverPath;
 
-            if (string.IsNullOrEmpty(bndyPath) || !File.Exists(bndyPath))
+            if (string.IsNullOrEmpty(pathRiver) || !File.Exists(pathRiver))
             {
-                System.Diagnostics.Debug.WriteLine($"USGSReader: BNDY.shp not found at '{bndyPath}'.");
+                System.Diagnostics.Debug.WriteLine($"USGSReader: RIVER.shp not found at '{pathRiver}'.");
                 return null;
             }
 
             try
             {
-                var shp = new ShapeFile(bndyPath, true);
+                var shp = new ShapeFile(pathRiver, true);
                 if (shp.GetExtent() is not { } extent) return null;
 
                 double lon = (extent.MaxX + extent.MinX) / 2;
@@ -141,7 +141,7 @@ namespace HydroExplorer.Utils
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"USGSReader: failed to read BNDY.shp centroid — {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"USGSReader: failed to read RIVER.shp centroid — {ex.Message}");
                 return null;
             }
         }

@@ -29,6 +29,7 @@
     <Color x:Key="BackgroundColorTab">#262626</Color>
     <Color x:Key="BackgroundColor">#1f1f1f</Color>
     <Color x:Key="ForegroundColorDark">#7B7B7B</Color>
+    <Color x:Key="ForegroundColorBlue">#4f5b74</Color>
     <Color x:Key="ForegroundColor">DarkGray</Color>
     <Color x:Key="FooterColor">#27324b</Color>
 
@@ -47,6 +48,7 @@
     <SolidColorBrush x:Key="BackgroundBrushTab" Color="{StaticResource BackgroundColorTab}"/>
     <SolidColorBrush x:Key="BackgroundBrush" Color="{StaticResource BackgroundColor}"/>
     <SolidColorBrush x:Key="ForegroundBrushDark" Color="{StaticResource ForegroundColorDark}"/>
+    <SolidColorBrush x:Key="ForegroundBrushBlue" Color="{StaticResource ForegroundColorBlue}"/>
     <SolidColorBrush x:Key="ForegroundBrush" Color="{StaticResource ForegroundColor}"/>
     <SolidColorBrush x:Key="FooterBrush" Color="{StaticResource FooterColor}"/>
     <SolidColorBrush x:Key="LogoBrush" Color="{StaticResource FooterColor}"/>

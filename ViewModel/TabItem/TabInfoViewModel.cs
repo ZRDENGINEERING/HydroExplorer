@@ -1,12 +1,8 @@
-﻿using DotSpatial.Projections.Transforms;
-using HydroExplorer.Core;
+﻿using HydroExplorer.Core;
 using HydroExplorer.Helpers;
 using HydroExplorer.Utils;
-using HydroExplorer.View;
-using QuestPDF;
 using System.IO;
 using System.Windows.Input;
-
 
 
 namespace HydroExplorer.ViewModel.TabItem
@@ -160,7 +156,7 @@ namespace HydroExplorer.ViewModel.TabItem
             // confirms a real, existing BNDY.shp, re-check — GetNearestGageWithStatusAsync
             // itself is now idempotent (fetches at most once ever per project), so this
             // is safe to call repeatedly with no risk of redundant network calls.
-            EventBus.GeometryPathsResolved += async (pathSubBasins, pathXS, pathBNDY) =>
+            EventBus.GeometryPathsResolved += async (pathSubBasins, pathRiver, pathXS, pathBNDY) =>
             {
                 if (string.IsNullOrEmpty(pathBNDY) || !File.Exists(pathBNDY)) return;
 
@@ -385,7 +381,7 @@ namespace HydroExplorer.ViewModel.TabItem
 
         private void PopulateProjectInfo(string projPath)
         {
-            string normalizedPath = TreeViewControl.NormalizeProjKey(projPath);
+            string normalizedPath = PathHelpers.NormalizeProjKey(projPath);
             string dir = Path.GetDirectoryName(normalizedPath) ?? string.Empty;
 
             if (!Directory.Exists(dir))
