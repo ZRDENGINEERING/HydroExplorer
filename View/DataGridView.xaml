@@ -67,6 +67,12 @@
         </Grid.ColumnDefinitions>
 
 
+        <TextBlock Text="HEC-RAS PROFILE COMPARISON"
+            FontSize="14" FontWeight="Bold"
+                   Foreground="#925353"
+            VerticalAlignment="Center"
+            Margin="10,0,0,0"/>
+
         <DataGrid x:Name="dgSimple"
           Grid.Row="1"
           Grid.RowSpan="2"
@@ -74,11 +80,15 @@
           CanUserAddRows="False"
           SelectionChanged="DgSimpleSlctChanged">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="Reach"       Binding="{Binding Reach}"          Width="80"  Foreground="Gray" ElementStyle="{StaticResource CenterStyle}"/>
-                <DataGridTextColumn Header="River Sta"   Binding="{Binding RiverSta}"        Width="60"  ElementStyle="{StaticResource CenterStyle}"/>
-                <DataGridTextColumn Header="Profile"     Binding="{Binding Profile}"         Width="60"  Foreground="Gray" ElementStyle="{StaticResource CenterStyle}"/>
+                <DataGridTextColumn Header="Reach"       Binding="{Binding Reach}"          
+                                    Width="80"  Foreground="Gray" ElementStyle="{StaticResource CenterStyle}"/>
+                <DataGridTextColumn Header="River Sta"   Binding="{Binding RiverSta}"        
+                                    Width="60"  ElementStyle="{StaticResource CenterStyle}"/>
+                <DataGridTextColumn Header="Profile"     Binding="{Binding Profile}"         
+                                    Width="60"  Foreground="Gray" ElementStyle="{StaticResource CenterStyle}"/>
 
-                <DataGridTextColumn Header="QTotal A"    Binding="{Binding QTotalADisplay}"  Width="65"  Foreground="Gray" ElementStyle="{StaticResource CenterStyle}"/>
+                <DataGridTextColumn Header="QTotal A"    Binding="{Binding QTotalADisplay}"  
+                                    Width="65"  Foreground="Gray" ElementStyle="{StaticResource CenterStyle}"/>
                 <DataGridTextColumn Header="WSElev A" Binding="{Binding WSElevA}" Width="68"
                     ElementStyle="{StaticResource CenterStyle}"
                     CellStyle="{StaticResource ColAStyle}"/>

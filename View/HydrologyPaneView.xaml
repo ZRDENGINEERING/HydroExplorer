@@ -47,6 +47,8 @@
                             Width="22" Height="20" Padding="0" FontSize="10"
                             Background="{StaticResource BackgroundBrushSidePanels}"/>
                     <TextBox x:Name="txtHmsProjectPath"
+                             Height="30"
+                             TextWrapping="Wrap"
                              FontSize="8" IsReadOnly="True" BorderThickness="0"
                              Foreground="{StaticResource ForegroundBrushDark}"/>
                 </DockPanel>
@@ -56,22 +58,37 @@
                 <ComboBox x:Name="cboxHmsRun"
                           FontSize="10" Background="#543d05" BorderThickness="0"
                           Width="200" Margin="0,0,0,6"
-                          Foreground="{StaticResource ForegroundBrushDark}"/>
+                          Foreground="{StaticResource ForegroundBrushDark}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding DisplayName}"/>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                    <ComboBox.ItemContainerStyle>
+                        <Style TargetType="ComboBoxItem">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsStale}" Value="True">
+                                    <Setter Property="Opacity" Value="0.45"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ComboBox.ItemContainerStyle>
+                </ComboBox>
 
                 <TextBlock FontSize="10" Margin="10,4,0,0"
-                           Foreground="{StaticResource ForegroundBrush}">DSS File:</TextBlock>
+                           Foreground="{StaticResource ForegroundBrush}">DSS Results:</TextBlock>
                 <DockPanel Margin="15,0,4,4">
                     <Button DockPanel.Dock="Right" Content="..."
                             Click="BrowseDss_Click"
                             Width="22" Height="20" Padding="0" FontSize="10"
                             Background="{StaticResource BackgroundBrushSidePanels}"/>
                     <TextBox x:Name="txtDssFilePath"
+                             Height="30"
+                             TextWrapping="Wrap"
                              FontSize="8" IsReadOnly="True" BorderThickness="0"
                              Foreground="{StaticResource ForegroundBrushDark}"/>
                 </DockPanel>
 
-                <TextBlock FontSize="10" Margin="10,4,0,0"
-                           Foreground="{StaticResource ForegroundBrush}">DSS Run:</TextBlock>
                 <ComboBox x:Name="cboxDssRun"
                           FontSize="10" Background="#543d05" BorderThickness="0"
                           Width="200" Margin="0,0,0,6"

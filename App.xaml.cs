@@ -3,6 +3,7 @@ using HydroExplorer.ViewModel;
 using HydroExplorer.ViewModel.TabItem;
 using Mapsui.Widgets.InfoWidgets;
 using Microsoft.Extensions.DependencyInjection;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 
@@ -19,6 +20,8 @@ namespace HydroExplorer
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
+
+            Trace.Listeners.Add(DebugOutputCapture.Instance);
 
             System.Diagnostics.PresentationTraceSources.DataBindingSource.Switch.Level =
             System.Diagnostics.SourceLevels.Critical;
@@ -74,6 +77,7 @@ namespace HydroExplorer
 
             var services = new ServiceCollection();
             services.AddSingleton<IUserSettingsRepo, FileSystemUserSettingsRepo>();
+            services.AddSingleton<HdfFileMonitor>();
             services.AddSingleton<TabInfoViewModel>();
             services.AddSingleton<TabControlViewModel>();
             services.AddSingleton<MainWindowViewModel>();
@@ -101,9 +105,7 @@ namespace HydroExplorer
                 string tempDir = @"C:\Temp";
                 if (!Directory.Exists(tempDir)) return;
 
-                //string[] extensions = ["*.shp", "*.shx", "*.dbf", "*.prj", "*.cpg"];
                 string[] extensions = { ".shp", ".shx", ".dbf", ".prj", ".cpg", ".sbn", ".sbx" };
-
 
                 int deleted = 0;
 
@@ -119,13 +121,13 @@ namespace HydroExplorer
                         }
                         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                         {
-                            System.Diagnostics.Debug.WriteLine($"CleanupTempShapefiles: skipping {file} — {ex.Message}");
+                            //System.Diagnostics.Debug.WriteLine($"CleanupTempShapefiles: skipping {file} — {ex.Message}");
                         }
                     }
                 }
 
-                if (deleted > 0)
-                    System.Diagnostics.Debug.WriteLine($"CleanupTempShapefiles: deleted {deleted} orphaned temp files.");
+                //if (deleted > 0)
+                    //System.Diagnostics.Debug.WriteLine($"CleanupTempShapefiles: deleted {deleted} orphaned temp files.");
             }
             catch (Exception ex)
             {

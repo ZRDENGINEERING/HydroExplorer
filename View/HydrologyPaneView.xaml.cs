@@ -1,4 +1,3 @@
-using DotSpatial.Projections.Transforms;
 using HydroExplorer.Helpers;
 using HydroExplorer.Utils;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,6 +13,9 @@ namespace HydroExplorer.View
         private readonly IUserSettingsRepo _settingsRepo;
         private string _lastProjPath = string.Empty;
 
+        private string _lastPublishedDssRun = string.Empty;
+
+
         public HydrologyPaneView()
         {
             InitializeComponent();
@@ -27,6 +29,7 @@ namespace HydroExplorer.View
                 {
                     txtHmsProjectPath.Text = path;
                     PopulateHmsRunComboBox(path);
+                    PopulateDssRunComboBox(path);
                 });
             };
 
@@ -38,8 +41,8 @@ namespace HydroExplorer.View
                 {
                     txtHmsProjectPath.Text = string.Empty;
                     txtDssFilePath.Text = string.Empty;
-                    cboxHmsRun.ItemsSource = null;
-                    cboxDssRun.ItemsSource = null;
+                    cboxHmsRun.ItemsSource = (List<string>)["None"];
+                    cboxDssRun.ItemsSource = (List<string>)["None"];
                 });
 
                 await Task.Delay(800);
@@ -76,6 +79,7 @@ namespace HydroExplorer.View
                     {
                         txtHmsProjectPath.Text = path;
                         PopulateHmsRunComboBox(path);
+                        PopulateDssRunComboBox(path);
                     }
                 });
             };
@@ -87,6 +91,49 @@ namespace HydroExplorer.View
                     !string.IsNullOrEmpty(txtDssFilePath.Text))
                     EventBus.PublishDssRunSelected(txtDssFilePath.Text, runName);
             };
+
+
+
+            cboxHmsRun.SelectionChanged += async (s, e) =>
+            {
+                if (_isLoadingHmsRun) return;
+                if (cboxHmsRun.SelectedItem is not HmsRunDisplayItem selected) return;
+                if (string.IsNullOrEmpty(_currentHmsProjKey)) return;
+
+                string plainName = selected.DisplayName
+                    .TrimStart('⚠', ' ')
+                    .Split(" - needs recompute")[0];
+
+                try
+                {
+                    var settings = await _settingsRepo.GetSettingsFresh();
+                    if (settings.Projects.TryGetValue(_currentHmsProjKey, out var proj))
+                    {
+                        proj.SelectedHmsRun = plainName;
+                        await _settingsRepo.SaveSettings(settings);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"cboxHmsRun.SelectionChanged save error: {ex.Message}");
+                }
+
+                // Re-resolve DSS run for the newly selected HMS run — PopulateDssRunComboBox
+                // filters by _hmsRuns' LastExecution/DssFile per run, so this picks up
+                // whichever .dss file actually belongs to `plainName`, not whatever was
+                // showing for the previously selected run.
+                var matchingRun = _hmsRuns.FirstOrDefault(r =>
+                    string.Equals(r.Name, plainName, StringComparison.OrdinalIgnoreCase));
+
+                if (matchingRun != null && !string.IsNullOrEmpty(matchingRun.DssFile))
+                {
+                    string dssPath = Path.Combine(_hmsDir, matchingRun.DssFile);
+                    if (File.Exists(dssPath))
+                        EventBus.PublishDssRunSelected(dssPath, plainName);
+                }
+            };
+
+
 
             EventBus.ProjPathSelected += path =>
             {
@@ -164,71 +211,256 @@ namespace HydroExplorer.View
             await SaveDssPath(path);
         }
 
-        private void PopulateHmsRunComboBox(string hmsPath)
+
+        public class HmsRunDisplayItem
         {
-            if (string.IsNullOrEmpty(hmsPath)) return;
-            string dir = File.Exists(hmsPath)
-                ? Path.GetDirectoryName(hmsPath) ?? string.Empty
-                : hmsPath;
-            if (!Directory.Exists(dir)) return;
-            var runs = Directory.GetFiles(dir, "*.hms", SearchOption.TopDirectoryOnly)
-                .Select(Path.GetFileName)
-                .ToList();
-            cboxHmsRun.ItemsSource = runs;
-            if (runs.Count > 0) cboxHmsRun.SelectedIndex = 0;
+            public string DisplayName { get; init; } = string.Empty;
+            public bool IsStale { get; init; }
+            public override string ToString() => DisplayName;
         }
+
+        private record HmsRunInfo(
+            string Name,
+            string DssFile,
+            DateTime? LastExecution
+        );
+
+        private List<HmsRunInfo> _hmsRuns = [];
+        private string _hmsDir = string.Empty;
+
+        private bool _isLoadingHmsRun = false;
+
+        private string _currentHmsProjKey = string.Empty;
+
+
+
+        private async void PopulateHmsRunComboBox(string hmsPath)
+        {
+            if (string.IsNullOrEmpty(hmsPath) || !File.Exists(hmsPath)) return;
+
+            try
+            {
+                string runPath = Path.ChangeExtension(hmsPath, ".run");
+                if (!File.Exists(runPath))
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"PopulateHmsRunComboBox: no .run file found at '{runPath}'.");
+                    cboxHmsRun.ItemsSource = (List<string>)["None"];
+                    return;
+                }
+
+                DateTime hmsModified = File.GetLastWriteTime(hmsPath);
+                _hmsDir = Path.GetDirectoryName(hmsPath) ?? string.Empty;
+                _hmsRuns = ParseRunFile(runPath);
+
+                var displayItems = _hmsRuns.Select(r =>
+                {
+                    bool upToDate = r.LastExecution.HasValue && r.LastExecution.Value > hmsModified;
+                    return new HmsRunDisplayItem
+                    {
+                        DisplayName = upToDate ? r.Name : $"⚠ {r.Name} - needs recompute",
+                        IsStale = !upToDate
+                    };
+                }).ToList();
+
+                cboxHmsRun.ItemsSource = displayItems.Count > 0
+                    ? (IEnumerable<object>)displayItems
+                    : (IEnumerable<object>)new List<HmsRunDisplayItem>
+                        { new() { DisplayName = "None", IsStale = false } };
+
+                // Resolve the actual project key for THIS hmsPath directly from
+                // settings, instead of trusting _lastProjPath — that field is only
+                // updated by ProjPathChanged/ProjPathSelected, and can lag behind
+                // RunPathSelected/HmsPathChanged calling this method for a different
+                // project's .hms file, causing saves to land under the wrong project
+                // (observed: OPR's run bleeding into Austin's SelectedHmsRun).
+                var settings = await _settingsRepo.GetSettings();
+                string resolvedProjKey = settings.Projects
+                    .Where(kv => string.Equals(kv.Value.HmsPath, hmsPath, StringComparison.OrdinalIgnoreCase))
+                    .Select(kv => kv.Key)
+                    .FirstOrDefault() ?? _lastProjPath;
+
+                _currentHmsProjKey = resolvedProjKey;
+
+                if (displayItems.Count > 0)
+                {
+                    string savedRun = !string.IsNullOrEmpty(resolvedProjKey) &&
+                        settings.Projects.TryGetValue(resolvedProjKey, out var proj)
+                        ? proj.SelectedHmsRun
+                        : string.Empty;
+
+                    int restoreIndex = !string.IsNullOrEmpty(savedRun)
+                        ? displayItems.FindIndex(d => d.DisplayName.Contains(savedRun, StringComparison.OrdinalIgnoreCase))
+                        : -1;
+
+                    _isLoadingHmsRun = true;
+                    try
+                    {
+                        cboxHmsRun.SelectedIndex = restoreIndex >= 0 ? restoreIndex : 0;
+                    }
+                    finally
+                    {
+                        _isLoadingHmsRun = false;
+                    }
+                }
+
+                // Refresh DSS list now that run info is loaded.
+                PopulateDssRunComboBox(hmsPath);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"PopulateHmsRunComboBox error: {ex.Message}");
+                cboxHmsRun.ItemsSource = (List<string>)["None"];
+            }
+        }
+
+
+
 
         private async void PopulateDssRunComboBox(string dssPath)
         {
-            if (string.IsNullOrEmpty(dssPath) || !File.Exists(dssPath)) return;
+            // DSS Results — only .dss files whose corresponding run has been
+            // executed after the .hms file was last modified (i.e. up-to-date),
+            // and whose .dss file actually exists in the directory.
+            string dir = !string.IsNullOrEmpty(_hmsDir) ? _hmsDir
+                : File.Exists(dssPath) ? Path.GetDirectoryName(dssPath) ?? string.Empty
+                : Directory.Exists(dssPath) ? dssPath : string.Empty;
+
+            if (string.IsNullOrEmpty(dir))
+            {
+                cboxDssRun.ItemsSource = (List<string>)["None"];
+                return;
+            }
+
             try
             {
-                var allPaths = await Task.Run(() =>
-                    HydroExplorer.Utils.DssHyetographReader.GetAllPaths(dssPath));
+                string hmsPath = !string.IsNullOrEmpty(_hmsDir)
+                    ? Directory.GetFiles(_hmsDir, "*.hms").FirstOrDefault() ?? string.Empty
+                    : string.Empty;
+                DateTime hmsModified = File.Exists(hmsPath)
+                    ? File.GetLastWriteTime(hmsPath)
+                    : DateTime.MinValue;
 
-                var runNames = allPaths
-                    .Select(p => {
-                        // DSS paths: /A/B/C/D/E/F/ — extract Part F as last non-empty segment
-                        var trimmed = p.TrimEnd('/');
-                        var lastSlash = trimmed.LastIndexOf('/');
-                        if (lastSlash < 0) return string.Empty;
-                        var partF = trimmed[(lastSlash + 1)..].Trim();
-                        if (partF.StartsWith("RUN:", StringComparison.OrdinalIgnoreCase))
-                            partF = partF[4..];
-                        return partF;
-                    })
-                    .Where(f => !string.IsNullOrEmpty(f))
-                    .Distinct()
-                    .OrderBy(f => f)
-                    .ToList();
+                var upToDateDss = await Task.Run(() =>
+                {
+                    // If we have parsed run info, use it to filter; otherwise fall
+                    // back to listing all .dss files in the directory.
+                    if (_hmsRuns.Count > 0)
+                    {
+                        return _hmsRuns
+                            .Where(r => r.LastExecution.HasValue && r.LastExecution.Value > hmsModified)
+                            .Select(r => r.DssFile)
+                            .Where(f => !string.IsNullOrEmpty(f) &&
+                                        File.Exists(Path.Combine(dir, f)))
+                            .OrderBy(f => f)
+                            .ToList();
+                    }
 
-                //System.Diagnostics.Debug.WriteLine($"DSS run names found: {runNames.Count} — {string.Join(", ", runNames)}");
+                    return Directory.GetFiles(dir, "*.dss", SearchOption.TopDirectoryOnly)
+                        .Select(Path.GetFileName)
+                        .OrderBy(f => f)
+                        .ToList();
+                });
 
-                // Ensure UI update on dispatcher
                 Application.Current.Dispatcher.Invoke(() =>
                 {
-                    cboxDssRun.ItemsSource = runNames;
-                    if (runNames.Count > 0)
+                    cboxDssRun.ItemsSource = upToDateDss.Count > 0
+                        ? upToDateDss
+                        : (List<string>)["None"];
+
+                    if (upToDateDss.Count > 0)
                     {
                         cboxDssRun.SelectedIndex = 0;
-                        EventBus.PublishDssRunSelected(dssPath, runNames[0]);
+
+                        string fullDssPath = Path.Combine(dir, upToDateDss[0]);
+                        string candidateKey = $"{fullDssPath}|{upToDateDss[0]}";
+
+                        // Same de-dup guard as before — avoids re-firing/re-saving on
+                        // every cascade trigger (ProjPathChanged, HmsPathChanged,
+                        // RunPathSelected all rebuild this combo box independently).
+                        if (candidateKey != _lastPublishedDssRun)
+                        {
+                            _lastPublishedDssRun = candidateKey;
+                            EventBus.PublishDssRunSelected(fullDssPath, upToDateDss[0]);
+
+                            // Persist the auto-discovered default the same way
+                            // Hydraulics auto-selects and saves Plan Name A — the user
+                            // shouldn't have to manually browse just to get the first
+                            // available DSS run wired up.
+                            _ = SaveDssPath(fullDssPath);
+                        }
                     }
                 });
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"PopulateDssRunComboBox error: {ex.Message}");
+                cboxDssRun.ItemsSource = (List<string>)["None"];
+            }
+        }
 
-                if (ex.Message.Contains("version 7", StringComparison.OrdinalIgnoreCase))
+        /// <summary>
+        /// Parses Run: blocks from a HEC-HMS .run file. Each block looks like:
+        ///   Run: &lt;name&gt;
+        ///        Last Modified Date: 20 June 2026
+        ///        Last Modified Time: 07:11:08
+        ///        Last Execution Date: 20 June 2026
+        ///        Last Execution Time: 06:53:37
+        ///        DSS File: 100_year_no_reduction.dss
+        ///   End:
+        /// </summary>
+        private static List<HmsRunInfo> ParseRunFile(string runPath)
+        {
+            var runs = new List<HmsRunInfo>();
+            string? currentName = null;
+            string? dssFile = null;
+            string? execDate = null;
+            string? execTime = null;
+
+            foreach (var raw in File.ReadLines(runPath))
+            {
+                string line = raw.Trim();
+
+                if (line.StartsWith("Run:", StringComparison.OrdinalIgnoreCase))
                 {
-                    Application.Current.Dispatcher.Invoke(() =>
+                    currentName = line[4..].Trim();
+                    dssFile = null;
+                    execDate = null;
+                    execTime = null;
+                }
+                else if (line.StartsWith("Last Execution Date:", StringComparison.OrdinalIgnoreCase))
+                {
+                    execDate = line["Last Execution Date:".Length..].Trim();
+                }
+                else if (line.StartsWith("Last Execution Time:", StringComparison.OrdinalIgnoreCase))
+                {
+                    execTime = line["Last Execution Time:".Length..].Trim();
+                }
+                else if (line.StartsWith("DSS File:", StringComparison.OrdinalIgnoreCase))
+                {
+                    dssFile = line["DSS File:".Length..].Trim();
+                }
+                else if (line.Equals("End:", StringComparison.OrdinalIgnoreCase) &&
+                         currentName != null)
+                {
+                    DateTime? execDt = null;
+                    if (!string.IsNullOrEmpty(execDate))
                     {
-                        cboxDssRun.ItemsSource = new List<string>
-                            { "⚠ DSS-6 not supported — convert to DSS-7" };
-                        cboxDssRun.SelectedIndex = 0;
-                    });
+                        string combined = string.IsNullOrEmpty(execTime)
+                            ? execDate
+                            : $"{execDate} {execTime}";
+                        if (DateTime.TryParse(combined,
+                                System.Globalization.CultureInfo.InvariantCulture,
+                                System.Globalization.DateTimeStyles.None, out var dt))
+                            execDt = dt;
+                    }
+
+                    runs.Add(new HmsRunInfo(currentName, dssFile ?? string.Empty, execDt));
+                    currentName = null;
                 }
             }
+
+            return runs;
         }
 
         private async Task SaveHmsPath(string path)
@@ -236,14 +468,33 @@ namespace HydroExplorer.View
             try
             {
                 var settings = await _settingsRepo.GetSettingsFresh();
-                if (string.IsNullOrEmpty(_lastProjPath))
-                    _lastProjPath = PathHelpers.NormalizeProjKey(settings.LastProjPath);
 
-                if (string.IsNullOrEmpty(_lastProjPath)) return;
-                if (!settings.Projects.TryGetValue(_lastProjPath, out var proj))
-                    proj = settings.Projects[_lastProjPath] = new ProjectSettings
-                    { ProjPath = Path.GetDirectoryName(path) ?? string.Empty };
+                var current = new DirectoryInfo(Path.GetDirectoryName(path) ?? string.Empty);
+                while (current?.Parent != null &&
+                       !current.Parent.FullName.Equals(@"C:\Temp", StringComparison.OrdinalIgnoreCase))
+                    current = current.Parent;
+
+                string projRoot = current?.FullName ?? string.Empty;
+
+                string existingKey = settings.Projects
+                    .Where(kv => !string.IsNullOrEmpty(kv.Value.ProjRoot)
+                        && kv.Value.ProjRoot.Equals(projRoot, StringComparison.OrdinalIgnoreCase))
+                    .Select(kv => kv.Key)
+                    .FirstOrDefault() ?? string.Empty;
+
+                string activeKey = !string.IsNullOrEmpty(existingKey) ? existingKey : path;
+
+                if (!settings.Projects.TryGetValue(activeKey, out var proj))
+                    proj = settings.Projects[activeKey] = new ProjectSettings();
+
+                proj.ProjName = current?.Name ?? string.Empty;
+                proj.ProjRoot = projRoot;
                 proj.HmsPath = path;
+                proj.LastOpened = DateTime.Now;
+
+                settings.LastProjPath = activeKey;
+                settings.ProjPath = activeKey;
+
                 await _settingsRepo.SaveSettings(settings);
             }
             catch (Exception ex)
@@ -281,6 +532,6 @@ namespace HydroExplorer.View
             => e.Handled = true;
 
 
-        
+
     }
 }

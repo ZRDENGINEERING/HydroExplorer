@@ -1,13 +1,8 @@
 using System.IO;
 
+
 namespace HydroExplorer.Helpers
 {
-    /// <summary>
-    /// Shared static path helpers, extracted from the now-removed TreeViewControl
-    /// (which is no longer instantiated anywhere — FilteredTreeView replaced its
-    /// tree UI, but several other files still called these two static methods
-    /// directly on the class).
-    /// </summary>
     public static class PathHelpers
     {
         public static string GetFileFolderName(string path)
@@ -25,9 +20,6 @@ namespace HydroExplorer.Helpers
         {
             if (string.IsNullOrEmpty(projPath)) return projPath;
 
-            // .prj is the canonical key — every project has one. .rasmap is optional
-            // and informational only (used to derive project info), so a .rasmap path
-            // gets resolved to its sibling .prj when one exists.
             if (projPath.EndsWith(".rasmap", StringComparison.OrdinalIgnoreCase))
             {
                 string dir = Path.GetDirectoryName(projPath) ?? string.Empty;

@@ -73,7 +73,7 @@ namespace HydroExplorer.Utils
             var centroid = GetProjectCentroid(projSettings);
             if (centroid is null)
             {
-                System.Diagnostics.Debug.WriteLine("USGSReader: could not determine project centroid (BNDY.shp missing or unreadable).");
+                //System.Diagnostics.Debug.WriteLine("USGSReader: could not determine project centroid (BNDY.shp missing or unreadable).");
                 return (null, GageLookupStatus.NoCentroid);
             }
 
@@ -125,7 +125,7 @@ namespace HydroExplorer.Utils
 
             if (string.IsNullOrEmpty(pathRiver) || !File.Exists(pathRiver))
             {
-                System.Diagnostics.Debug.WriteLine($"USGSReader: RIVER.shp not found at '{pathRiver}'.");
+                //System.Diagnostics.Debug.WriteLine($"USGSReader: RIVER.shp not found at '{pathRiver}'.");
                 return null;
             }
 
@@ -141,7 +141,7 @@ namespace HydroExplorer.Utils
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"USGSReader: failed to read RIVER.shp centroid — {ex.Message}");
+                //System.Diagnostics.Debug.WriteLine($"USGSReader: failed to read RIVER.shp centroid — {ex.Message}");
                 return null;
             }
         }
@@ -183,7 +183,7 @@ namespace HydroExplorer.Utils
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"USGSReader: site query exception — {ex.Message}");
+                //System.Diagnostics.Debug.WriteLine($"USGSReader: site query exception — {ex.Message}");
                 return null;
             }
         }

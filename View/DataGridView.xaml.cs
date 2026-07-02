@@ -2,6 +2,7 @@
 using HydroExplorer.ViewModel;
 using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -14,6 +15,7 @@ namespace HydroExplorer.View
         public Dictionary<string, ProjectSettings> ProjSettings { get; set; } = [];
         public PlotViewModel PlotVm { get; } = App.ServiceProvider.GetRequiredService<PlotViewModel>();
         private readonly SelectionViewModel _selectionVm;
+        private readonly HdfFileMonitor _hdfMonitor;
 
         private List<WSELTableOxy> _allWselData = [];
 
@@ -35,6 +37,9 @@ namespace HydroExplorer.View
             _selectionVm = App.ServiceProvider.GetRequiredService<SelectionViewModel>();
             _selectionVm.PropertyChanged += OnSelectionChanged;
 
+            _hdfMonitor = App.ServiceProvider.GetRequiredService<HdfFileMonitor>();
+            _hdfMonitor.FileChanged += OnHdfFileChangedOnDisk;
+
             PlotVm.PropertyChanged += OnPlotVmPropertyChanged;
 
             foreach (var reach in PlotVm.Reaches)
@@ -42,8 +47,6 @@ namespace HydroExplorer.View
 
             PlotVm.Reaches.CollectionChanged += (s, e) =>
             {
-                // Reaches rebuilt for new project — now safe to filter since
-                // selectedReaches will reflect the new project's reach names.
                 if (e.NewItems != null)
                     foreach (ReachItem r in e.NewItems)
                         r.PropertyChanged += OnReachSelectionChanged;
@@ -51,19 +54,17 @@ namespace HydroExplorer.View
                 Dispatcher.Invoke(() =>
                 {
                     _allWselData = PlotVm.WselData ?? [];
-                    UpdateColumnHeaders();
+                    //UpdateColumnHeaders();
                     ApplyReachFilter();
                 });
             };
 
             Loaded += (s, e) =>
             {
-                // Sync _allWselData from PlotVm in case data was already loaded
-                // before this control was constructed/loaded.
                 if (PlotVm.WselData != null && PlotVm.WselData.Count > 0)
                 {
                     _allWselData = PlotVm.WselData;
-                    UpdateColumnHeaders();
+                    //UpdateColumnHeaders();
                 }
                 ApplyReachFilter();
                 BuildColumnContextMenu();
@@ -75,14 +76,13 @@ namespace HydroExplorer.View
 
                 System.Diagnostics.Debug.WriteLine($"DataGridView.IsVisibleChanged: WselData count={PlotVm.WselData?.Count ?? 0}");
 
-
                 await LoadSettingsDataGrid(fresh: true);
-                UpdateColumnHeaders();
+                //UpdateColumnHeaders();
 
                 if (PlotVm.WselData != null && PlotVm.WselData.Count > 0)
                 {
                     _allWselData = PlotVm.WselData;
-                    UpdateColumnHeaders();
+                    //UpdateColumnHeaders();
                 }
 
                 ApplyReachFilter();
@@ -95,19 +95,19 @@ namespace HydroExplorer.View
             {
                 planNameA = nameA;
                 planNameB = nameB;
-                UpdateColumnHeaders();
+                //UpdateColumnHeaders();
             });
 
             EventBus.HdfFileASelected += (_, name) => Dispatcher.Invoke(() =>
             {
                 planNameA = name;
-                UpdateColumnHeaders();
+                //UpdateColumnHeaders();
             });
 
             EventBus.HdfFileBSelected += (_, name) => Dispatcher.Invoke(() =>
             {
                 planNameB = name;
-                UpdateColumnHeaders();
+                //UpdateColumnHeaders();
             });
 
             Unloaded += (s, e) =>
@@ -115,8 +115,39 @@ namespace HydroExplorer.View
                 PlotVm.PropertyChanged -= OnPlotVmPropertyChanged;
                 EventBus.HdfPathChanged -= OnHdfPathChanged;
                 EventBus.ProfileChanged -= OnProfileChanged;
+                _hdfMonitor.FileChanged -= OnHdfFileChangedOnDisk;
+                // Intentionally NOT calling _hdfMonitor.Unwatch/UnwatchAll here —
+                // HdfFileMonitor is a shared singleton and other views (e.g.
+                // MapOverView) may still depend on watches for these same paths.
             };
         }
+
+        /// <summary>
+        /// Fires when a watched HDF file changes on disk (e.g. HEC-RAS re-ran
+        /// the plan while the model is open). Only reloads the grid if the
+        /// changed file is one of the plans currently displayed.
+        /// </summary>
+        private void OnHdfFileChangedOnDisk(string path)
+        {
+            bool matchesA = !string.IsNullOrEmpty(hdfPathA) && PathsEqual(path, hdfPathA);
+            bool matchesB = !string.IsNullOrEmpty(hdfPathB) && PathsEqual(path, hdfPathB);
+            if (!matchesA && !matchesB) return;
+
+            Dispatcher.InvokeAsync(async () =>
+            {
+                System.Diagnostics.Debug.WriteLine($"DataGridView: HDF changed on disk — reloading '{Path.GetFileName(path)}'");
+                await LoadDataGrid(fresh: true);
+
+                // LoadDataGrid only refreshes settings/paths/headers — the actual
+                // WSEL rows come from PlotVm.WselData, which is cached behind a
+                // one-time _dataLoaded guard. Force a fresh HDF read so the new
+                // data actually flows through OnPlotVmPropertyChanged into the grid.
+                await PlotVm.ReloadDataAsync();
+            });
+        }
+
+        private static bool PathsEqual(string a, string b) =>
+            string.Equals(Path.GetFullPath(a), Path.GetFullPath(b), StringComparison.OrdinalIgnoreCase);
 
         private void OnPlotVmPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
@@ -127,7 +158,7 @@ namespace HydroExplorer.View
             Dispatcher.Invoke(() =>
             {
                 _allWselData = PlotVm.WselData ?? [];
-                UpdateColumnHeaders();
+                //UpdateColumnHeaders();
             });
         }
 
@@ -160,6 +191,7 @@ namespace HydroExplorer.View
         private async void OnHdfPathChanged()
         {
             await Dispatcher.InvokeAsync(async () => await LoadDataGrid(fresh: true));
+            WatchCurrentHdfPaths();
         }
 
         private async void OnProfileChanged(string profileName)
@@ -173,12 +205,20 @@ namespace HydroExplorer.View
             {
                 await LoadSettingsDataGrid(fresh);
                 if (overrideProName != null) proName = overrideProName;
-                UpdateColumnHeaders();
+                //UpdateColumnHeaders();
+                WatchCurrentHdfPaths();
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"LoadDataGrid error: {ex.Message}");
             }
+        }
+
+
+        private void WatchCurrentHdfPaths()
+        {
+            if (!string.IsNullOrEmpty(hdfPathA)) _hdfMonitor.Watch(hdfPathA);
+            if (!string.IsNullOrEmpty(hdfPathB)) _hdfMonitor.Watch(hdfPathB);
         }
 
         private void OnSelectionChanged(object? sender, PropertyChangedEventArgs e)
@@ -293,7 +333,21 @@ namespace HydroExplorer.View
                 else if (h == "WSElev B" || (h.StartsWith("WSElev (") && h.Contains(nameB)))
                     col.Header = $"WSElev ({nameB})";
             }
+
+            //foreach (var col in dgSimple.Columns)
+            //{
+            //    var h = col.Header?.ToString() ?? "";
+            //    if (h == "QTotal A" || (h.StartsWith("QTotal (") && h.Contains(nameA)))
+            //        col.Header = $"QTotal ({nameA})";
+            //    else if (h == "WSElev A" || (h.StartsWith("WSElev (") && h.Contains(nameA)))
+            //        col.Header = $"WSElev ({nameA})";
+            //    else if (h == "QTotal B" || (h.StartsWith("QTotal (") && h.Contains(nameB)))
+            //        col.Header = $"QTotal ({nameB})";
+            //    else if (h == "WSElev B" || (h.StartsWith("WSElev (") && h.Contains(nameB)))
+            //        col.Header = $"WSElev ({nameB})";
+            //}
         }
+
 
         private void OnReachSelectionChanged(object? sender, PropertyChangedEventArgs e)
         {
@@ -308,8 +362,8 @@ namespace HydroExplorer.View
                 .Select(r => r.ReachId)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-            System.Diagnostics.Debug.WriteLine(
-                $"ApplyReachFilter: _allWselData={_allWselData.Count} selectedReaches=[{string.Join(",", selectedReaches)}] PlotVm.Reaches={PlotVm.Reaches.Count}");
+            //System.Diagnostics.Debug.WriteLine(
+            //    $"ApplyReachFilter: _allWselData={_allWselData.Count} selectedReaches=[{string.Join(",", selectedReaches)}] PlotVm.Reaches={PlotVm.Reaches.Count}");
 
             dgSimple.ItemsSource = selectedReaches.Count == 0
                 ? _allWselData
@@ -318,7 +372,7 @@ namespace HydroExplorer.View
                                 selectedReaches.Contains(r.Reach))
                     .ToList();
 
-            System.Diagnostics.Debug.WriteLine($"ApplyReachFilter: dgSimple.ItemsSource count={((System.Collections.IList?)dgSimple.ItemsSource)?.Count ?? 0}");
+            //System.Diagnostics.Debug.WriteLine($"ApplyReachFilter: dgSimple.ItemsSource count={((System.Collections.IList?)dgSimple.ItemsSource)?.Count ?? 0}");
         }
     }
 

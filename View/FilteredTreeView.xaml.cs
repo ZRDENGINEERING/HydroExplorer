@@ -44,6 +44,21 @@ namespace HydroExplorer.View
         private FileSystemWatcher? _watcher;
         private CancellationTokenSource? _refreshCts;
 
+        // FileSystemWatcher raises events on ThreadPool threads, not the UI
+        // thread. Setting up a project with multiple files landing in the
+        // watched folder close together (e.g. a .shp write drops .shp/.shx/
+        // .dbf/.prj together, or a .hms + .shp pair get added at once) can
+        // fire several Created events on different threads within
+        // milliseconds of each other. OnFileSystemChanged used to read,
+        // Cancel(), and reassign _refreshCts with no synchronization —
+        // two threads could race: one disposes the CancellationTokenSource
+        // while another, still holding the same now-disposed reference,
+        // calls .Cancel() on it, throwing ObjectDisposedException. This lock
+        // serializes every touch of _refreshCts (including Unloaded's
+        // cleanup) so only one thread can read/cancel/dispose/reassign it
+        // at a time.
+        private readonly object _refreshCtsLock = new();
+
         public FilteredTreeView()
         {
             InitializeComponent();
@@ -88,8 +103,13 @@ namespace HydroExplorer.View
             Unloaded += (s, e) =>
             {
                 _watcher?.Dispose();
-                _refreshCts?.Cancel();
-                _refreshCts?.Dispose();
+
+                lock (_refreshCtsLock)
+                {
+                    _refreshCts?.Cancel();
+                    _refreshCts?.Dispose();
+                    _refreshCts = null;
+                }
             };
 
 
@@ -183,12 +203,17 @@ namespace HydroExplorer.View
 
         private async void OnFileSystemChanged(object sender, FileSystemEventArgs e)
         {
-        //    System.Diagnostics.Debug.WriteLine($"FilteredTreeView ({FileExtensionFilter}): FileSystemEvent {e.ChangeType} '{e.FullPath}'" +
-        //(e is RenamedEventArgs re ? $" (was '{re.OldFullPath}')" : ""));
+            //    System.Diagnostics.Debug.WriteLine($"FilteredTreeView ({FileExtensionFilter}): FileSystemEvent {e.ChangeType} '{e.FullPath}'" +
+            //(e is RenamedEventArgs re ? $" (was '{re.OldFullPath}')" : ""));
 
-            _refreshCts?.Cancel();
-            _refreshCts = new CancellationTokenSource();
-            var token = _refreshCts.Token;
+            CancellationToken token;
+            lock (_refreshCtsLock)
+            {
+                _refreshCts?.Cancel();
+                _refreshCts?.Dispose();
+                _refreshCts = new CancellationTokenSource();
+                token = _refreshCts.Token;
+            }
 
             try
             {
@@ -360,12 +385,15 @@ namespace HydroExplorer.View
                 {
                     if (!string.IsNullOrEmpty(shpProj.SpatialBndyPath))
                         return Path.GetDirectoryName(shpProj.SpatialBndyPath) ?? string.Empty;
-
                     if (!string.IsNullOrEmpty(shpProj.SpatialXsPath))
                         return Path.GetDirectoryName(shpProj.SpatialXsPath) ?? string.Empty;
-
                     if (!string.IsNullOrEmpty(shpProj.SpatialRiverPath))
                         return Path.GetDirectoryName(shpProj.SpatialRiverPath) ?? string.Empty;
+
+                    string dir = Path.GetDirectoryName(projPath) ?? string.Empty;
+                    string spatialGuess = Path.Combine(dir, "Spatial");
+                    if (Directory.Exists(spatialGuess)) return spatialGuess;
+                    if (Directory.Exists(dir)) return dir;
                 }
 
                 var latest = settings.ShpPaths
@@ -553,7 +581,7 @@ namespace HydroExplorer.View
 
                 case ".run":
                     //System.Diagnostics.Debug.WriteLine($"[FilteredTreeView .run] path={path}");
-                    await SaveRunPathAsync(path);
+                    await SaveHmsPathAsync(path);
                     SetSingleActive(path);
                     break;
 
@@ -606,7 +634,7 @@ namespace HydroExplorer.View
 
                 case ".run":
                     if (isChecked)
-                        await SaveRunPathAsync(path);
+                        await SaveHmsPathAsync(path);
                     break;
 
                 case ".shp":
@@ -648,7 +676,6 @@ namespace HydroExplorer.View
         private async Task SaveHmsPathAsync(string runPath)
         {
             var settings = await _settingsRepo.GetSettingsFresh();
-            settings.HmsProjects[runPath] = DateTime.Now;
 
             var current = new DirectoryInfo(Path.GetDirectoryName(runPath) ?? string.Empty);
             while (current?.Parent != null &&
@@ -682,42 +709,7 @@ namespace HydroExplorer.View
             EventBus.PublishProjPathChanged(activeKey);
         }
 
-        private async Task SaveRunPathAsync(string runPath)
-        {
-            var settings = await _settingsRepo.GetSettingsFresh();
-            settings.HmsProjects[runPath] = DateTime.Now;
-
-            var current = new DirectoryInfo(Path.GetDirectoryName(runPath) ?? string.Empty);
-            while (current?.Parent != null &&
-                   !current.Parent.FullName.Equals(@"C:\Temp", StringComparison.OrdinalIgnoreCase))
-                current = current.Parent;
-
-            string projRoot = current?.FullName ?? string.Empty;
-
-            string existingKey = settings.Projects
-                .Where(kv => !string.IsNullOrEmpty(kv.Value.ProjRoot)
-                    && kv.Value.ProjRoot.Equals(projRoot, StringComparison.OrdinalIgnoreCase))
-                .Select(kv => kv.Key)
-                .FirstOrDefault() ?? string.Empty;
-
-            string activeKey = !string.IsNullOrEmpty(existingKey) ? existingKey : runPath;
-
-            if (!settings.Projects.TryGetValue(activeKey, out var proj))
-                proj = settings.Projects[activeKey] = new ProjectSettings();
-
-            proj.ProjName = current?.Name ?? string.Empty;
-            proj.ProjRoot = projRoot;
-            proj.HmsPath = runPath;
-            proj.LastOpened = DateTime.Now;
-
-            settings.LastProjPath = activeKey;
-            settings.ProjPath = activeKey;
-
-            await _settingsRepo.SaveSettings(settings);
-
-            EventBus.PublishRunPath(runPath);
-            EventBus.PublishProjPathChanged(activeKey);
-        }
+        
 
         private async Task SaveProjPathAsync(string projPath)
         {

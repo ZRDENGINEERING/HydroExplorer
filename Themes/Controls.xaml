@@ -2426,7 +2426,7 @@
     </Style>
  
     <Style TargetType="{x:Type DataGridColumnHeader}">
-        <Setter Property="FontSize" Value="10"/>
+        <Setter Property="FontSize" Value="9"/>
         <Setter Property="Background" Value="{DynamicResource DataGrid.HeaderItem.Static.Background}"/>
         <Setter Property="BorderBrush" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
@@ -2481,7 +2481,7 @@
     
 
     <Style TargetType="{x:Type DataGridRow}">
-        <Setter Property="FontSize" Value="10"/>
+        <Setter Property="FontSize" Value="9"/>
         <Setter Property="Background" Value="{Binding Background, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type DataGrid}}}"/>
         <Setter Property="SnapsToDevicePixels" Value="true"/>
         <Setter Property="Validation.ErrorTemplate" Value="{x:Null}"/>

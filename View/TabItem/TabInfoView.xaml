@@ -29,7 +29,7 @@
         <TextBlock Text="PROJECT DATA"
                    Grid.ColumnSpan="2"
                    Grid.Row="0"
-                   Foreground="LightCoral"
+                   Foreground="#925353"
                    FontWeight="Bold"
                    TextDecorations="Underline"
                    FontSize="16"
@@ -59,11 +59,11 @@
                 <Run Text="{Binding HmsModel}" Foreground="{StaticResource ForegroundBrush}" FontWeight="Bold"/>        
             </TextBlock>
 
-            <TextBlock FontSize="10" Margin="10,0,0,0">
+            <TextBlock FontSize="10" Margin="25,0,0,0">
                 <Run Text="SubBasin Area (sq.mi.): " Foreground="{StaticResource ForegroundBrushDark}"/>
                 <Run Text="{Binding DrainageAreaSqMi}" Foreground="{StaticResource ForegroundBrush}" FontWeight="Bold"/>
             </TextBlock>
-            <TextBlock FontSize="10" Margin="10,0,0,0">
+            <TextBlock FontSize="10" Margin="25,0,0,0">
                 <Run Text="SubBasin Area (acres): " Foreground="{StaticResource ForegroundBrushDark}"/>
                 <Run Text="{Binding DrainageAreaAcre}" Foreground="{StaticResource ForegroundBrush}" FontWeight="Bold"/>
             </TextBlock>
@@ -81,17 +81,16 @@
                 <Run Text="{Binding UsgsNumber}" Foreground="{StaticResource ForegroundBrush}" FontWeight="Bold"/>
             </TextBlock>
 
-            <TextBlock FontSize="10" Margin="10,0,0,0">
-                <Run Text="HUC Code: " Foreground="{StaticResource ForegroundBrushDark}"/>
-                <Run Text="{Binding HucCode}" Foreground="{StaticResource ForegroundBrush}" FontWeight="Bold"/>
-            </TextBlock>
+            
+            
             <TextBlock FontSize="10" Margin="10,0,0,0">
                 <Run Text="Drainage Area (sq.mi.): " Foreground="{StaticResource ForegroundBrushDark}"/>
                 <Run Text="{Binding UsgsDrainageAreaSqMi}" Foreground="{StaticResource ForegroundBrush}" FontWeight="Bold"/>
             </TextBlock>
+
             <TextBlock FontSize="10" Margin="10,0,0,0">
-                <Run Text="Drainage Area (acres): " Foreground="{StaticResource ForegroundBrushDark}"/>
-                <Run Text="{Binding UsgsDrainageAreaAcre}" Foreground="{StaticResource ForegroundBrush}" FontWeight="Bold"/>
+                <Run Text="HUC Code: " Foreground="{StaticResource ForegroundBrushDark}"/>
+                <Run Text="{Binding HucCode}" Foreground="{StaticResource ForegroundBrush}" FontWeight="Bold"/>
             </TextBlock>
 
 

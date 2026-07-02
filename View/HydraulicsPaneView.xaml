@@ -44,6 +44,11 @@
             <StackPanel Background="{StaticResource BackgroundBrushSidePanels}">
 
 
+                <TextBlock Text="{Binding ProfileMismatchWarning}"
+                    Foreground="Red" FontSize="10" FontWeight="Bold"
+                    TextWrapping="Wrap" Margin="10,4,10,4"/>
+
+
                 <TextBlock FontSize="10" Margin="10,4,0,6">
                     <Run Text="Plan Name A: " Foreground="{StaticResource ForegroundBrush}"/>
                     <Run Text="{Binding ElementName=txtBoxHdfPathA, Path=Text}" Foreground="{StaticResource ForegroundBrushDark}"/>
@@ -80,6 +85,13 @@
                           Width="200" Margin="0,0,0,6"
                           Foreground="{StaticResource ForegroundBrushDark}"/>
 
+                <TextBlock x:Name="txtProfileWarning"
+                    Foreground="Red" FontSize="10" FontWeight="Bold"
+                    TextWrapping="Wrap" Margin="10,4,10,4"
+                    Text=""/>
+                
+                
+                
             </StackPanel>
         </GroupBox>
     </Grid>

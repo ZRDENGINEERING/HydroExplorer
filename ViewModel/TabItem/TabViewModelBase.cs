@@ -89,38 +89,46 @@ namespace HydroExplorer.ViewModel.TabItem
         public ICommand BrowseShpCommand =>
             _browseShpCommand ??= new RelayCommand(param => ExecuteBrowseShp(param as string));
 
+
         private ICommand? _clearSelectedPathCommand;
         public ICommand ClearSelectedPathCommand =>
-            _clearSelectedPathCommand ??= new RelayCommand(param => ExecuteClearSelectedPath(param as string));
+            _clearSelectedPathCommand ??= new RelayCommand(async param => await ExecuteClearSelectedPath(param as string));
 
-        /// <summary>
-        /// Clears the selected reference for one Active Paths field, without
-        /// touching the underlying file on disk. Does not affect ProjectSettings'
-        /// cached SpatialBndyPath/SpatialXsPath either — those are re-derived by
-        /// MapOverView.BuildPaths regardless, so clearing here is purely a UI
-        /// convenience for re-browsing without remembering the prior selection.
-        /// </summary>
-        private void ExecuteClearSelectedPath(string? layerType)
+
+        
+
+        private async Task ExecuteClearSelectedPath(string? layerType)
         {
+            if (layerType is not ("Boundary" or "Sections" or "River" or "Subbasins" or "RasGeometry"))
+                return;
+
             switch (layerType)
             {
-                case "Boundary":
-                    SelectedBoundaryPath = null;
-                    break;
-                case "Sections":
-                    SelectedSectionsPath = null;
-                    break;
-                case "River":
-                    SelectedRiverPath = null;
-                    break;
-                case "Subbasins":
-                    SelectedSubbasinsPath = null;
-                    break;
-                case "RasGeometry":
-                    SelectedRasGeometryPath = null;
-                    break;
+                case "Boundary": SelectedBoundaryPath = null; break;
+                case "Sections": SelectedSectionsPath = null; break;
+                case "River": SelectedRiverPath = null; break;
+                case "Subbasins": SelectedSubbasinsPath = null; break;
+                case "RasGeometry": SelectedRasGeometryPath = null; break;
+            }
+
+            if (SettingsRepo is null) return;
+            var settings = await SettingsRepo.GetSettingsFresh();
+
+            if (!string.IsNullOrEmpty(settings.LastProjPath) &&
+                settings.Projects.TryGetValue(settings.LastProjPath, out var activeProj))
+            {
+                switch (layerType)
+                {
+                    case "Boundary": activeProj.SpatialBndyPath = string.Empty; break;
+                    case "Sections": activeProj.SpatialXsPath = string.Empty; break;
+                    case "River": activeProj.SpatialRiverPath = string.Empty; break;
+                }
+                await SettingsRepo.SaveSettings(settings);
             }
         }
+
+
+
 
         private ICommand? _browseBndyCommand;
         public ICommand BrowseBndyCommand =>
@@ -354,7 +362,6 @@ namespace HydroExplorer.ViewModel.TabItem
         {
             EventBus.GeometryPathsResolved += OnGeometryPathsResolved;
             EventBus.ShpPathSelected += OnShpPathSelected;
-
         }
 
         /// <summary>
@@ -523,27 +530,22 @@ namespace HydroExplorer.ViewModel.TabItem
                 })
                 .ToList();
 
-            var rasRootDirs = rasEntries
-            .Select(e => e.FilePath)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var rasKeys = rasEntries.Select(e => e.ProjPath).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-            var hmsOnlyEntries = settings.HmsProjects
-                .Where(kv => File.Exists(kv.Key))
-                .Where(kv => settings.Projects.TryGetValue(kv.Key, out var p)
-                    && !rasRootDirs.Contains(p.ProjRoot))
-                .Select(kv => {
-                    settings.Projects.TryGetValue(kv.Key, out var p);
-                    return new RecentProjectEntry
-                    {
-                        Name = p?.ProjName ?? Path.GetFileNameWithoutExtension(kv.Key),
-                        ProjName = p?.ProjName ?? Path.GetFileNameWithoutExtension(kv.Key),
-                        FilePath = p?.ProjRoot ?? string.Empty,
-                        ProjPath = kv.Key,
-                        LastOpened = kv.Value,
-                        OpenOrder = int.MaxValue,
-                        ProjectType = "HMS",
-                        HmsRunFile = kv.Key
-                    };
+            var hmsOnlyEntries = settings.Projects
+                .Where(kv => !rasKeys.Contains(kv.Key)
+                    && !string.IsNullOrEmpty(kv.Value.HmsPath)
+                    && File.Exists(kv.Value.HmsPath))
+                .Select(kv => new RecentProjectEntry
+                {
+                    Name = !string.IsNullOrEmpty(kv.Value.ProjName) ? kv.Value.ProjName : Path.GetFileNameWithoutExtension(kv.Key),
+                    ProjName = !string.IsNullOrEmpty(kv.Value.ProjName) ? kv.Value.ProjName : Path.GetFileNameWithoutExtension(kv.Key),
+                    FilePath = kv.Value.ProjRoot,
+                    ProjPath = kv.Key,
+                    LastOpened = kv.Value.LastOpened,
+                    OpenOrder = int.MaxValue,
+                    ProjectType = "HMS",
+                    HmsRunFile = kv.Value.HmsPath
                 })
                 .ToList();
 

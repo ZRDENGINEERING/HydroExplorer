@@ -50,7 +50,7 @@ namespace HydroExplorer.Helpers
                 {
                     // No .prj carried over from the dissolve step — resolve via the
                     // same cached/guessed EPSG flow XS and river export use, instead
-                    // of silently defaulting to a single zone (EPSG:2277), which can
+                    // of silently defaulting to a single zone (EPSG:2278), which can
                     // place the result hundreds of miles off for projects outside it.
                     int? epsg = await GeometryExportCoordinator.ResolveSourceEpsgFromShapefileAsync(
                         settingsRepo,
@@ -82,13 +82,19 @@ namespace HydroExplorer.Helpers
                 Debug.WriteLine($"ExportBNDY error: {ex.Message}");
             }
         }
+
+
+
+
         public static async Task GeoDissolve(string inputShp, string outputShp, string? dissolveField = null)
         {
             if (inputShp == null) return;
             var factory = new GeometryFactory();
             var reader = new ShapefileDataReader(inputShp, factory);
             string? srcPrj = null;
+
             string inputPrjPath = Path.ChangeExtension(inputShp, ".prj");
+
             if (File.Exists(inputPrjPath))
                 srcPrj = File.ReadAllText(inputPrjPath);
             var allGeoms = new List<(object key, Geometry geom)>();
@@ -187,16 +193,9 @@ namespace HydroExplorer.Helpers
             if (srcPrj != null)
                 File.WriteAllText(Path.ChangeExtension(outputShp, ".prj"), srcPrj);
         }
-        private static Geometry SnapRoundingUnion(List<Geometry> geoms, PrecisionModel pm)
-        {
-            var reducer = new GeometryPrecisionReducer(pm) { ChangePrecisionModel = true };
-            var reduced = geoms
-                .Select(g => reducer.Reduce(g))
-                .Where(g => g != null && !g.IsEmpty)
-                .Select(g => g.IsValid ? g : g.Buffer(0))
-                .ToList();
-            return UnaryUnionOp.Union(reduced);
-        }
+
+
+
         public static async Task UtilReproject(
             string inputShp,
             string outputShp,
@@ -255,16 +254,30 @@ namespace HydroExplorer.Helpers
             var transform = GISUtil.CreateTransformation(srcWkt, tgtWkt);
             var reader = new ShapefileDataReader(inputShp, GeometryFactory.Default);
             var factory = new GeometryFactory();
-            reader.Read();
-            var testRaw = reader.Geometry.EnvelopeInternal.Centre;
-            var testReprojected = GISUtil.Reproject(testRaw, transform);
-            Debug.WriteLine($"UtilReproject centre raw:         {testRaw.X:F4}, {testRaw.Y:F4}");
-            Debug.WriteLine($"UtilReproject centre reprojected: {testReprojected.X:F6}, {testReprojected.Y:F6}");
-            reader.Reset();
+
             var features = new List<IFeature>();
+            bool loggedSanityCheck = false;
+
             while (reader.Read())
             {
                 var geom = reader.Geometry;
+
+                if (!loggedSanityCheck)
+                {
+                    // One-time sanity-check log of the first feature's centroid before
+                    // and after reprojection — previously done via a separate
+                    // reader.Read() + reader.Reset() priming pass before the main loop,
+                    // but DbaseFileHeader only allows its encoding to be set once, and
+                    // that priming sequence triggered it twice, throwing "Setting the
+                    // encoding is only allowed once...". Folded into the first loop
+                    // iteration instead, since it needs no separate read/reset.
+                    var testRaw = geom.EnvelopeInternal.Centre;
+                    var testReprojected = GISUtil.Reproject(testRaw, transform);
+                    Debug.WriteLine($"UtilReproject centre raw:         {testRaw.X:F4}, {testRaw.Y:F4}");
+                    Debug.WriteLine($"UtilReproject centre reprojected: {testReprojected.X:F6}, {testReprojected.Y:F6}");
+                    loggedSanityCheck = true;
+                }
+
                 Geometry reprojected;
                 if (geom is Point)
                 {

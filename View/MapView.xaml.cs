@@ -24,7 +24,6 @@ using System.Windows.Controls;
 using System.Windows.Media.Animation;
 
 
-
 namespace HydroExplorer.View
 {
     public partial class MapView : UserControl
@@ -46,6 +45,7 @@ namespace HydroExplorer.View
 
         private GageResult? _currentGage;
 
+        private static readonly Color _colorLblBackGround = new(236, 210, 1, 150);
         private static readonly Color _lblBackGroundColor = new(236, 210, 1, 150);
         private static readonly Color _vecCLColor = new(70, 0, 0, 255);
         private static readonly Color _vecBNDYColor = new(70, 138, 138, 255);
@@ -81,6 +81,7 @@ namespace HydroExplorer.View
             };
 
             _map = new Map { CRS = "EPSG:3857" };
+            LoggingWidget.ShowLoggingInMap = Mapsui.Widgets.ActiveMode.No;
 
             var (cx, cy) = SphericalMercator.FromLonLat(-99.0, 31.0);
             _map.Navigator.CenterOnAndZoomTo(new MPoint(cx, cy), 3000);
@@ -89,7 +90,9 @@ namespace HydroExplorer.View
             _highlightLayer = new WritableLayer
             {
                 Name = "Highlight",
-                Style = new VectorStyle { Outline = new Pen(Color.Yellow, 2), Fill = null }
+                Style = new VectorStyle { Outline = new Pen(Color.LightYellow, 2), 
+                    Opacity=0.1f,
+                    Fill = null }
             };
             _map.Layers.Add(_highlightLayer);
 
@@ -136,8 +139,7 @@ namespace HydroExplorer.View
             _mapState.PathsReady += OnPathsReady;
             if (_mapState.CurrentPaths != null)
             {
-                System.Diagnostics.Debug.WriteLine(
-                    $"MapView constructor: replaying CurrentPaths='{_mapState.CurrentPaths.ProjPath}'");
+                //System.Diagnostics.Debug.WriteLine($"MapView constructor: replaying CurrentPaths='{_mapState.CurrentPaths.ProjPath}'");
                 OnPathsReady(_mapState.CurrentPaths);
             }
         }
@@ -159,18 +161,18 @@ namespace HydroExplorer.View
 
             Application.Current.Dispatcher.InvokeAsync(async () =>
             {
-                System.Diagnostics.Debug.WriteLine($"MapView.OnPathsReady dispatcher entered");
+                //System.Diagnostics.Debug.WriteLine($"MapView.OnPathsReady dispatcher entered");
                 try
                 {
                     if (!IsLoaded)
                     {
-                        System.Diagnostics.Debug.WriteLine("MapView.OnPathsReady: waiting for Loaded...");
+                        //System.Diagnostics.Debug.WriteLine("MapView.OnPathsReady: waiting for Loaded...");
                         var tcs = new TaskCompletionSource<bool>();
                         void OnLoaded(object s, RoutedEventArgs e) { tcs.TrySetResult(true); }
                         Loaded += OnLoaded;
                         await tcs.Task;
                         Loaded -= OnLoaded;
-                        System.Diagnostics.Debug.WriteLine("MapView.OnPathsReady: Loaded complete.");
+                        //System.Diagnostics.Debug.WriteLine("MapView.OnPathsReady: Loaded complete.");
                     }
 
                     _pathXS = paths.PathXS;
@@ -209,13 +211,14 @@ namespace HydroExplorer.View
             await Task.Delay(100, token);
 
             _map.Layers.Clear();
+            _map.Layers.Add(CreateDarkBackdropLayer());
 
             var tileSource = KnownTileSources.Create(
                 KnownTileSource.BingHybrid,
                 apiKey: null,
                 persistentCache: new BruTile.Cache.FileCache(_tileCachePath, "png"));
 
-            var lyr_bing = new TileLayer(tileSource) { Opacity = 0.55 };
+            var lyr_bing = new TileLayer(tileSource) { Opacity = 0 }; // start invisible
             _map.Layers.Add(lyr_bing);
 
             try
@@ -224,27 +227,19 @@ namespace HydroExplorer.View
                 await AddLayerShpBndy();
                 await ExportShpXS();
                 await ExportShpRiver();
+                await AddLayerShpZRD();
 
                 var plotVm = App.ServiceProvider.GetRequiredService<PlotViewModel>();
                 if (plotVm.WselData != null)
-                {
                     await AddLayerShpXS(plotVm.WselData);
-                }
                 else
-                {
                     System.Diagnostics.Debug.WriteLine("ResetMapView: WselData null — skipping XS layer.");
-                }
 
                 await AddLayerShpRiver();
                 AddLayerGage();
                 _map.Layers.Add(_highlightLayer);
 
-                // Recompute the camera extent every time layers are rebuilt — previously
-                // only OnPathsReady called InitView(), gated on project change, so it
-                // never fired for a same-project in-place file replacement.
                 await InitView();
-
-                await Dispatcher.InvokeAsync(() => _mapControl.Refresh());
             }
             catch (OperationCanceledException) { return; }
             catch (Exception ex)
@@ -252,6 +247,11 @@ namespace HydroExplorer.View
                 System.Diagnostics.Debug.WriteLine($"ResetMap error: {ex.Message}");
                 return;
             }
+
+            // Fade tile layer in over dark backdrop, then fade control in
+            await Dispatcher.InvokeAsync(() => _mapControl.Refresh());
+            await WaitForTilesAsync(token, timeoutMs: 800);
+            await FadeInTileLayerAsync(token);
 
             await Dispatcher.InvokeAsync(() =>
             {
@@ -564,7 +564,7 @@ namespace HydroExplorer.View
                 if (string.IsNullOrEmpty(_pathXS)) return;
                 if (File.Exists(_pathXS)) return;
 
-                System.Diagnostics.Debug.WriteLine($"XS FILE DOES NOT EXIST — CREATING @ {_pathXS}");
+                //System.Diagnostics.Debug.WriteLine($"XS FILE DOES NOT EXIST — CREATING @ {_pathXS}");
 
                 string projDir = Path.GetDirectoryName(hdfPath) ?? string.Empty;
 
@@ -650,8 +650,8 @@ namespace HydroExplorer.View
                 settings.Projects.TryGetValue(projKey, out var existing) &&
                 existing.SourceEpsg is > 0)
             {
-                System.Diagnostics.Debug.WriteLine(
-                    $"ResolveSourceEpsgAsync: using cached EPSG:{existing.SourceEpsg} for project '{projKey}'.");
+                //System.Diagnostics.Debug.WriteLine(
+                //    $"ResolveSourceEpsgAsync: using cached EPSG:{existing.SourceEpsg} for project '{projKey}'.");
                 return existing.SourceEpsg;
             }
 
@@ -677,8 +677,8 @@ namespace HydroExplorer.View
             //
             // if (confirm != MessageBoxResult.Yes) return null;
 
-            System.Diagnostics.Debug.WriteLine(
-                $"ResolveSourceEpsgAsync: no .prj folder for {featureLabel} — auto-accepting guessed EPSG:{guessedEpsg} without confirmation.");
+            //System.Diagnostics.Debug.WriteLine(
+            //    $"ResolveSourceEpsgAsync: no .prj folder for {featureLabel} — auto-accepting guessed EPSG:{guessedEpsg} without confirmation.");
 
             if (!string.IsNullOrEmpty(projKey))
             {
@@ -704,7 +704,7 @@ namespace HydroExplorer.View
                 if (string.IsNullOrEmpty(_PathRiver)) return;
                 if (File.Exists(_PathRiver)) return;
 
-                System.Diagnostics.Debug.WriteLine($"CL FILE DOES NOT EXIST — CREATING @ {_PathRiver}");
+                //System.Diagnostics.Debug.WriteLine($"CL FILE DOES NOT EXIST — CREATING @ {_PathRiver}");
 
                 string projDir = Path.GetDirectoryName(hdfPath) ?? string.Empty;
 
@@ -866,66 +866,46 @@ namespace HydroExplorer.View
         }
 
 
-        private void AddLayerShpZRD()
+        private Task AddLayerShpZRD()
         {
-            string shapefilePathZRD = "Z:\\10 DEV\\hydroExplorer\\SHP\\TX_ZRD.shp";
-            if (!Path.Exists(shapefilePathZRD)) return;
+            string shapefilePathZRD = "Z:\\10 DEV\\hydroExplorer\\SHP\\MAPOVERVIEW\\PROJ_TX_ZRD.shp";
+            var shapeFileSource = new ShapeFile(shapefilePathZRD, true);
 
-            var shapeFileProvider = new ShapeFile(shapefilePathZRD, true) { CRS = "EPSG:4326" };
-            var dataSource = new ProjectingProvider(shapeFileProvider) { CRS = "EPSG:3857" };
-
-            _map.Layers.Add(new RasterizingTileLayer(new Mapsui.Layers.Layer("ZRD")
+            var shapefileLayer = new Layer("PROJ_TX_ZRD")
             {
-                Name = "PROJECTS",
-                DataSource = dataSource,
+                Name = "PROJ_TX_ZRD",
+                DataSource = shapeFileSource,
                 Tag = new OverViewLayerData { IsMapInfoLayer = true },
                 Style = new StyleCollection
                 {
                     Styles =
-                    {
-                        new SymbolStyle
                         {
-                            Fill        = new Brush(Color.Red),
-                            Outline     = new Pen(Color.Black, 1),
-                            SymbolScale = 0.2
-                        },
-                        new LabelStyle
-                        {
-                            LabelColumn         = "projname",
-                            ForeColor           = Color.Black,
-                            BackColor           = new Brush(_lblBackGroundColor),
-                            CornerRounding      = 3,
-                            Font                = new Font { FontFamily = "Eras", Size = 10, Bold = true },
-                            HorizontalAlignment = LabelStyle.HorizontalAlignmentEnum.Center,
-                            VerticalAlignment   = LabelStyle.VerticalAlignmentEnum.Bottom,
-                            MaxVisible          = 100,
-                            Offset              = new Offset { Y = -5 }
+                            new SymbolStyle
+                            {
+                                Fill = new Brush(Color.Red),
+                                Outline = new Pen(Color.Black, 1),
+                                SymbolScale = 0.2
+                            },
+                            new LabelStyle
+                            {
+                                LabelColumn = "projname",
+                                ForeColor = Color.Black,
+                                BackColor = new Brush(_colorLblBackGround),
+                                CornerRounding = 3,
+                                Font = new Font { FontFamily = "Eras", Size = 10 , Bold = true},
+                                HorizontalAlignment = LabelStyle.HorizontalAlignmentEnum.Center,
+                                VerticalAlignment = LabelStyle.VerticalAlignmentEnum.Bottom,
+                                MaxVisible = 100,
+                                Offset = new Offset { Y = -5 }
+                            }
                         }
-                    }
                 }
-            }));
+            };
+            _map.Layers.Add(new RasterizingTileLayer(shapefileLayer));
+            return Task.CompletedTask;
         }
-
-
-        private static VectorStyle CreateThemeZones() => new()
-        {
-            Outline = new Pen(Color.Gray),
-            Fill = new Brush(Color.Gray),
-            Opacity = 0.15f
-        };
-
-        private static async Task<WmsProvider> CreateWmsProviderAsync()
-        {
-            const string wmsUrl = "https://hazards.fema.gov/arcgis/services/public/NFHLWMS/MapServer/WMSServer?request=GetCapabilities&service=WMS";
-
-            var wmsProvider = await WmsProvider.CreateAsync(wmsUrl);
-            wmsProvider.ContinueOnError = true;
-            wmsProvider.TimeOut = 20000;
-            wmsProvider.CRS = "EPSG:3857";
-            wmsProvider.AddLayer("10");
-            wmsProvider.SetImageFormat(wmsProvider.OutputFormats[1]);
-            return wmsProvider;
-        }
+        
+        
 
         private static List<string> GetAllLayerNames(Client.WmsServerLayer layer)
         {
@@ -999,7 +979,28 @@ namespace HydroExplorer.View
             map.Widgets.Add(new MouseCoordinatesWidget());
         }
 
-        private async Task WaitForTilesAsync(CancellationToken token)
+        
+
+
+        private static MemoryLayer CreateDarkBackdropLayer()
+        {
+            var box = new NetTopologySuite.Geometries.Envelope(
+                -20037508.34, 20037508.34,
+                -20037508.34, 20037508.34);
+            var poly = new NetTopologySuite.Geometries.GeometryFactory().ToGeometry(box);
+
+            return new MemoryLayer("Backdrop")
+            {
+                Features = [new GeometryFeature { Geometry = poly }],
+                Style = new VectorStyle
+                {
+                    Fill = new Brush(new Mapsui.Styles.Color(30, 30, 30, 255)),
+                    Outline = null
+                }
+            };
+        }
+
+        private async Task WaitForTilesAsync(CancellationToken token, int timeoutMs = 5000)
         {
             var tcs = new TaskCompletionSource<bool>();
 
@@ -1015,7 +1016,7 @@ namespace HydroExplorer.View
             try
             {
                 using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(token);
-                timeoutCts.CancelAfter(TimeSpan.FromSeconds(5));
+                timeoutCts.CancelAfter(TimeSpan.FromMilliseconds(timeoutMs));
                 await tcs.Task.WaitAsync(timeoutCts.Token);
             }
             catch (OperationCanceledException) { }
@@ -1024,5 +1025,37 @@ namespace HydroExplorer.View
                 _map.DataChanged -= OnMapDataChanged;
             }
         }
+
+        private async Task FadeInTileLayerAsync(CancellationToken token)
+        {
+            var tileLayer = _map.Layers.OfType<TileLayer>().FirstOrDefault();
+            if (tileLayer == null) return;
+
+            tileLayer.Opacity = 0;
+            await Dispatcher.InvokeAsync(() => _mapControl.Refresh());
+            await WaitForTilesAsync(token, timeoutMs: 800);
+
+            //const int steps = 20;
+            //const int intervalMs = 32;
+
+            //for (int i = 1; i <= steps; i++)
+            //{
+            //    if (token.IsCancellationRequested) break;
+            //    double opacity = (double)i / steps;
+            //    await Dispatcher.InvokeAsync(() =>
+            //    {
+            //        tileLayer.Opacity = opacity * 0.55;
+            //        _mapControl.Refresh();
+            //    });
+            //    await Task.Delay(intervalMs, token);
+            //}
+
+            await Dispatcher.InvokeAsync(() =>
+            {
+                tileLayer.Opacity = 0.55;
+                _mapControl.Refresh();
+            });
+        }
+
     }
 }

@@ -12,9 +12,13 @@ namespace HydroExplorer.Utils
 
             if (!File.Exists(dssFilePath)) return records;
 
+            string? tempPath = null;
+            DssGate.Enter();
             try
             {
-                using var dss = new DssReader(dssFilePath);
+                tempPath = DssSnapshot.Create(dssFilePath);
+
+                using var dss = new DssReader(tempPath);
                 var catalog = dss.GetCatalog();
 
                 foreach (var entry in catalog)
@@ -60,26 +64,37 @@ namespace HydroExplorer.Utils
             {
                 System.Diagnostics.Debug.WriteLine($"DssDataService.Load error: {ex.Message}");
             }
+            finally
+            {
+                DssSnapshot.Cleanup(tempPath);
+                DssGate.Exit();
+            }
 
             return records;
         }
 
-        /// <summary>
-        /// Lazy-load the actual values for a record — call this on row double-click.
-        /// </summary>
+
         public static TimeSeries? LoadValues(DssRecord record, string dssFilePath)
         {
             if (!File.Exists(dssFilePath)) return null;
 
+            string? tempPath = null;
+            DssGate.Enter();
             try
             {
-                using var dss = new DssReader(dssFilePath);
+                tempPath = DssSnapshot.Create(dssFilePath);
+                using var dss = new DssReader(tempPath);
                 return dss.GetTimeSeries(new DssPath(record.Pathname));
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"LoadValues error: {ex.Message}");
                 return null;
+            }
+            finally
+            {
+                DssSnapshot.Cleanup(tempPath);
+                DssGate.Exit();
             }
         }
     }

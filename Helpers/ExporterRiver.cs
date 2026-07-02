@@ -109,7 +109,7 @@ namespace HydroExplorer.Helpers
 
             GISUtil.WriteShpPrj(outputShpPath, GISUtil.TryGetEpsgFromWkt(tgtWkt));
 
-            System.Diagnostics.Debug.WriteLine($"Exported {features.Count} centerlines → {outputShpPath}");
+            //System.Diagnostics.Debug.WriteLine($"Exported {features.Count} centerlines → {outputShpPath}");
             return true;
         }
 

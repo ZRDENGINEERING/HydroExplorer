@@ -1,11 +1,7 @@
 ﻿using HydroExplorer.Utils;
-using NetTopologySuite.Geometries;
-using NetTopologySuite.IO;
 using PureHDF;
 using PureHDF.VOL.Native;
 using System.IO;
-using System.Windows;
-
 
 
 namespace HydroExplorer.Helpers
@@ -50,7 +46,7 @@ namespace HydroExplorer.Helpers
                 if (string.IsNullOrEmpty(pathXS)) return false;
                 if (File.Exists(pathXS)) return true;
 
-                System.Diagnostics.Debug.WriteLine($"GeometryExportCoordinator: XS FILE DOES NOT EXIST — CREATING @ {pathXS}");
+                //System.Diagnostics.Debug.WriteLine($"GeometryExportCoordinator: XS FILE DOES NOT EXIST — CREATING @ {pathXS}");
 
                 string projDir = Path.GetDirectoryName(hdfPath) ?? string.Empty;
 
@@ -108,7 +104,7 @@ namespace HydroExplorer.Helpers
                 if (string.IsNullOrEmpty(pathRiver)) return false;
                 if (File.Exists(pathRiver)) return true;
 
-                System.Diagnostics.Debug.WriteLine($"GeometryExportCoordinator: CL FILE DOES NOT EXIST — CREATING @ {pathRiver}");
+                //System.Diagnostics.Debug.WriteLine($"GeometryExportCoordinator: CL FILE DOES NOT EXIST — CREATING @ {pathRiver}");
 
                 string projDir = Path.GetDirectoryName(hdfPath) ?? string.Empty;
 
@@ -233,8 +229,8 @@ namespace HydroExplorer.Helpers
                 settings.Projects.TryGetValue(projKey, out var existing) &&
                 existing.SourceEpsg is > 0)
             {
-                System.Diagnostics.Debug.WriteLine(
-                    $"GeometryExportCoordinator: using cached EPSG:{existing.SourceEpsg} for project '{projKey}'.");
+                //System.Diagnostics.Debug.WriteLine(
+                //    $"GeometryExportCoordinator: using cached EPSG:{existing.SourceEpsg} for project '{projKey}'.");
                 return existing.SourceEpsg;
             }
 
@@ -260,8 +256,8 @@ namespace HydroExplorer.Helpers
             //
             // if (confirm != MessageBoxResult.Yes) return null;
 
-            System.Diagnostics.Debug.WriteLine(
-                $"GeometryExportCoordinator: no .prj folder for {featureLabel} — auto-accepting guessed EPSG:{guessedEpsg} without confirmation.");
+            //System.Diagnostics.Debug.WriteLine(
+            //    $"GeometryExportCoordinator: no .prj folder for {featureLabel} — auto-accepting guessed EPSG:{guessedEpsg} without confirmation.");
 
             if (!string.IsNullOrEmpty(projKey))
             {
@@ -270,8 +266,9 @@ namespace HydroExplorer.Helpers
 
                 proj.SourceEpsg = guessedEpsg;
                 await settingsRepo.SaveSettings(settings);
-                System.Diagnostics.Debug.WriteLine(
-                    $"GeometryExportCoordinator: cached EPSG:{guessedEpsg} for project '{projKey}'.");
+
+                //System.Diagnostics.Debug.WriteLine(
+                //    $"GeometryExportCoordinator: cached EPSG:{guessedEpsg} for project '{projKey}'.");
             }
 
             return guessedEpsg;
@@ -347,5 +344,14 @@ namespace HydroExplorer.Helpers
                 return null;
             }
         }
+
+
+
+
+
+
+
+
+
     }
 }

@@ -24,7 +24,7 @@ namespace HydroExplorer.ViewModel.TabItem
             get => _selectedTab;
             set
             {
-                if (value?.Header == "Charts" && value.Content == null)
+                if (value?.Header == "HMS Charts" && value.Content == null)
                     value.Content = new TabChartViewModel();
 
                 _selectedTab = value;
@@ -48,7 +48,7 @@ namespace HydroExplorer.ViewModel.TabItem
             [
                 new TabItemViewModel { Header = "Info",    Content = tabInfoVM },
                 new TabItemViewModel { Header = "Main",    Content = new TabMainViewModel() },
-                new TabItemViewModel { Header = "Charts",  Content = null },
+                new TabItemViewModel { Header = "HMS Charts",  Content = null },
                 new TabItemViewModel { Header = "Publish", Content = new TabPublishViewModel() },
                 new TabItemViewModel { Header = "BlankTop",  Content = new TabSettingsViewModel() }
             ];

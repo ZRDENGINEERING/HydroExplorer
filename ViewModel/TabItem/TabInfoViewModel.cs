@@ -203,7 +203,6 @@ namespace HydroExplorer.ViewModel.TabItem
             var settings = await SettingsRepo!.GetSettings();
             bool dirty = false;
 
-            // Remove Projects entries whose file no longer exists
             var deadProjects = settings.Projects.Keys
                 .Where(k => !File.Exists(k))
                 .ToList();
@@ -214,16 +213,7 @@ namespace HydroExplorer.ViewModel.TabItem
                 dirty = true;
             }
 
-            // Remove HmsProjects entries whose file no longer exists
-            var deadHms = settings.HmsProjects.Keys
-                .Where(k => !File.Exists(k))
-                .ToList();
-
-            foreach (var key in deadHms)
-            {
-                settings.HmsProjects.Remove(key);
-                dirty = true;
-            }
+     
 
             if (dirty)
                 await SettingsRepo.SaveSettings(settings);
@@ -322,28 +312,38 @@ namespace HydroExplorer.ViewModel.TabItem
             if (!File.Exists(runPath))
             {
                 var settings = await SettingsRepo!.GetSettings();
-                if (!string.IsNullOrEmpty(runPath))
-                    settings.HmsProjects.Remove(runPath);
+                
                 await SettingsRepo.SaveSettings(settings);
                 await LoadRecentProjectsAsync();
                 return;
             }
 
             var s = await SettingsRepo!.GetSettings();
-            s.HmsProjects[runPath] = DateTime.Now;
+
+            string activeKey = s.Projects
+                .Where(kv => !string.IsNullOrEmpty(kv.Value.HmsPath)
+                    && kv.Value.HmsPath.Equals(runPath, StringComparison.OrdinalIgnoreCase))
+                .Select(kv => kv.Key)
+                .FirstOrDefault() ?? runPath;
+
+            if (s.Projects.TryGetValue(activeKey, out var projSettings))
+                projSettings.LastOpened = DateTime.Now;
+
+            s.LastProjPath = activeKey;
+            s.ProjPath = activeKey;
             await SettingsRepo.SaveSettings(s);
 
             EventBus.PublishRunPath(runPath);
+            EventBus.PublishProjPathChanged(activeKey);
             EventBus.PublishRecentProjectSelected(runPath);
 
-            await LoadRecentProjectsAsync(runPath);
+            await LoadRecentProjectsAsync(activeKey);
         }
 
 
         private async Task ClearRecentProjectsAsync()
         {
             var settings = await SettingsRepo!.GetSettings();
-            settings.HmsProjects.Clear();
             settings.Projects.Clear();
             settings.LastProjPath = string.Empty;
             settings.ProjPath = string.Empty;
@@ -364,15 +364,6 @@ namespace HydroExplorer.ViewModel.TabItem
 
             foreach (var key in projKeysToRemove)
                 settings.Projects.Remove(key);
-
-            // HmsProjects keys are also file paths
-            var hmsKeysToRemove = settings.HmsProjects.Keys
-                .Where(k => Path.GetDirectoryName(k)
-                    ?.Equals(dirPath, StringComparison.OrdinalIgnoreCase) == true)
-                .ToList();
-
-            foreach (var key in hmsKeysToRemove)
-                settings.HmsProjects.Remove(key);
 
             await SettingsRepo.SaveSettings(settings);
             await LoadRecentProjectsAsync();
@@ -418,12 +409,16 @@ namespace HydroExplorer.ViewModel.TabItem
                 settings.Projects.TryGetValue(settings.LastProjPath, out var proj);
 
                 string hmsName = string.Empty;
+                string? hmsPathResolved = null;
 
                 if (!string.IsNullOrEmpty(proj?.ProjName))
                     ProjName = proj?.ProjName;
 
                 if (!string.IsNullOrEmpty(proj?.HmsPath) && File.Exists(proj.HmsPath))
+                {
                     hmsName = Path.GetFileName(proj.HmsPath);
+                    hmsPathResolved = proj.HmsPath;
+                }
 
                 if (string.IsNullOrEmpty(hmsName))
                 {
@@ -436,13 +431,38 @@ namespace HydroExplorer.ViewModel.TabItem
                         .FirstOrDefault();
 
                     if (!string.IsNullOrEmpty(matchingRun))
+                    {
                         hmsName = Path.GetFileName(matchingRun);
+                        hmsPathResolved = matchingRun;
+                    }
                 }
 
                 System.Windows.Application.Current.Dispatcher.Invoke(() =>
                 {
                     HmsModel = hmsName;
                 });
+
+                // ── Subbasin area (sum of all Subbasin: Area: in the .hms
+                // project's first Basin: block's .basin file). Left blank
+                // (already cleared above) if no .hms is resolved.
+                if (!string.IsNullOrEmpty(hmsPathResolved))
+                {
+                    double? totalAreaSqMi = HecHmsBasinReader.GetTotalSubbasinAreaSqMi(hmsPathResolved);
+
+                    System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        if (totalAreaSqMi.HasValue)
+                        {
+                            DrainageAreaSqMi = totalAreaSqMi.Value.ToString("F2");
+                            DrainageAreaAcre = (totalAreaSqMi.Value * 640.0).ToString("F1");
+                        }
+                        else
+                        {
+                            DrainageAreaSqMi = string.Empty;
+                            DrainageAreaAcre = string.Empty;
+                        }
+                    });
+                }
 
                 // ── USGS nearest gage ─────────────────────────────────────
                 try

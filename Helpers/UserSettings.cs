@@ -10,8 +10,8 @@ namespace HydroExplorer.Helpers
         public string ProjPath { get; set; } = string.Empty;
 
         public Dictionary<string, ProjectSettings> Projects { get; set; } = [];
-        public Dictionary<string, DateTime> HmsProjects { get; set; } = [];
-        public Dictionary<string, ShpPathEntry> ShpPaths { get; set; } = [];
+        public Dictionary<string, ShpPathEntry> ShpPaths { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
 
         public IEnumerable<KeyValuePair<string, ProjectSettings>> RecentProjects =>
             Projects.Reverse().Take(10);
@@ -43,6 +43,7 @@ namespace HydroExplorer.Helpers
         public string PlanNameB { get; set; } = string.Empty;
         public string ProName { get; set; } = string.Empty;
         public string HmsPath { get; set; } = string.Empty;
+        public string SelectedHmsRun { get; set; } = string.Empty;
         public List<string> SelectedReaches { get; set; } = [];
         public DateTime LastOpened { get; set; } = DateTime.MinValue;
         public int OpenOrder { get; set; } = 0;

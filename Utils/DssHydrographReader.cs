@@ -1,4 +1,4 @@
-﻿using Hec.Dss;
+using Hec.Dss;
 using System.IO;
 
 namespace HydroExplorer.Utils
@@ -10,6 +10,10 @@ namespace HydroExplorer.Utils
     public class DssHydrographReader
     {
         public record HydrographRecord(DateTime Time, double Value);
+
+        // ── Single-open convenience wrappers ────────────────────────────────
+        // Kept for callers reading only one series. Prefer ReadByPartC(dss, ...)
+        // below when reading several series from the same file in one operation.
 
         public static List<HydrographRecord> ReadFlow(string dssFilePath, string runName = "")
             => ReadByPartC(dssFilePath, "FLOW", runName);
@@ -30,8 +34,11 @@ namespace HydroExplorer.Utils
             => ReadByPartC(dssFilePath, "ELEVATION", runName);
 
         /// <summary>
-        /// Generic read by Part C (parameter type). Matches run name against Part F,
-        /// handling both plain run names and HEC-HMS "RUN:" prefix.
+        /// Opens its own snapshot + DssReader, serialized via DssGate, for a
+        /// single Part C read. Prefer the (DssReader, partC, runName) overload
+        /// when reading multiple series from the same file — that overload does
+        /// NOT take the gate itself; the caller holds it for the whole batch
+        /// (see TabChartViewModel.LoadDssDataAsync).
         /// </summary>
         public static List<HydrographRecord> ReadByPartC(
             string dssFilePath, string partC, string runName = "")
@@ -39,9 +46,35 @@ namespace HydroExplorer.Utils
             var results = new List<HydrographRecord>();
             if (!File.Exists(dssFilePath)) return results;
 
+            string? tempPath = null;
+            DssGate.Enter();
             try
             {
-                using var dss = new DssReader(dssFilePath);
+                tempPath = DssSnapshot.Create(dssFilePath);
+                using var dss = new DssReader(tempPath);
+                return ReadByPartC(dss, partC, runName);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"DssHydrographReader.ReadByPartC({partC}) error: {ex.Message}");
+                return results;
+            }
+            finally
+            {
+                DssSnapshot.Cleanup(tempPath);
+                DssGate.Exit();
+            }
+        }
+
+        // ── Multi-read entry point — call against an already-open DssReader ────
+        // Does NOT take DssGate itself — caller must hold the gate for the full
+        // batch (open through dispose). See TabChartViewModel.LoadDssDataAsync.
+
+        public static List<HydrographRecord> ReadByPartC(DssReader dss, string partC, string runName = "")
+        {
+            var results = new List<HydrographRecord>();
+            try
+            {
                 var catalog = dss.GetCatalog();
 
                 var paths = catalog
@@ -56,8 +89,6 @@ namespace HydroExplorer.Utils
                 }
 
                 var selected = MatchRun(paths, runName);
-                //System.Diagnostics.Debug.WriteLine($"DssHydrographReader.ReadByPartC({partC}): {selected.FullPath}");
-
                 return ReadTimeSeries(dss, selected.FullPath);
             }
             catch (Exception ex)

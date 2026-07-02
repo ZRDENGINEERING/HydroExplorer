@@ -1,9 +1,14 @@
-﻿using NetTopologySuite.Geometries;
+﻿using NetTopologySuite.Features;
+using NetTopologySuite.Geometries;
+using NetTopologySuite.IO;
+using NetTopologySuite.Operation.Union;
 using ProjNet.CoordinateSystems;
 using ProjNet.CoordinateSystems.Transformations;
+using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Text.RegularExpressions;
+
 
 
 
@@ -133,11 +138,47 @@ namespace HydroExplorer.Helpers
             System.Diagnostics.Debug.WriteLine($"WriteShpPrj: wrote EPSG:{epsgCode} to '{prjFile}'.");
         }
 
+        /// <summary>
+        /// Resolves an EPSG code from a WKT string. Tries, in order:
+        /// 1. An explicit AUTHORITY["EPSG","####"] tag (present in WKT fetched from
+        ///    epsg.io, and in some — but not most — .prj sidecars).
+        /// 2. Well-known name matching for common CRSes that real-world .prj files
+        ///    routinely omit an AUTHORITY tag for. ESRI's WKT flavor (written by
+        ///    ArcGIS and most shapefile-producing tools) frequently emits e.g.
+        ///    GEOGCS["GCS_WGS_1984", DATUM["D_WGS_1984", ...]] for WGS84 with no
+        ///    AUTHORITY clause at all — that's valid, standard WKT, not malformed,
+        ///    and the AUTHORITY-only check previously treated it as unparseable.
+        /// Returns -1 if neither matches.
+        /// </summary>
         public static int TryGetEpsgFromWkt(string wkt)
         {
+            if (string.IsNullOrWhiteSpace(wkt)) return -1;
+
             var match = EpsgAuthorityRegex().Match(wkt);
-            return match.Success && int.TryParse(match.Groups[1].Value, out int epsg) ? epsg : -1;
+            if (match.Success && int.TryParse(match.Groups[1].Value, out int epsg))
+                return epsg;
+
+            // No AUTHORITY tag — fall back to recognizing common datum/CRS names
+            // that ESRI-style .prj files use without an EPSG citation.
+            if (WktContainsAny(wkt, "GCS_WGS_1984", "WGS_1984", "WGS84"))
+                return 4326;
+
+            if (WktContainsAny(wkt, "NAD_1983_StatePlane_Texas_North_FIPS_4201", "Texas_North_FIPS_4201"))
+                return 2275;
+            if (WktContainsAny(wkt, "NAD_1983_StatePlane_Texas_North_Central_FIPS_4202", "Texas_North_Central_FIPS_4202"))
+                return 2276;
+            if (WktContainsAny(wkt, "NAD_1983_StatePlane_Texas_Central_FIPS_4203", "Texas_Central_FIPS_4203"))
+                return 2277;
+            if (WktContainsAny(wkt, "NAD_1983_StatePlane_Texas_South_Central_FIPS_4204", "Texas_South_Central_FIPS_4204"))
+                return 2278;
+            if (WktContainsAny(wkt, "NAD_1983_StatePlane_Texas_South_FIPS_4205", "Texas_South_FIPS_4205"))
+                return 2279;
+
+            return -1;
         }
+
+        private static bool WktContainsAny(string wkt, params string[] needles) =>
+            needles.Any(n => wkt.Contains(n, StringComparison.OrdinalIgnoreCase));
 
         /// <summary>
         /// Texas's 5 State Plane (NAD83, US survey feet) zones, with their documented
@@ -272,5 +313,21 @@ namespace HydroExplorer.Helpers
 
         [GeneratedRegex(@"AUTHORITY\[""EPSG""\s*,\s*""(\d+)""\]", RegexOptions.RightToLeft)]
         private static partial Regex EpsgAuthorityRegex();
-    }
+
+
+
+
+
+
+
+
+
+
+}
+
+
+
+
+
+
 }

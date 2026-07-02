@@ -115,6 +115,9 @@ namespace HydroExplorer.View
                 txtBoxHdfPathB.Text = Path.GetFileName(planName);
             };
 
+            EventBus.ProfileMismatchWarning += msg =>
+                Dispatcher.Invoke(() => txtProfileWarning.Text = msg);
+
             cboxPlanNameA.SelectionChanged += async (s, e) =>
             {
                 if (_isLoading) return;
@@ -363,9 +366,6 @@ namespace HydroExplorer.View
             }
         }
 
-
-        private void TreeViewItem_RequestBringIntoView(object sender, RequestBringIntoViewEventArgs e)
-            => e.Handled = true;
 
         [GeneratedRegex(@"\.p\d+\.hdf$", RegexOptions.IgnoreCase, "en-US")]
         private static partial Regex HdfRegex();

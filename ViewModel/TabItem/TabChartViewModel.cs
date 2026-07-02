@@ -10,6 +10,8 @@ using OxyPlot.Legends;
 using OxyPlot.Series;
 using System.IO;
 using System.Windows.Input;
+using System.Windows;
+
 
 namespace HydroExplorer.ViewModel.TabItem
 {
@@ -36,6 +38,29 @@ namespace HydroExplorer.ViewModel.TabItem
             set { _header = value; OnPropertyChanged(nameof(Header)); }
         }
 
+
+        public Visibility ElevationPlotVisibility =>
+            ElevationDataAvailable ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility ElevationWatermarkVisibility =>
+            ElevationDataAvailable ? Visibility.Collapsed : Visibility.Visible;
+
+        private bool _elevationDataAvailable = true;
+        public bool ElevationDataAvailable
+        {
+            get => _elevationDataAvailable;
+            set
+            {
+                _elevationDataAvailable = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(ElevationPlotVisibility));
+                OnPropertyChanged(nameof(ElevationWatermarkVisibility));
+            }
+        }
+
+
+
+
+
         private PlotModel? _elevationPlot;
         private PlotModel? _hydrographPlot;
         private PlotModel? _hyetographPlot;
@@ -51,6 +76,10 @@ namespace HydroExplorer.ViewModel.TabItem
                 { old?.InvalidatePlot(false); OnPropertyChanged(); });
             }
         }
+
+
+
+
 
         public PlotModel? HydrographPlot
         {
@@ -76,6 +105,9 @@ namespace HydroExplorer.ViewModel.TabItem
 
         public TabChartViewModel()
         {
+            System.Diagnostics.Debug.WriteLine($"TabChartViewModel CONSTRUCTED — instance {GetHashCode()}");
+
+
             ElevationPlot = BuildElevationPlot();
             HydrographPlot = BuildHydrographPlot();
             HyetographPlot = BuildHyetographPlot(null);
@@ -85,7 +117,11 @@ namespace HydroExplorer.ViewModel.TabItem
             _ = LoadFromSettingsAsync();
 
             EventBus.DssRunSelected += (dssPath, runName) =>
+            {
+                System.Diagnostics.Debug.WriteLine($"DssRunSelected received by instance {GetHashCode()}");
                 LoadDssDataAsync(dssPath, runName);
+            };
+
         }
 
         // ── Load ─────────────────────────────────────────────────────────────
@@ -130,6 +166,8 @@ namespace HydroExplorer.ViewModel.TabItem
             }
         }
 
+
+
         private async void LoadDssDataAsync(string dssFile, string runName)
         {
             System.Diagnostics.Debug.WriteLine($"LoadDssDataAsync: '{dssFile}' run='{runName}'");
@@ -139,13 +177,39 @@ namespace HydroExplorer.ViewModel.TabItem
 
                 var sw = System.Diagnostics.Stopwatch.StartNew();
 
-                var precipRecords = await Task.Run(() => DssHyetographReader.ReadPrecipInc(dssFile, runName));
-                var flowRecords = await Task.Run(() => DssHydrographReader.ReadFlow(dssFile, runName));
-                var flowBaseRecords = await Task.Run(() => DssHydrographReader.ReadFlowBase(dssFile, runName));
-                var flowDirectRecords = await Task.Run(() => DssHydrographReader.ReadFlowDirect(dssFile, runName));
-                var flowUGRecords = await Task.Run(() => DssHydrographReader.ReadFlowUnitGraph(dssFile, runName));
-                var flowCumRecords = await Task.Run(() => DssHydrographReader.ReadFlowCumulative(dssFile, runName));
-                var elevRecords = await Task.Run(() => DssHydrographReader.ReadElevation(dssFile, runName));
+                // One DssReader for the whole batch, held under DssGate for the
+                // entire open-through-dispose lifetime. See DssGate for why —
+                // heclib's native open-file table is a small, fixed-size, shared
+                // per-process resource; even one handle per call site can exceed it
+                // if multiple call sites fire concurrently (observed: HydrologyPaneView
+                // republishing DssRunSelected multiple times per project switch).
+                var (precipRecords, flowRecords, flowBaseRecords, flowDirectRecords,
+                     flowUGRecords, flowCumRecords, elevRecords) = await Task.Run(() =>
+                     {
+                         string? tempPath = null;
+                         Utils.DssGate.Enter();
+                         try
+                         {
+                             tempPath = Utils.DssSnapshot.Create(dssFile);
+                             using var dss = new Hec.Dss.DssReader(tempPath);
+
+                             var precip = DssHyetographReader.ReadPrecipInc(dss, runName);
+                             var flow = DssHydrographReader.ReadByPartC(dss, "FLOW", runName);
+                             var flowBase = DssHydrographReader.ReadByPartC(dss, "FLOW-BASE", runName);
+                             var flowDirect = DssHydrographReader.ReadByPartC(dss, "FLOW-DIRECT", runName);
+                             var flowUG = DssHydrographReader.ReadByPartC(dss, "FLOW-UNIT GRAPH", runName);
+                             var flowCum = DssHydrographReader.ReadByPartC(dss, "FLOW-CUMULATIVE", runName);
+                             var elev = DssHydrographReader.ReadByPartC(dss, "ELEVATION", runName);
+                             var storage = DssHydrographReader.ReadByPartC(dss, "STORAGE", runName);
+
+                             return (precip, flow, flowBase, flowDirect, flowUG, flowCum, elev);
+                         }
+                         finally
+                         {
+                             Utils.DssSnapshot.Cleanup(tempPath);
+                             Utils.DssGate.Exit();
+                         }
+                     });
 
                 sw.Stop();
                 System.Diagnostics.Debug.WriteLine(
@@ -178,9 +242,21 @@ namespace HydroExplorer.ViewModel.TabItem
                 if (elevRecords.Count > 0)
                 {
                     var plot = BuildElevationPlot(elevRecords);
-                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(
-                        () => ElevationPlot = plot);
+                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        ElevationPlot = plot;
+                        ElevationDataAvailable = true;
+                    });
                 }
+                else
+                {
+                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        ElevationPlot = BuildElevationPlot(null);
+                        ElevationDataAvailable = false;
+                    });
+                }
+
             }
             catch (Exception ex)
             {
@@ -342,8 +418,8 @@ namespace HydroExplorer.ViewModel.TabItem
             }
 
             AddSeries(flow, "FLOW", OxyColors.SteelBlue);
-            AddSeries(flowBase, "FLOW-BASE", OxyColors.DarkGreen, LineStyle.Dash);
-            AddSeries(flowDirect, "FLOW-DIRECT", OxyColors.DarkRed, LineStyle.Dash);
+            //AddSeries(flowBase, "FLOW-BASE", OxyColors.DarkGreen, LineStyle.Dash);
+            //AddSeries(flowDirect, "FLOW-DIRECT", OxyColors.DarkRed, LineStyle.Dash);
             AddSeries(flowUG, "FLOW-UNIT GRAPH", OxyColors.Orange, LineStyle.Dot);
 
             if (maxHours > 0)
@@ -379,8 +455,8 @@ namespace HydroExplorer.ViewModel.TabItem
             xAxis.Minimum = 0;
             xAxis.MajorStep = 6;
 
-            var yAxis = MakeAxis(AxisPosition.Left, "ELEVATION (FT NGVD29)");
-            yAxis.Minimum = 0;
+            var yAxis = MakeAxis(AxisPosition.Left, "ELEVATION");
+            //yAxis.Minimum = 0;
 
             model.Axes.Add(xAxis);
             model.Axes.Add(yAxis);
@@ -388,7 +464,7 @@ namespace HydroExplorer.ViewModel.TabItem
             var elevSeries = new LineSeries
             {
                 Title = "ELEVATION",
-                Color = OxyColors.SteelBlue,
+                Color = OxyColors.DarkGreen,
                 StrokeThickness = 2,
             };
 

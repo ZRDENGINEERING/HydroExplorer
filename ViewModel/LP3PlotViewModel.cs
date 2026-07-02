@@ -7,6 +7,7 @@ using OxyPlot.Series;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
+
 namespace HydroExplorer.ViewModel
 {
     public class LP3Record
@@ -134,10 +135,13 @@ namespace HydroExplorer.ViewModel
             model.Axes.Add(xAxis);
             model.Axes.Add(yAxis);
 
-            var lineA = MakeLine(nameA, OxyColors.GreenYellow, 2, LineStyle.Solid);
+            var lineA = MakeLine(nameA, OxyColors.GreenYellow, 1, LineStyle.Solid);
+
             var ciUpperA = MakeLine($"95% CI ({nameA})", OxyColor.FromAColor(120, OxyColors.GreenYellow), 1, LineStyle.Dash);
             var ciLowerA = MakeLine(string.Empty, OxyColor.FromAColor(120, OxyColors.GreenYellow), 1, LineStyle.Dash);
-            var lineB = MakeLine(nameB, OxyColors.SteelBlue, 2, LineStyle.Solid);
+
+            var lineB = MakeLine(nameB, OxyColors.SteelBlue, 1, LineStyle.Solid);
+
             var ciUpperB = MakeLine($"95% CI ({nameB})", OxyColor.FromAColor(120, OxyColors.SteelBlue), 1, LineStyle.Dash);
             var ciLowerB = MakeLine(string.Empty, OxyColor.FromAColor(120, OxyColors.SteelBlue), 1, LineStyle.Dash);
 
@@ -154,6 +158,7 @@ namespace HydroExplorer.ViewModel
                 ciUpperB.Points.Add(new DataPoint(r.ReturnInterval, r.UpperCI));
                 ciLowerB.Points.Add(new DataPoint(r.ReturnInterval, r.LowerCI));
             }
+
 
             model.Series.Add(lineA);
             model.Series.Add(ciUpperA);

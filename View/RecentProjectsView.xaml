@@ -10,7 +10,7 @@
     <Grid Background="{StaticResource BackgroundBrushDark}">
 
         <!-- Recent Projects -->
-        <GroupBox Header="RECENT PROJECTS"
+        <GroupBox Header="PROJECT SELECTOR"
                   FontSize="12" FontWeight="Bold"
                   Background="{StaticResource BackgroundBrushHeader}"
                   BorderBrush="{StaticResource BorderBrush}"

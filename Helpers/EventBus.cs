@@ -93,5 +93,9 @@ namespace HydroExplorer.Helpers
         //public static event Action<GageResult>? GageDataReady;
         //public static void PublishGageDataReady(GageResult result) => GageDataReady?.Invoke(result);
 
+
+        public static event Action<string>? ProfileMismatchWarning;
+        public static void PublishProfileMismatchWarning(string message) => ProfileMismatchWarning?.Invoke(message);
+
     }
 }

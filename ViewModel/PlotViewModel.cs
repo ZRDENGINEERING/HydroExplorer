@@ -14,6 +14,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
+using System.Windows;
 
 
 
@@ -131,6 +132,7 @@ namespace HydroExplorer.ViewModel
         public PlotViewModel()
         {
             PlotModel = new PlotModel();
+            PlotModelChartsTab = new PlotModel();
             PlotModelB = new PlotModel();
             Vm = new PlotModel();
 
@@ -167,6 +169,58 @@ namespace HydroExplorer.ViewModel
 
 
 
+        private readonly SemaphoreSlim _reloadLock = new(1, 1);
+
+        /// <summary>
+        /// Forces a fresh HDF re-read even if data was already loaded — used
+        /// when the underlying HDF file changes on disk (e.g. HdfFileMonitor
+        /// detects HEC-RAS re-ran the plan) and the project path itself hasn't
+        /// changed, so EventBus.ProjPathChanged won't fire on its own.
+        /// Reuses the same cancellation pattern as the ProjPathChanged handler.
+        ///
+        /// Serialized via _reloadLock — hdfPathA and hdfPathB are watched by
+        /// separate FileSystemWatchers with independent debounce timers, so a
+        /// batch HEC-RAS run can fire two FileChanged events seconds apart.
+        /// Without this lock, two overlapping calls can race on constructing
+        /// and assigning PlotModel, which throws "This PlotModel is already
+        /// in use by some other PlotView control." A second call arriving
+        /// while the first is still running simply waits, then runs once the
+        /// first is done — cheap enough for a 3-second-debounced event.
+        /// </summary>
+        public async Task ReloadDataAsync()
+        {
+            await _reloadLock.WaitAsync();
+            try
+            {
+                _loadCts?.Cancel();
+
+                var oldCts = _loadCts;
+                _loadCts = new CancellationTokenSource();
+                var token = _loadCts.Token;
+
+                oldCts?.Dispose();
+
+                _dataLoaded = false;
+
+                try
+                {
+                    await LoadDataAsync(token: token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    System.Diagnostics.Debug.WriteLine("PlotViewModel ReloadDataAsync cancelled.");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"PlotViewModel ReloadDataAsync error: {ex.Message}");
+                }
+            }
+            finally
+            {
+                _reloadLock.Release();
+            }
+        }
+
         public async Task LoadDataAsync(string projPathOverride = "", CancellationToken token = default)
         {
             if (_dataLoaded) return;
@@ -198,6 +252,8 @@ namespace HydroExplorer.ViewModel
                 if (!settings.Projects.TryGetValue(_projPath, out var project))
                 {
                     System.Diagnostics.Debug.WriteLine($"LoadDataAsync: No saved settings for '{_projPath}'.");
+                    WselData = [];
+                    Application.Current.Dispatcher.Invoke(() => LoadFromWSELTable(null));
                     _dataLoaded = false;
                     return;
                 }
@@ -227,7 +283,7 @@ namespace HydroExplorer.ViewModel
 
                 if (!hasA && !hasB)
                 {
-                    System.Diagnostics.Debug.WriteLine("LoadDataAsync: No valid HDF files found. Leaving plot blank.");
+                    //System.Diagnostics.Debug.WriteLine("LoadDataAsync: No valid HDF files found. Leaving plot blank.");
                     WselData = [];
                     _dataLoaded = false;
                     return;
@@ -258,8 +314,14 @@ namespace HydroExplorer.ViewModel
 
                 token.ThrowIfCancellationRequested();
 
+                string? profileWarning = null;
                 WselData = await Task.Run(() =>
-                    HecRasHdfReader.ReadWSELTableOxy(effectiveA, effectiveB, proName), token);
+                {
+                    var result = HecRasHdfReader.ReadWSELTableOxy(effectiveA, effectiveB, proName, out profileWarning);
+                    return result;
+                }, token);
+
+                EventBus.PublishProfileMismatchWarning(profileWarning ?? string.Empty);
 
 
                 token.ThrowIfCancellationRequested();
@@ -342,8 +404,20 @@ namespace HydroExplorer.ViewModel
                         : Enumerable.Empty<WSELTableOxy>())
                     .ToList();
 
-                PlotModel = CreatePlot(selectedData, _plotMode);
-                PlotModelChartsTab = CreatePlot(selectedData, _plotMode);  // separate instance, same data
+                // Mutate the existing PlotModel instances in place rather than
+                // replacing the object reference. Reassigning PlotModel to a new
+                // instance forces every bound PlotView to detach/reattach, which
+                // is exactly the operation that throws "This PlotModel is
+                // already in use by some other PlotView control." if a second
+                // PlotView (anywhere, however it's wired) is still transitioning
+                // off the old instance. Mutating in place means no PlotView ever
+                // needs to re-attach, so that whole failure mode is impossible.
+                PopulatePlot(PlotModel, selectedData, _plotMode);
+                PlotModel.InvalidatePlot(true);
+
+                PopulatePlot(PlotModelChartsTab, selectedData, _plotMode);
+                PlotModelChartsTab.InvalidatePlot(true);
+
                 await SaveSelectedReachAsync();
             }
             catch (OperationCanceledException) { }
@@ -384,20 +458,23 @@ namespace HydroExplorer.ViewModel
 
 
 
-
-        private static PlotModel CreatePlot(List<WSELTableOxy> data, PlotMode mode = PlotMode.Both)
+        private static void PopulatePlot(PlotModel model, List<WSELTableOxy> data, PlotMode mode = PlotMode.Both)
         {
-            var model = new PlotModel
-            {
-                TitlePadding = 0,
-                TitleFontSize = 12,
-                DefaultFontSize = 10,
-                SubtitleFontSize = 10,
-                TextColor = OxyColorPalette.Colors["TextAxis"],
-                PlotMargins = new OxyThickness(38, 5, 5, 40),
-                PlotAreaBorderColor = OxyColorPalette.Colors["DimGray"],
-                PlotAreaBorderThickness = new OxyThickness(1),
-            };
+            // Clear and rebuild in place — never replace the PlotModel object
+            // itself. See RefreshPlot for why.
+            model.Series.Clear();
+            model.Axes.Clear();
+            model.Annotations.Clear();
+            model.Legends.Clear();
+
+            model.TitlePadding = 0;
+            model.TitleFontSize = 12;
+            model.DefaultFontSize = 10;
+            model.SubtitleFontSize = 10;
+            model.TextColor = OxyColorPalette.Colors["TextAxis"];
+            model.PlotMargins = new OxyThickness(38, 5, 5, 40);
+            model.PlotAreaBorderColor = OxyColorPalette.Colors["DimGray"];
+            model.PlotAreaBorderThickness = new OxyThickness(1);
 
             static LinearAxis MakeAxis(AxisPosition pos, bool reversed = false) => new()
             {
@@ -432,6 +509,13 @@ namespace HydroExplorer.ViewModel
                 StrokeThickness = 1,
             };
 
+            var areaMinChEl = new AreaSeries
+            {
+                Title = null,
+                Color = OxyColors.Transparent,
+                Fill = OxyColor.FromAColor(50, OxyColors.SaddleBrown),
+            };
+
             var seriesA = new LineSeries
             {
                 Title = mode == PlotMode.Both ? "Plan A" : "Plan",
@@ -456,6 +540,8 @@ namespace HydroExplorer.ViewModel
                 MarkerFill = OxyColorPalette.Colors["Crimson"]
             };
 
+            double minChElFloor = double.MaxValue;
+
             foreach (var row in data)
             {
                 var cleaned = row.RiverSta?.Replace(",", "").Replace("*", "").Trim();
@@ -470,7 +556,8 @@ namespace HydroExplorer.ViewModel
                 }
 
                 seriesMinChEl.Points.Add(new DataPoint(sta, row.MinChEl));
-
+                areaMinChEl.Points.Add(new DataPoint(sta, row.MinChEl));
+                if (row.MinChEl < minChElFloor) minChElFloor = row.MinChEl;
 
                 // Only add the series that have data
                 if (mode != PlotMode.BOnly)
@@ -506,6 +593,9 @@ namespace HydroExplorer.ViewModel
                 }
             }
 
+            areaMinChEl.ConstantY2 = minChElFloor == double.MaxValue ? 0 : minChElFloor - 5;
+
+            model.Series.Add(areaMinChEl);
             model.Series.Add(seriesMinChEl);
 
             if (mode != PlotMode.BOnly)
@@ -522,8 +612,6 @@ namespace HydroExplorer.ViewModel
                 LegendPlacement = LegendPlacement.Inside,
                 LegendFontSize = 10
             });
-
-            return model;
         }
 
 

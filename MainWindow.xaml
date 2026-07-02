@@ -14,7 +14,7 @@
         ResizeMode="CanResizeWithGrip"
         BorderBrush="{StaticResource BorderBrush}" BorderThickness="0.8" 
         Background="{StaticResource DividerBrush}"
-        Top="30" Left="-2000">
+        Top="30" Left="-2300">
 
     
     <Grid>
@@ -67,7 +67,8 @@
                               Margin="0,0,0,3" Foreground="{StaticResource ForegroundBrush}"/>
 
         <!-- Left Pane: Tabbed -->
-        <TabControl Grid.Column="0" Grid.Row="3" Grid.RowSpan="5"
+        <TabControl x:Name="LeftTabControl"
+            Grid.Column="0" Grid.Row="3" Grid.RowSpan="5"
             Margin="3,0,0,3"
             TabStripPlacement="Left"
             Style="{StaticResource NoOffsetTabControl}">

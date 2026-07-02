@@ -1,4 +1,4 @@
-﻿using Hec.Dss;
+using Hec.Dss;
 using System.IO;
 
 namespace HydroExplorer.Utils
@@ -11,14 +11,48 @@ namespace HydroExplorer.Utils
     {
         public record HyetographRecord(DateTime Time, double Value);
 
+        /// <summary>
+        /// Opens its own snapshot + DssReader, serialized via DssGate. Prefer
+        /// the (DssReader, runName) overload when reading multiple series from
+        /// the same file — that overload does NOT take the gate itself; caller
+        /// holds it for the whole batch.
+        /// </summary>
         public static List<HyetographRecord> ReadPrecipInc(
             string dssFilePath, string preferredRun = "")
         {
             var results = new List<HyetographRecord>();
             if (!File.Exists(dssFilePath)) return results;
+
+            string? tempPath = null;
+            DssGate.Enter();
             try
             {
-                using var dss = new DssReader(dssFilePath);
+                tempPath = DssSnapshot.Create(dssFilePath);
+                using var dss = new DssReader(tempPath);
+                return ReadPrecipInc(dss, preferredRun);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"DssHyetographReader.ReadPrecipInc error: {ex.Message}");
+                return results;
+            }
+            finally
+            {
+                DssSnapshot.Cleanup(tempPath);
+                DssGate.Exit();
+            }
+        }
+
+        /// <summary>
+        /// Reads PRECIP-INC against an already-open DssReader. Does NOT take
+        /// DssGate — caller must hold it for the batch.
+        /// </summary>
+        public static List<HyetographRecord> ReadPrecipInc(DssReader dss, string preferredRun = "")
+        {
+            var results = new List<HyetographRecord>();
+            try
+            {
                 var catalog = dss.GetCatalog();
 
                 var precipPaths = catalog
@@ -51,27 +85,50 @@ namespace HydroExplorer.Utils
         }
 
         /// <summary>
-        /// Returns all DSS pathnames in the file — used to enumerate run names.
+        /// Returns all DSS pathnames — opens its own snapshot + DssReader,
+        /// serialized via DssGate. Prefer the (DssReader) overload if a reader
+        /// is already open for this file.
         /// </summary>
         public static List<string> GetAllPaths(string dssFilePath)
         {
             if (!File.Exists(dssFilePath)) return [];
+
+            string? tempPath = null;
+            DssGate.Enter();
             try
             {
-                using var dss = new DssReader(dssFilePath);
+                tempPath = DssSnapshot.Create(dssFilePath);
+                using var dss = new DssReader(tempPath);
+                return GetAllPaths(dss);
+            }
+            catch (Exception ex)
+            {
+                if (ex is IOException)
+                    System.Diagnostics.Debug.WriteLine(
+                        "DSS file may be locked by HEC-HMS");
+                return [];
+            }
+            finally
+            {
+                DssSnapshot.Cleanup(tempPath);
+                DssGate.Exit();
+            }
+        }
+
+        /// <summary>
+        /// Returns all DSS pathnames against an already-open DssReader. Does
+        /// NOT take DssGate — caller must hold it for the batch.
+        /// </summary>
+        public static List<string> GetAllPaths(DssReader dss)
+        {
+            try
+            {
                 var catalog = dss.GetCatalog().ToList();
-                //System.Diagnostics.Debug.WriteLine(
-                //    $"GetAllPaths: count={catalog.Count} file={dssFilePath}");
-                //foreach (var p in catalog.Take(5))
-                    //System.Diagnostics.Debug.WriteLine($"  SAMPLE: '{p.FullPath}'");
                 return catalog.Select(p => p.FullPath).ToList();
             }
             catch (Exception ex)
             {
-                //System.Diagnostics.Debug.WriteLine($"GetAllPaths error: {ex.Message}");
-                if (ex is IOException)
-                    System.Diagnostics.Debug.WriteLine(
-                        "DSS file may be locked by HEC-HMS");
+                System.Diagnostics.Debug.WriteLine($"GetAllPaths error: {ex.Message}");
                 return [];
             }
         }

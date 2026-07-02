@@ -51,16 +51,16 @@ namespace HydroExplorer.Helpers
             if (sourceEpsgOverride.HasValue)
             {
                 srcWkt = GISUtil.FetchWkt(sourceEpsgOverride.Value);
-                System.Diagnostics.Debug.WriteLine(
-                    $"ExportXSToShp: using explicit source override EPSG={sourceEpsgOverride.Value}");
+                //System.Diagnostics.Debug.WriteLine(
+                    //$"ExportXSToShp: using explicit source override EPSG={sourceEpsgOverride.Value}");
             }
             else
             {
                 srcWkt = await GISUtil.FetchHECWkt(projPath);
                 if (string.IsNullOrEmpty(srcWkt))
                 {
-                    System.Diagnostics.Debug.WriteLine(
-                        "ExportXSToShp: no .prj folder found for HEC-RAS project and no override supplied.");
+                    //System.Diagnostics.Debug.WriteLine(
+                    //    "ExportXSToShp: no .prj folder found for HEC-RAS project and no override supplied.");
                     return false;
                 }
             }
@@ -109,7 +109,7 @@ namespace HydroExplorer.Helpers
 
             GISUtil.WriteShpPrj(outputShpPath, GISUtil.TryGetEpsgFromWkt(tgtWkt));
 
-            System.Diagnostics.Debug.WriteLine($"Exported {features.Count} cross sections → {outputShpPath}");
+            //System.Diagnostics.Debug.WriteLine($"Exported {features.Count} cross sections → {outputShpPath}");
             return true;
         }
 

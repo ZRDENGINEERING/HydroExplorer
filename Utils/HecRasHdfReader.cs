@@ -16,30 +16,23 @@ namespace HydroExplorer.Utils
         private const string BasePathAV =
             "/Results/Steady/Output/Output Blocks/Base Output/Steady Profiles/Cross Sections/Additional Variables/";
 
-        public static List<WSELTableOxy> ReadWSELTableOxy(string? hdfPathA, string? hdfPathB, string proName)
+        public static List<WSELTableOxy> ReadWSELTableOxy(string? hdfPathA, string? hdfPathB, string proName, out string? warning)
         {
+            warning = null;
             bool hasA = !string.IsNullOrEmpty(hdfPathA) && File.Exists(hdfPathA);
             bool hasB = !string.IsNullOrEmpty(hdfPathB) && File.Exists(hdfPathB);
 
-            if (!hasA && !hasB) return [];
-
-            // Bail if 2D model — no steady results to read
-            string checkPath = hasA ? hdfPathA! : hdfPathB!;
-            var (has1D, has2D) = GetModelDimensions(checkPath);
-            if (has2D && !has1D)
-            {
-                System.Diagnostics.Debug.WriteLine("ReadWSELTableOxy: 2D model detected, skipping.");
-                return [];
-            }
+            if (!hasA || !hasB) return [];
 
             if (!hasB && hasA) return ReadWSELTableOxySingle(hdfPathA!, proName) ?? [];
             if (!hasA && hasB) return ReadWSELTableOxySingle(hdfPathB!, proName) ?? [];
 
-            // Guard: both paths must be valid before opening either file
-            if (!hasA || !hasB) return [];
-
             using var fileA = OpenHdf(hdfPathA!);
             using var fileB = OpenHdf(hdfPathB!);
+
+            var profileA = ReadSteadyProfileNames(fileA);
+            var profileB = ReadSteadyProfileNames(fileB);
+
 
             if (!HasSteadyResults(fileA) || !HasSteadyResults(fileB))
             {
@@ -58,8 +51,18 @@ namespace HydroExplorer.Utils
                 return [];
             }
 
-            var profileA = ReadSteadyProfileNames(fileA);
-            var profileB = ReadSteadyProfileNames(fileB);
+
+            int proNA = profileA.IndexOf(proName);
+            int proNB = profileB.IndexOf(proName);
+
+            if (proNA == -1 || proNB == -1)
+            {
+                warning = $"Plan comparison unavailable — profile '{proName}' not found in " +
+                          $"{(proNA == -1 ? "Plan A" : "Plan B")}.";
+                System.Diagnostics.Debug.WriteLine(
+                    $"ReadWSELTableOxy: {warning} A has [{string.Join(", ", profileA)}], B has [{string.Join(", ", profileB)}].");
+                return [];
+            }
 
             // Guard: profile lists must have content
             if (profileA.Count == 0 || profileB.Count == 0)
@@ -68,11 +71,13 @@ namespace HydroExplorer.Utils
                 return [];
             }
 
-            int proNA = profileA.IndexOf(proName);
-            if (proNA == -1) proNA = 0;
-
-            int proNB = profileB.IndexOf(proName);
-            if (proNB == -1) proNB = 0;
+            if (proNA == -1 || proNB == -1)
+            {
+                //System.Diagnostics.Debug.WriteLine(
+                //    $"ReadWSELTableOxy: profile '{proName}' not found in one or both plans — " +
+                //    $"A has [{string.Join(", ", profileA)}], B has [{string.Join(", ", profileB)}]. Skipping.");
+                return [];
+            }
 
             var qTotalA = fileA.Dataset(BasePathAV + "Flow Total").Read<float[,]>();
             var wsElevA = fileA.Dataset(BasePath + "Water Surface").Read<float[,]>();
@@ -104,7 +109,13 @@ namespace HydroExplorer.Utils
 
             var staBIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             for (int j = 0; j < staB.Length && j < colsB; j++)
-                staBIndex.TryAdd(CompositeKey(riverB[j], reachB[j], staB[j]), j);
+                //staBIndex.TryAdd(CompositeKey(riverB[j], reachB[j], staB[j]), j);
+
+
+            if (!staBIndex.TryAdd(CompositeKey(riverB[j], reachB[j], staB[j]), j))
+                System.Diagnostics.Debug.WriteLine(
+                    $"Duplicate key in Plan B: {CompositeKey(riverB[j], reachB[j], staB[j])} at j={j} (first kept)");
+
 
             var results = new List<WSELTableOxy>();
 
@@ -386,31 +397,27 @@ namespace HydroExplorer.Utils
 
         private static float[,] CalcCrossSectionMinElev(float[,] wsEls, float[,] maxDepths)
         {
-            int proFileID = 1;
-
-            var minValue = wsEls[0, proFileID] - maxDepths[0, proFileID];
-
             int rows = wsEls.GetLength(0);
             int cols = wsEls.GetLength(1);
-
             var minValues = new float[rows, cols];
-            for (int i = 0; i < rows; i++)
+
+            for (int j = 0; j < cols; j++)
             {
-                for (int j = 0; j < cols; j++)
+                float stationMin = float.MaxValue;
+                for (int i = 0; i < rows; i++)
                 {
                     float minCh = wsEls[i, j] - maxDepths[i, j];
-                    if (minCh < minValue)
-                    {
-                        minValues[i, j] = Convert.ToSingle(Math.Round(minCh, 2));
-                    }
-                    else
-                    {
-                        minValues[i, j] = Convert.ToSingle(Math.Round(minValue, 2));
-                    }
+                    if (minCh < stationMin) stationMin = minCh;
                 }
+
+                float rounded = Convert.ToSingle(Math.Round(stationMin, 2));
+                for (int i = 0; i < rows; i++)
+                    minValues[i, j] = rounded;
             }
+
             return minValues;
         }
+
 
         private static float[,] CalcFroude(NativeFile file, float[,] velCh)
         {
