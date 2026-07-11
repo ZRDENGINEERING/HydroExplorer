@@ -88,6 +88,38 @@ namespace HydroExplorer.ViewModel.TabItem
         }
 
 
+        // ── Regression Input (Omega EM) ─────────────────────────────────────
+        private string _omegaArea = string.Empty;
+        public string OmegaArea
+        {
+            get => _omegaArea;
+            set { _omegaArea = value; OnPropertyChanged(); }
+        }
+
+        private string _omegaSlope = string.Empty;
+        public string OmegaSlope
+        {
+            get => _omegaSlope;
+            set { _omegaSlope = value; OnPropertyChanged(); }
+        }
+
+        private string _omegaPrecip = string.Empty;
+        public string OmegaPrecip
+        {
+            get => _omegaPrecip;
+            set { _omegaPrecip = value; OnPropertyChanged(); }
+        }
+
+        private string _omegaValue = string.Empty;
+        public string OmegaValue
+        {
+            get => _omegaValue;
+            set { _omegaValue = value; OnPropertyChanged(); }
+        }
+
+        public ICommand ComputeOmegaCommand { get; }
+
+
         private string _header = "Home";
         public override string Header
         {
@@ -195,6 +227,7 @@ namespace HydroExplorer.ViewModel.TabItem
             };
 
             ClearAllRecentCommand = new RelayCommand(async () => await ClearRecentProjectsAsync());
+            ComputeOmegaCommand = new RelayCommand(async () => await ComputeOmegaAsync());
         }
 
 
@@ -213,8 +246,6 @@ namespace HydroExplorer.ViewModel.TabItem
                 dirty = true;
             }
 
-     
-
             if (dirty)
                 await SettingsRepo.SaveSettings(settings);
 
@@ -224,7 +255,7 @@ namespace HydroExplorer.ViewModel.TabItem
 
         private CancellationTokenSource? _openProjectCts;
 
-        private async void OpenRecentProject(RecentProjectEntry project)
+        private async void OpenRecentProject(RecentProjectEntry entry)
         {
             _openProjectCts?.Cancel();
             _openProjectCts = new CancellationTokenSource();
@@ -235,110 +266,81 @@ namespace HydroExplorer.ViewModel.TabItem
                 await Task.Delay(200, token);
                 if (token.IsCancellationRequested) return;
 
-
-                if (project.ProjectType == "HMS")
+                var settings = await SettingsRepo!.GetSettings();
+                if (!settings.Projects.TryGetValue(entry.Key, out var proj))
                 {
-                    await OpenRecentHmsProject(project);
+                    // Entry no longer exists — refresh the list to drop it.
+                    await LoadRecentProjectsAsync();
                     return;
                 }
 
-                string? projFile = !string.IsNullOrEmpty(project.ProjPath) && File.Exists(project.ProjPath)
-                    ? project.ProjPath
-                    : null;
+                bool isRas = entry.Key.EndsWith(".prj", StringComparison.OrdinalIgnoreCase)
+                          || entry.Key.EndsWith(".rasmap", StringComparison.OrdinalIgnoreCase);
 
-                if (projFile == null)
+                if (!isRas)
                 {
-                    var s0 = await SettingsRepo!.GetSettings();
-                    projFile = s0.Projects.Keys
-                        .Where(k =>
-                            (Path.GetDirectoryName(k) ?? string.Empty)
-                            .StartsWith(project.FilePath, StringComparison.OrdinalIgnoreCase)
-                            && (k.EndsWith(".rasmap", StringComparison.OrdinalIgnoreCase)
-                                || k.EndsWith(".prj", StringComparison.OrdinalIgnoreCase)))
-                        .OrderByDescending(k => k.EndsWith(".rasmap", StringComparison.OrdinalIgnoreCase) ? 1 : 0)
-                        .ThenByDescending(k => s0.Projects[k].LastOpened)
-                        .FirstOrDefault();
+                    await OpenRecentHmsProject(entry.Key, proj);
+                    return;
                 }
 
-                if (projFile == null || !File.Exists(projFile)) return;
+                if (!File.Exists(entry.Key))
+                {
+                    await LoadRecentProjectsAsync();
+                    return;
+                }
 
-                var settings = await SettingsRepo!.GetSettings();
-                if (settings.Projects.TryGetValue(projFile, out var projSettings))
-                    projSettings.LastOpened = DateTime.Now;
-
-                settings.LastProjPath = projFile;
-                settings.ProjPath = projFile;
+                proj.LastOpened = DateTime.Now;
+                settings.LastProjPath = entry.Key;
+                settings.ProjPath = entry.Key;
+                settings.ProjName = proj.ProjName;
                 await SettingsRepo.SaveSettings(settings);
 
-                EventBus.PublishProjPath(projFile);
-                EventBus.PublishProjPathChanged(projFile);
-                EventBus.PublishRecentProjectSelected(projFile);
+                EventBus.PublishProjPath(entry.Key);
+                EventBus.PublishProjPathChanged(entry.Key);
+                EventBus.PublishRecentProjectSelected(entry.Key);
 
-                await LoadRecentProjectsAsync(projFile);
+                await LoadRecentProjectsAsync(entry.Key);
 
-                // Find HMS path once — from ProjectSettings.HmsPath or matching ProjRoot in Projects
-                string hmsPath = projSettings?.HmsPath ?? string.Empty;
-                if (string.IsNullOrEmpty(hmsPath) || !File.Exists(hmsPath))
-                {
-                    hmsPath = settings.Projects
-                        .Where(kv => !string.IsNullOrEmpty(kv.Value.ProjRoot)
-                            && kv.Value.ProjRoot.Equals(projSettings?.ProjRoot, StringComparison.OrdinalIgnoreCase)
-                            && !string.IsNullOrEmpty(kv.Value.HmsPath)
-                            && File.Exists(kv.Value.HmsPath))
-                        .Select(kv => kv.Value.HmsPath)
-                        .FirstOrDefault() ?? string.Empty;
-                }
-
-                if (!string.IsNullOrEmpty(hmsPath))
-                    EventBus.PublishRunPath(hmsPath);
+                // HmsPath is already stored directly on this project's own
+                // ProjectSettings (set by SaveHmsPathAsync when the .hms was
+                // originally selected for this ProjRoot) — no separate lookup
+                // needed the way earlier versions searched other Projects entries.
+                if (!string.IsNullOrEmpty(proj.HmsPath) && File.Exists(proj.HmsPath))
+                    EventBus.PublishRunPath(proj.HmsPath);
 
                 await LoadRecentProjectsAsync();
-
             }
             catch (OperationCanceledException) { }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[OpenRecentProject] ERROR: {ex.Message}");
             }
-
         }
 
-
-
-        private async Task OpenRecentHmsProject(RecentProjectEntry project)
+        private async Task OpenRecentHmsProject(string key, ProjectSettings proj)
         {
-            string runPath = project.HmsRunFile ?? project.FilePath;
-
-            if (!File.Exists(runPath))
+            if (string.IsNullOrEmpty(proj.HmsPath) || !File.Exists(proj.HmsPath))
             {
-                var settings = await SettingsRepo!.GetSettings();
-                
-                await SettingsRepo.SaveSettings(settings);
                 await LoadRecentProjectsAsync();
                 return;
             }
 
-            var s = await SettingsRepo!.GetSettings();
+            var settings = await SettingsRepo!.GetSettings();
+            proj.LastOpened = DateTime.Now;
+            settings.LastProjPath = key;
+            settings.ProjPath = key;
+            settings.ProjName = proj.ProjName;
+            await SettingsRepo.SaveSettings(settings);
 
-            string activeKey = s.Projects
-                .Where(kv => !string.IsNullOrEmpty(kv.Value.HmsPath)
-                    && kv.Value.HmsPath.Equals(runPath, StringComparison.OrdinalIgnoreCase))
-                .Select(kv => kv.Key)
-                .FirstOrDefault() ?? runPath;
+            EventBus.PublishRunPath(proj.HmsPath);
+            EventBus.PublishProjPathChanged(key);
+            EventBus.PublishRecentProjectSelected(key);
 
-            if (s.Projects.TryGetValue(activeKey, out var projSettings))
-                projSettings.LastOpened = DateTime.Now;
-
-            s.LastProjPath = activeKey;
-            s.ProjPath = activeKey;
-            await SettingsRepo.SaveSettings(s);
-
-            EventBus.PublishRunPath(runPath);
-            EventBus.PublishProjPathChanged(activeKey);
-            EventBus.PublishRecentProjectSelected(runPath);
-
-            await LoadRecentProjectsAsync(activeKey);
+            await LoadRecentProjectsAsync(key);
         }
+
+
+
 
 
         private async Task ClearRecentProjectsAsync()
@@ -381,16 +383,7 @@ namespace HydroExplorer.ViewModel.TabItem
             }
 
             string rasModelName = string.Empty;
-            if (normalizedPath.EndsWith(".rasmap", StringComparison.OrdinalIgnoreCase))
-            {
-                var prj = Directory.GetFiles(dir, "*.prj")
-                    .FirstOrDefault(f => IsHecRasProjectFile(f));
-                rasModelName = prj != null ? Path.GetFileName(prj) : Path.GetFileName(normalizedPath);
-            }
-            else if (normalizedPath.EndsWith(".prj", StringComparison.OrdinalIgnoreCase))
-                rasModelName = Path.GetFileName(normalizedPath);
-            else
-                rasModelName = Path.GetFileName(normalizedPath);
+            rasModelName = Path.GetFileName(normalizedPath);
 
             ProjName = string.Empty;
             RasModel = rasModelName;
@@ -402,6 +395,10 @@ namespace HydroExplorer.ViewModel.TabItem
             UsgsDistanceMiles = string.Empty;
             HucCode = string.Empty;
             UsgsDrainageAreaSqMi = string.Empty;
+            OmegaArea = string.Empty;
+            OmegaSlope = string.Empty;
+            OmegaPrecip = string.Empty;
+            OmegaValue = string.Empty;
 
             _ = Task.Run(async () =>
             {
@@ -422,7 +419,6 @@ namespace HydroExplorer.ViewModel.TabItem
 
                 if (string.IsNullOrEmpty(hmsName))
                 {
-                    string rootDir = proj?.ProjRoot;
                     var matchingRun = settings.Projects
                         .Where(kv => kv.Value.ProjRoot.Equals(proj?.ProjRoot, StringComparison.OrdinalIgnoreCase)
                             && !string.IsNullOrEmpty(kv.Value.HmsPath)
@@ -440,6 +436,7 @@ namespace HydroExplorer.ViewModel.TabItem
                 System.Windows.Application.Current.Dispatcher.Invoke(() =>
                 {
                     HmsModel = hmsName;
+                    LoadOmegaInputs(proj);
                 });
 
                 // ── Subbasin area (sum of all Subbasin: Area: in the .hms
@@ -501,6 +498,71 @@ namespace HydroExplorer.ViewModel.TabItem
                     System.Diagnostics.Debug.WriteLine($"PopulateProjectInfo: USGS gage lookup failed — {ex.Message}");
                 }
             });
+        }
+
+
+        // ── Regression Input (Omega EM) ─────────────────────────────────────
+
+        private async Task ComputeOmegaAsync()
+        {
+            if (!double.TryParse(OmegaArea, out double area) ||
+                !double.TryParse(OmegaSlope, out double slope) ||
+                !double.TryParse(OmegaPrecip, out double precip) ||
+                !double.TryParse(OmegaValue, out double omega))
+            {
+                System.Windows.MessageBox.Show(
+                    "Enter valid numeric values for all four regression inputs.",
+                    "Invalid Input", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                return;
+            }
+
+            try
+            {
+                var settings = await SettingsRepo!.GetSettingsFresh();
+                if (!string.IsNullOrEmpty(settings.LastProjPath) &&
+                    settings.Projects.TryGetValue(settings.LastProjPath, out var proj))
+                {
+                    proj.OmegaArea = area;
+                    proj.OmegaSlope = slope;
+                    proj.OmegaPrecip = precip;
+                    proj.OmegaValue = omega;
+                    await SettingsRepo.SaveSettings(settings);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ComputeOmegaAsync save error: {ex.Message}");
+            }
+
+            EventBus.PublishOmegaInputChanged(area, slope, precip, omega);
+        }
+
+        /// <summary>
+        /// Restores saved regression inputs for the given project and, if all
+        /// four are present, recomputes immediately so the Info tab's Omega
+        /// plot reflects them without requiring the user to click Compute
+        /// again after reopening the project.
+        /// </summary>
+        private void LoadOmegaInputs(ProjectSettings? proj)
+        {
+            if (proj is null)
+            {
+                OmegaArea = OmegaSlope = OmegaPrecip = OmegaValue = string.Empty;
+                return;
+            }
+
+            OmegaArea = proj.OmegaArea?.ToString() ?? string.Empty;
+            OmegaSlope = proj.OmegaSlope?.ToString() ?? string.Empty;
+            OmegaPrecip = proj.OmegaPrecip?.ToString() ?? string.Empty;
+            OmegaValue = proj.OmegaValue?.ToString() ?? string.Empty;
+
+            if (proj.OmegaArea.HasValue && proj.OmegaSlope.HasValue &&
+                proj.OmegaPrecip.HasValue && proj.OmegaValue.HasValue)
+            {
+                EventBus.PublishOmegaInputChanged(
+                    proj.OmegaArea.Value, proj.OmegaSlope.Value,
+                    proj.OmegaPrecip.Value, proj.OmegaValue.Value);
+            }
         }
 
 

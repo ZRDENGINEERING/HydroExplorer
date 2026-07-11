@@ -17,8 +17,14 @@ namespace HydroExplorer.ViewModel.TabBotItem
 
         private TabBotItemViewModel? _chartTab;
 
+
+
         public TabBotControlViewModel()
         {
+            //System.Diagnostics.Debug.WriteLine("TabBotControlViewModel CONSTRUCTED");
+
+
+
             _chartTab = new TabBotItemViewModel { Header = "Charts", Content = null };
 
             Tabs =
@@ -29,10 +35,10 @@ namespace HydroExplorer.ViewModel.TabBotItem
 
             SelectedTab = Tabs[0];
 
-            //System.Diagnostics.Debug.WriteLine(
-            //    $"TabBotControlViewModel: constructed. _chartTab.Header='{_chartTab.Header}', Content is null={_chartTab.Content == null}");
-
             EventBus.TopTabChanged += OnTopTabChanged;
+
+            //System.Diagnostics.Debug.WriteLine($"TabBotControlViewModel — instance {GetHashCode()} subscribed to TopTabChanged");
+
         }
 
 
@@ -40,43 +46,27 @@ namespace HydroExplorer.ViewModel.TabBotItem
 
         private void OnTopTabChanged(string topTabHeader)
         {
-            //System.Diagnostics.Debug.WriteLine($"TabBotControlViewModel.OnTopTabChanged: received '{topTabHeader}'");
-
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
-                // The actual top-tab name for the charts area is "Info" (confirmed
-                // via runtime debug output — EventBus.TopTabChanged never fires
-                // "Charts" in this build). TabBotChartsViewModel itself already
-                // treats both "Charts" and "Info" as valid (see its ShowLP3Plot
-                // logic) — this check previously only matched "Charts", so
-                // _chartTab.Content was never populated and TabBotChartsView was
-                // never constructed at all.
                 bool isChartsTab = topTabHeader == "HMS Charts" || topTabHeader == "Info";
 
                 if (isChartsTab)
                 {
-                    // Show Chart tab with real content
                     if (_chartTab!.Content == null)
                     {
                         _chartTab.Content = new TabBotChartsViewModel();
-                        System.Diagnostics.Debug.WriteLine(
-                            "TabBotControlViewModel.OnTopTabChanged: created new TabBotChartsViewModel for _chartTab.Content.");
-                    }
-                    else
-                    {
-                        //System.Diagnostics.Debug.WriteLine(
-                        //    "TabBotControlViewModel.OnTopTabChanged: _chartTab.Content already set, reusing.");
+                        System.Diagnostics.Debug.WriteLine("  created TabBotChartsViewModel");
                     }
                     _chartTab.Header = "Chart";
                 }
                 else
                 {
-                    //System.Diagnostics.Debug.WriteLine(
-                    //    $"TabBotControlViewModel.OnTopTabChanged: '{topTabHeader}' not a charts-area tab — clearing _chartTab.Content (was null={_chartTab!.Content == null}).");
                     _chartTab!.Content = null;
                 }
             });
         }
+
+
 
         private TabBotItemViewModel _selectedTab;
         public TabBotItemViewModel SelectedTab

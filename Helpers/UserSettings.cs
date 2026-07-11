@@ -13,12 +13,6 @@ namespace HydroExplorer.Helpers
         public Dictionary<string, ShpPathEntry> ShpPaths { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
 
-        public IEnumerable<KeyValuePair<string, ProjectSettings>> RecentProjects =>
-            Projects.Reverse().Take(10);
-
-        public IEnumerable<KeyValuePair<string, ShpPathEntry>> GeometryPaths =>
-            ShpPaths.Reverse().Take(20);
-
         public override string ToString() => $"{{ ProjPath: \"{ProjPath}\" }}";
     }
 
@@ -36,7 +30,13 @@ namespace HydroExplorer.Helpers
         public string ProjRoot { get; set; } = string.Empty;
         public string ProjPath { get; set; } = string.Empty;
         public string ModelName { get; set; } = string.Empty;
+        
+        
         public string DssPath { get; set; } = string.Empty;
+        public string DssPathB { get; set; } = string.Empty;
+
+
+
         public string HdfPathA { get; set; } = string.Empty;
         public string HdfPathB { get; set; } = string.Empty;
         public string PlanNameA { get; set; } = string.Empty;
@@ -44,27 +44,20 @@ namespace HydroExplorer.Helpers
         public string ProName { get; set; } = string.Empty;
         public string HmsPath { get; set; } = string.Empty;
         public string SelectedHmsRun { get; set; } = string.Empty;
+        public string SelectedHmsRunB { get; set; } = string.Empty;
+
         public List<string> SelectedReaches { get; set; } = [];
         public DateTime LastOpened { get; set; } = DateTime.MinValue;
         public int OpenOrder { get; set; } = 0;
 
-        // Resolved Spatial folder paths — written by MapOverView.BuildPaths once known,
-        // since the Spatial folder sits next to the project file, not necessarily at ProjRoot
-        // (ProjRoot can be several directories higher for deeply nested projects).
+        
         public string SpatialBndyPath { get; set; } = string.Empty;
         public string SpatialXsPath { get; set; } = string.Empty;
         public string SpatialRiverPath { get; set; } = string.Empty;
 
-        // Source EPSG for HEC-RAS geometry exports (XS/river centerlines) when the
-        // project has no .prj sidecar folder. Set once — either guessed via
-        // GISUtil.GuessTexasStatePlaneZone and confirmed by the user, or resolved
-        // from an actual .prj — so later exports (e.g. river after XS) don't have
-        // to re-guess or re-prompt for the same project.
         public int? SourceEpsg { get; set; } = null;
-
-        // Set true if the user declines the NHD HU12 boundary fallback prompt,
-        // so we don't keep re-asking every time this project is opened.
         public bool NhdBoundaryDeclined { get; set; } = false;
+
 
         // USGS nearest-gage — static identity/location, fetched once ever per project
         public string GageSiteNo { get; set; } = string.Empty;
@@ -74,6 +67,14 @@ namespace HydroExplorer.Helpers
         public double GageDistanceMiles { get; set; } = 0;
         public string GageHucCode { get; set; } = string.Empty;
         public double? GageDrainageAreaSqMi { get; set; } = null;
+        public bool GageLookupAttempted { get; set; } = false;
+
+
+
+        public double? OmegaArea { get; set; } = null;
+        public double? OmegaSlope { get; set; } = null;
+        public double? OmegaPrecip { get; set; } = null;
+        public double? OmegaValue { get; set; } = null;
     }
 
 
@@ -97,14 +98,12 @@ namespace HydroExplorer.Helpers
 
     public class RecentProjectEntry
     {
-        public string Name { get; set; } = string.Empty;
-        public string FilePath { get; set; } = string.Empty;
+        public string Key { get; set; } = string.Empty;
+
         public string ProjName { get; set; } = string.Empty;
-        public string ProjPath { get; set; } = string.Empty;
+
         public DateTime LastOpened { get; set; }
-        public int OpenOrder { get; set; }
-        public string ProjectType { get; set; } = "RAS";
-        public string? HmsRunFile { get; set; }
+
         public bool IsActive { get; set; }
     }
 

@@ -35,7 +35,7 @@
 
         <!-- Active Paths -->
         <GroupBox Grid.Row="3"
-                  Header="ACTIVE PATHS"
+                  Header="HEC-RAS ACTIVE PATHS"
                   FontSize="12" FontWeight="Bold"
                   Foreground="{StaticResource ForegroundBrush}"
                   Background="{StaticResource BackgroundBrushLight}"
@@ -43,10 +43,6 @@
                   BorderThickness="0.8">
             <StackPanel Background="{StaticResource BackgroundBrushSidePanels}">
 
-
-                <TextBlock Text="{Binding ProfileMismatchWarning}"
-                    Foreground="Red" FontSize="10" FontWeight="Bold"
-                    TextWrapping="Wrap" Margin="10,4,10,4"/>
 
 
                 <TextBlock FontSize="10" Margin="10,4,0,6">
@@ -80,10 +76,11 @@
                 <TextBlock FontSize="10" Margin="10,4,0,0"
                            Foreground="{StaticResource ForegroundBrush}">Profile:</TextBlock>
                 <ComboBox Name="cboxProfiles"
-                          
                           FontSize="10" Background="#543d05" BorderThickness="0"
                           Width="200" Margin="0,0,0,6"
                           Foreground="{StaticResource ForegroundBrushDark}"/>
+
+                
 
                 <TextBlock x:Name="txtProfileWarning"
                     Foreground="Red" FontSize="10" FontWeight="Bold"

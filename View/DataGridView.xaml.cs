@@ -30,6 +30,10 @@ namespace HydroExplorer.View
         private readonly List<HecRasProfileWselResult> itemsSourceA = [];
         private readonly List<HecRasProfileWselResult> itemsSourceB = [];
 
+
+
+
+
         public DataGridView()
         {
             InitializeComponent();
@@ -188,8 +192,19 @@ namespace HydroExplorer.View
             column.Visibility = menuItem.IsChecked ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        private async void OnHdfPathChanged()
+        /// <summary>
+        /// hdfPathA/hdfPathB now arrive directly in the event payload instead of
+        /// being re-read from UserSettings. The settings file write is debounced
+        /// (~300ms in HydraulicsPaneView.SaveSettings), so re-reading it here on
+        /// every selection change could race ahead of the write and pick up the
+        /// previous selection — which is what made "None" on Plan B look like it
+        /// did nothing.
+        /// </summary>
+        private async void OnHdfPathChanged(string newHdfPathA, string newHdfPathB)
         {
+            hdfPathA = string.IsNullOrEmpty(newHdfPathA) ? null : newHdfPathA;
+            hdfPathB = string.IsNullOrEmpty(newHdfPathB) ? null : newHdfPathB;
+
             await Dispatcher.InvokeAsync(async () => await LoadDataGrid(fresh: true));
             WatchCurrentHdfPaths();
         }
@@ -199,11 +214,23 @@ namespace HydroExplorer.View
             await Dispatcher.InvokeAsync(async () => await LoadDataGrid(fresh: true, overrideProName: profileName));
         }
 
+        /// <summary>
+        /// Refreshes non-path settings (proName, projPath) from disk, then
+        /// re-applies hdfPathA/hdfPathB from the live event payload (set in
+        /// OnHdfPathChanged) so a stale disk read can't clobber them.
+        /// </summary>
         private async Task LoadDataGrid(bool fresh = false, string? overrideProName = null)
         {
             try
             {
+                var liveHdfPathA = hdfPathA;
+                var liveHdfPathB = hdfPathB;
+
                 await LoadSettingsDataGrid(fresh);
+
+                hdfPathA = liveHdfPathA;
+                hdfPathB = liveHdfPathB;
+
                 if (overrideProName != null) proName = overrideProName;
                 //UpdateColumnHeaders();
                 WatchCurrentHdfPaths();
@@ -239,6 +266,13 @@ namespace HydroExplorer.View
             });
         }
 
+        /// <summary>
+        /// Loads proName/projPath (and hdfPathA/hdfPathB as a fallback for
+        /// callers that haven't received a live HdfPathChanged payload yet,
+        /// e.g. IsVisibleChanged on first show). LoadDataGrid overwrites
+        /// hdfPathA/hdfPathB with live values after calling this, so this
+        /// method's hdfPathA/hdfPathB assignment only matters on cold start.
+        /// </summary>
         private async Task LoadSettingsDataGrid(bool fresh = false)
         {
             _settingsRepo = App.ServiceProvider.GetRequiredService<IUserSettingsRepo>();
@@ -333,19 +367,6 @@ namespace HydroExplorer.View
                 else if (h == "WSElev B" || (h.StartsWith("WSElev (") && h.Contains(nameB)))
                     col.Header = $"WSElev ({nameB})";
             }
-
-            //foreach (var col in dgSimple.Columns)
-            //{
-            //    var h = col.Header?.ToString() ?? "";
-            //    if (h == "QTotal A" || (h.StartsWith("QTotal (") && h.Contains(nameA)))
-            //        col.Header = $"QTotal ({nameA})";
-            //    else if (h == "WSElev A" || (h.StartsWith("WSElev (") && h.Contains(nameA)))
-            //        col.Header = $"WSElev ({nameA})";
-            //    else if (h == "QTotal B" || (h.StartsWith("QTotal (") && h.Contains(nameB)))
-            //        col.Header = $"QTotal ({nameB})";
-            //    else if (h == "WSElev B" || (h.StartsWith("WSElev (") && h.Contains(nameB)))
-            //        col.Header = $"WSElev ({nameB})";
-            //}
         }
 
 

@@ -2,7 +2,7 @@
 {
     internal class TabMainViewModel : TabViewModelBase
     {
-        private string _header = "Main";
+        private string _header = "RAS Tables";
         public override string Header
         {
             get => _header;

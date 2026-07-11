@@ -71,12 +71,23 @@ namespace HydroExplorer.View
             {
                 var settings = await _settingsRepo.GetSettings();
                 string targetPath = ResolveTargetPath(settings);
-                if (string.IsNullOrEmpty(targetPath)) return;
 
                 await Dispatcher.InvokeAsync(async () =>
                 {
-                    CollapseAll();
-                    await ExpandToPath(targetPath);
+                    string normalizedPath = PathHelpers.NormalizeProjKey(settings.LastProjPath);
+
+                    if (FileExtensionFilter == ".prj" && !string.IsNullOrEmpty(normalizedPath))
+                        SetSingleActive(normalizedPath);
+                    else if (FileExtensionFilter == ".hms" &&
+                             settings.Projects.TryGetValue(normalizedPath, out var proj) &&
+                             !string.IsNullOrEmpty(proj.HmsPath))
+                        SetSingleActive(proj.HmsPath);
+
+                    if (!string.IsNullOrEmpty(targetPath))
+                    {
+                        CollapseAll();
+                        await ExpandToPath(targetPath);
+                    }
                 });
             };
 
@@ -91,14 +102,27 @@ namespace HydroExplorer.View
                 else
                     targetPath = ResolveTargetPath(settings);
 
-                if (string.IsNullOrEmpty(targetPath)) return;
-
                 await Dispatcher.InvokeAsync(async () =>
                 {
-                    CollapseAll();
-                    await ExpandToPath(targetPath);
+                    string normalizedPath = PathHelpers.NormalizeProjKey(settings.LastProjPath);
+
+                    if (FileExtensionFilter == ".prj" && !string.IsNullOrEmpty(normalizedPath))
+                        SetSingleActive(normalizedPath);
+                    else if (FileExtensionFilter == ".hms" &&
+                             settings.Projects.TryGetValue(normalizedPath, out var activeProj) &&
+                             !string.IsNullOrEmpty(activeProj.HmsPath))
+                        SetSingleActive(activeProj.HmsPath);
+
+                    if (!string.IsNullOrEmpty(targetPath))
+                    {
+                        CollapseAll();
+                        await ExpandToPath(targetPath);
+                    }
                 });
             };
+
+
+
 
             Unloaded += (s, e) =>
             {
@@ -410,7 +434,7 @@ namespace HydroExplorer.View
         private TreeViewItem MakeFileItem(string filePath)
         {
             var ext = Path.GetExtension(filePath).ToLowerInvariant();
-            bool checkable = ext is ".prj" or ".hms" or ".shp";
+            bool checkable = ext is ".prj" or ".hms";
 
             var info = new TreeNodeInfo
             {
@@ -458,10 +482,6 @@ namespace HydroExplorer.View
                     ".prj" => string.Equals(filePath, projPath, StringComparison.OrdinalIgnoreCase),
                     ".hms" => settings.Projects.TryGetValue(projPath, out var p) &&
                               string.Equals(filePath, p.HmsPath, StringComparison.OrdinalIgnoreCase),
-                    ".shp" => settings.Projects.TryGetValue(projPath, out var sp) &&
-                              (string.Equals(filePath, sp.SpatialBndyPath, StringComparison.OrdinalIgnoreCase) ||
-                              string.Equals(filePath, sp.SpatialXsPath, StringComparison.OrdinalIgnoreCase) ||
-                               string.Equals(filePath, sp.SpatialRiverPath, StringComparison.OrdinalIgnoreCase)),
                     _ => false
                 };
             }
@@ -666,12 +686,57 @@ namespace HydroExplorer.View
                         StringComparison.OrdinalIgnoreCase);
                 }
 
-                if (item.IsExpanded)
+                bool isPopulated = item.Items.Count != 1 || item.Items[0] != null;
+                if (isPopulated)
                     SetSingleActiveInItems(item.Items, activePath, ext);
             }
         }
 
         // ── Persistence helpers ───────────────────────────────────────────────
+
+        private async Task SaveHmsPath(string path)
+        {
+            try
+            {
+                var settings = await _settingsRepo.GetSettingsFresh();
+
+                var current = new DirectoryInfo(Path.GetDirectoryName(path) ?? string.Empty);
+                while (current?.Parent != null &&
+                       !current.Parent.FullName.Equals(@"C:\Temp", StringComparison.OrdinalIgnoreCase))
+                    current = current.Parent;
+
+                string projRoot = current?.FullName ?? string.Empty;
+
+                string existingKey = settings.Projects
+                    .Where(kv => !string.IsNullOrEmpty(kv.Value.ProjRoot)
+                        && kv.Value.ProjRoot.Equals(projRoot, StringComparison.OrdinalIgnoreCase))
+                    .Select(kv => kv.Key)
+                    .FirstOrDefault() ?? string.Empty;
+
+                string activeKey = !string.IsNullOrEmpty(existingKey) ? existingKey : path;
+
+                if (!settings.Projects.TryGetValue(activeKey, out var proj))
+                {
+                    proj = settings.Projects[activeKey] = new ProjectSettings();
+                    proj.OpenOrder = settings.Projects.Count;
+                }
+
+                proj.ProjName = current?.Name ?? string.Empty;
+                proj.ProjRoot = projRoot;
+                proj.HmsPath = path;
+                proj.LastOpened = DateTime.Now;
+
+                settings.LastProjPath = activeKey;
+                settings.ProjPath = activeKey;
+                settings.ProjName = proj.ProjName;
+
+                await _settingsRepo.SaveSettings(settings);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"HydrologyPaneView.SaveHmsPath error: {ex.Message}");
+            }
+        }
 
         private async Task SaveHmsPathAsync(string runPath)
         {
@@ -693,7 +758,10 @@ namespace HydroExplorer.View
             string activeKey = !string.IsNullOrEmpty(existingKey) ? existingKey : runPath;
 
             if (!settings.Projects.TryGetValue(activeKey, out var proj))
+            {
                 proj = settings.Projects[activeKey] = new ProjectSettings();
+                proj.OpenOrder = settings.Projects.Count;
+            }
 
             proj.ProjName = current?.Name ?? string.Empty;
             proj.ProjRoot = projRoot;
@@ -702,6 +770,7 @@ namespace HydroExplorer.View
 
             settings.LastProjPath = activeKey;
             settings.ProjPath = activeKey;
+            settings.ProjName = proj.ProjName;
 
             await _settingsRepo.SaveSettings(settings);
 
@@ -709,27 +778,64 @@ namespace HydroExplorer.View
             EventBus.PublishProjPathChanged(activeKey);
         }
 
-        
-
         private async Task SaveProjPathAsync(string projPath)
         {
             string normalizedPath = PathHelpers.NormalizeProjKey(projPath);
             var settings = await _settingsRepo.GetSettingsFresh();
-            settings.LastProjPath = normalizedPath;
-            settings.ProjPath = normalizedPath;
 
             var current = new DirectoryInfo(Path.GetDirectoryName(normalizedPath) ?? string.Empty);
             while (current?.Parent != null &&
                    !current.Parent.FullName.Equals(@"C:\Temp", StringComparison.OrdinalIgnoreCase))
                 current = current.Parent;
 
-            if (!settings.Projects.TryGetValue(normalizedPath, out var proj))
+            string newProjRoot = current?.FullName ?? string.Empty;
+
+            ProjectSettings proj;
+
+            // If the currently active project shares this ProjRoot, this is the same
+            // logical project — reuse its existing ProjectSettings under the new key
+            // instead of creating a second entry. HMS linkage, geometry paths, gage
+            // data, and Omega inputs are ProjRoot/location-scoped and carry forward;
+            // only the fields specific to the OLD .prj's HEC-RAS model/results reset,
+            // since a different .prj means different plans/HDF output.
+            if (!string.IsNullOrEmpty(settings.LastProjPath) &&
+                !settings.LastProjPath.Equals(normalizedPath, StringComparison.OrdinalIgnoreCase) &&
+                settings.Projects.TryGetValue(settings.LastProjPath, out var activeProj) &&
+                activeProj.ProjRoot.Equals(newProjRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                proj = activeProj;
+                settings.Projects.Remove(settings.LastProjPath);
+                settings.Projects[normalizedPath] = proj;
+
+                // Reset only what's tied to the specific .prj/model file — a
+                // different .prj means different plans and HDF results even if
+                // names happen to collide.
+                proj.HdfPathA = string.Empty;
+                proj.HdfPathB = string.Empty;
+                proj.PlanNameA = string.Empty;
+                proj.PlanNameB = string.Empty;
+                proj.ProName = string.Empty;
+                proj.SelectedReaches = [];
+                proj.SourceEpsg = null;
+            }
+            else if (!settings.Projects.TryGetValue(normalizedPath, out var existing))
+            {
                 proj = settings.Projects[normalizedPath] = new ProjectSettings();
+                proj.OpenOrder = settings.Projects.Count;
+            }
+            else
+            {
+                proj = existing;
+            }
 
             proj.ProjName = current?.Name ?? string.Empty;
-            proj.ProjRoot = current?.FullName ?? string.Empty;
+            proj.ProjRoot = newProjRoot;
             proj.LastOpened = DateTime.Now;
             proj.ProjPath = normalizedPath;
+
+            settings.LastProjPath = normalizedPath;
+            settings.ProjPath = normalizedPath;
+            settings.ProjName = proj.ProjName;
 
             await _settingsRepo.SaveSettings(settings);
             EventBus.PublishProjPath(normalizedPath);

@@ -1,9 +1,13 @@
-﻿namespace HydroExplorer.Helpers
+﻿using Mapsui;
+
+namespace HydroExplorer.Helpers
 {
     public class MapStateService
     {
         public event Action<ProjectPaths>? PathsReady;
         public ProjectPaths? CurrentPaths { get; private set; }
+
+        public string? CurrentXsPath { get; set; }
 
         public void Publish(ProjectPaths paths)
         {

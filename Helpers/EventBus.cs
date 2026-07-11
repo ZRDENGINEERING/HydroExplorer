@@ -42,8 +42,15 @@ namespace HydroExplorer.Helpers
         public static event Action<string>? HmsPathChanged;
         public static void PublishHmsPathChanged(string path) => HmsPathChanged?.Invoke(path);
 
-        public static event Action? HdfPathChanged;
-        public static void PublishHdfPathChanged() => HdfPathChanged?.Invoke();
+        // Carries the current resolved HDF paths directly. Use "" (not null) for
+        // "no plan selected" (e.g. Plan B = "None") so subscribers can't mistake
+        // "no override" for "explicitly cleared". Subscribers should treat this
+        // payload as authoritative and NOT re-read hdfPathA/hdfPathB from
+        // UserSettings — the settings file write is debounced (~300ms) and a
+        // disk re-read here can race ahead of it and pick up stale paths.
+        public static event Action<string, string>? HdfPathChanged;
+        public static void PublishHdfPathChanged(string hdfPathA, string hdfPathB)
+            => HdfPathChanged?.Invoke(hdfPathA, hdfPathB);
 
         public static event Action<string>? ProfileChanged;
         public static void PublishProfileChanged(string profileName) => ProfileChanged?.Invoke(profileName);
@@ -67,9 +74,16 @@ namespace HydroExplorer.Helpers
         public static void PublishAppLoaded(UserSettings settings) => AppLoaded?.Invoke(settings);
 
 
+
         public static event Action<string, string>? DssRunSelected;
         public static void PublishDssRunSelected(string dssPath, string runName)
             => DssRunSelected?.Invoke(dssPath, runName);
+
+        public static event Action<string, string>? DssRunBSelected;
+        public static void PublishDssRunBSelected(string dssPath, string runName)
+            => DssRunBSelected?.Invoke(dssPath, runName);
+
+
 
 
         public static event Action<string, string>? PlanNamesChanged;
@@ -86,16 +100,17 @@ namespace HydroExplorer.Helpers
         public static void PublishMapOverViewReady() => MapOverViewReady?.Invoke();
 
 
-        //USGS SECTION
         public static event Action<GageResult>? GageDataReady;
         public static void PublishGageDataReady(GageResult result) => GageDataReady?.Invoke(result);
 
-        //public static event Action<GageResult>? GageDataReady;
-        //public static void PublishGageDataReady(GageResult result) => GageDataReady?.Invoke(result);
 
 
         public static event Action<string>? ProfileMismatchWarning;
         public static void PublishProfileMismatchWarning(string message) => ProfileMismatchWarning?.Invoke(message);
+
+        public static event Action<double, double, double, double>? OmegaInputChanged;
+        public static void PublishOmegaInputChanged(double area, double slope, double precip, double omega)
+            => OmegaInputChanged?.Invoke(area, slope, precip, omega);
 
     }
 }

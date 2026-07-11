@@ -17,15 +17,14 @@ namespace HydroExplorer.ViewModel.TabBotItem
             set { _header = value; OnPropertyChanged(nameof(Header)); }
         }
 
-        // Main tab — original WSEL profile chart (unchanged).
         public PlotViewModel PlotVm { get; }
 
-        // Charts/Info tab — Creager envelope curve, replacing what previously
-        // occupied this slot.
         public CreagerPlotViewModel CreagerVm { get; }
 
         public LP3PlotViewModel LP3Vm { get; }
         public LP3PlotViewModel RtnVm { get; }
+
+        public OmegaPlotViewModel OmegaVm { get; }
 
         private bool _showProfilePlot = true;
         public bool ShowProfilePlot
@@ -35,11 +34,12 @@ namespace HydroExplorer.ViewModel.TabBotItem
         }
 
 
+        // LP3 stays on the HMS Charts bottom tab only — no longer shown on Info.
         private bool _showLP3Plot = true;
         public bool ShowLP3Plot
         {
             get => _showLP3Plot;
-            set { _showLP3Plot = value; OnPropertyChanged(); }
+            set { _showLP3Plot = value; OnPropertyChanged(); OnPropertyChanged(nameof(ShowChartsRightPane)); }
         }
 
 
@@ -49,6 +49,19 @@ namespace HydroExplorer.ViewModel.TabBotItem
             get => _showReturnPlot;
             set { _showReturnPlot = value; OnPropertyChanged(); }
         }
+
+        // Omega EM plot — shown only on the Info tab's bottom chart (right side).
+        private bool _showOmegaPlot = false;
+        public bool ShowOmegaPlot
+        {
+            get => _showOmegaPlot;
+            set { _showOmegaPlot = value; OnPropertyChanged(); OnPropertyChanged(nameof(ShowChartsRightPane)); }
+        }
+
+        // True whenever either right-side plot (LP3 on HMS Charts, Omega on
+        // Info) is active — drives the shared Creager pane + splitter, which
+        // sit to the left of whichever one is currently showing.
+        public bool ShowChartsRightPane => ShowLP3Plot || ShowOmegaPlot;
 
         // Latest WSEL data + selected profile, cached so the Creager point can be
         // recomputed without re-reading the HDF every time the profile changes.
@@ -60,18 +73,22 @@ namespace HydroExplorer.ViewModel.TabBotItem
             PlotVm = App.ServiceProvider.GetRequiredService<PlotViewModel>();
             CreagerVm = new CreagerPlotViewModel();
             LP3Vm = new LP3PlotViewModel();
+            OmegaVm = new OmegaPlotViewModel();
 
 
             var current = TabControlViewModel.CurrentTopTab;
-            ShowProfilePlot = current == "Main";
-            ShowLP3Plot = current == "Charts" || current == "Info";
+            ShowProfilePlot = current == "RAS Tables";
+            // LP3 lives on HMS Charts only now — Info gets Omega instead.
+            ShowLP3Plot = current == "HMS Charts";
+            ShowOmegaPlot = current == "Info";
 
             EventBus.TopTabChanged += topTab =>
             {
                 System.Windows.Application.Current.Dispatcher.Invoke(() =>
                 {
-                    ShowProfilePlot = topTab == "Main";
-                    ShowLP3Plot = topTab == "Charts" || topTab == "Info";
+                    ShowProfilePlot = topTab == "RAS Tables";
+                    ShowLP3Plot = topTab == "HMS Charts";
+                    ShowOmegaPlot = topTab == "Info";
                 });
             };
 
@@ -83,11 +100,23 @@ namespace HydroExplorer.ViewModel.TabBotItem
                 _ = CreagerVm.LoadDataAsync(_wselData, _selectedProfile);
             };
 
-            // HDF path change means WselData is stale until it's re-read — re-read
-            // here directly so Creager doesn't depend on PlotVm's own load cycle.
-            EventBus.HdfPathChanged += async () => await LoadWselDataAsync();
+            // HdfPathChanged now carries the resolved paths directly. Use them
+            // as-is (including "" for "no Plan B") instead of re-reading
+            // UserSettings, which is debounced and can race ahead of the write.
+            //
+            // PlanNamesChanged is intentionally NOT subscribed here anymore —
+            // HydraulicsPaneView always publishes it together with
+            // HdfPathChanged, and its old handler re-read HdfPathA/HdfPathB
+            // from settings, which could fire after HdfPathChanged's correct
+            // reload and clobber it with stale data.
+            EventBus.HdfPathChanged += async (hdfPathA, hdfPathB) =>
+                await LoadWselDataAsync(hdfPathA, hdfPathB);
 
-            EventBus.PlanNamesChanged += async (planA, planB) => await LoadWselDataAsync();
+            EventBus.OmegaInputChanged += (area, slope, precip, omega) =>
+            {
+                System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                    OmegaVm.LoadData(area, slope, precip, omega));
+            };
 
             _ = LoadWselDataAsync();
         }
@@ -96,8 +125,13 @@ namespace HydroExplorer.ViewModel.TabBotItem
         /// Reads WSELTableOxy for the active project's HDF path(s)/profile — used
         /// only to feed CreagerVm's peak-discharge point. PlotVm reads and manages
         /// its own data independently for the Main-tab profile chart.
+        ///
+        /// hdfPathA/hdfPathB, when supplied (non-null — "" is a valid "no plan"
+        /// value, not "unset"), come from a live HdfPathChanged payload and take
+        /// precedence over settings. Left null only for the constructor's
+        /// initial load, where settings are the only source available yet.
         /// </summary>
-        private async Task LoadWselDataAsync()
+        private async Task LoadWselDataAsync(string? hdfPathA = null, string? hdfPathB = null)
         {
             try
             {
@@ -108,9 +142,11 @@ namespace HydroExplorer.ViewModel.TabBotItem
                     !settings.Projects.TryGetValue(settings.ProjPath, out var proj))
                     return;
 
+                string resolvedHdfPathA = hdfPathA ?? proj.HdfPathA;
+                string resolvedHdfPathB = hdfPathB ?? proj.HdfPathB;
                 string proName = !string.IsNullOrEmpty(_selectedProfile) ? _selectedProfile : proj.ProName;
 
-                _wselData = HecRasHdfReader.ReadWSELTableOxy(proj.HdfPathA, proj.HdfPathB, proName, out string? profileWarning);
+                _wselData = HecRasHdfReader.ReadWSELTableOxy(resolvedHdfPathA, resolvedHdfPathB, proName, out string? profileWarning);
 
                 EventBus.PublishProfileMismatchWarning(profileWarning ?? string.Empty);
 

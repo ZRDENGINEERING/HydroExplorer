@@ -11,6 +11,8 @@ using Mapsui.Nts.Widgets;
 using Mapsui.Projections;
 using Mapsui.Providers;
 using Mapsui.Providers.Wms;
+using Mapsui.Rendering;
+using Mapsui.Rendering.Skia;
 using Mapsui.Styles;
 using Mapsui.Tiling.Layers;
 using Mapsui.UI.Wpf;
@@ -81,6 +83,7 @@ namespace HydroExplorer.View
             };
 
             _map = new Map { CRS = "EPSG:3857" };
+
             LoggingWidget.ShowLoggingInMap = Mapsui.Widgets.ActiveMode.No;
 
             var (cx, cy) = SphericalMercator.FromLonLat(-99.0, 31.0);
@@ -176,6 +179,10 @@ namespace HydroExplorer.View
                     }
 
                     _pathXS = paths.PathXS;
+
+                    _mapState.CurrentXsPath = _pathXS;
+
+
                     _PathRiver = paths.PathRiver;
                     _pathBNDY = paths.PathBNDY;
                     _pathHdfA = paths.PathHdfA;
@@ -288,29 +295,39 @@ namespace HydroExplorer.View
                 }
 
                 var shapeFileProvider = new ShapeFile(centerPath, true);
-                if (shapeFileProvider.GetExtent() is not MRect extent) return;
+
+                double[] zoomToCoords = MapOverView.ReprojectHelper(centerPath);
+
+
+                //if (shapeFileProvider.GetExtent() is not MRect extent) return;
 
                 //System.Diagnostics.Debug.WriteLine(
                 //    $"InitView: extent from '{centerPath}' = MinX={extent.MinX} MaxX={extent.MaxX} MinY={extent.MinY} MaxY={extent.MaxY}");
 
 
-                var (x, y) = SphericalMercator.FromLonLat(
-                                    (extent.MaxX + extent.MinX) / 2,
-                                    (extent.MaxY + extent.MinY) / 2);
-                var (minX, _) = SphericalMercator.FromLonLat(extent.MinX, extent.MinY);
-                var (maxX, _) = SphericalMercator.FromLonLat(extent.MaxX, extent.MaxY);
-                var (_, minY) = SphericalMercator.FromLonLat(extent.MinX, extent.MinY);
-                var (_, maxY) = SphericalMercator.FromLonLat(extent.MaxX, extent.MaxY);
+                //var (x, y) = SphericalMercator.FromLonLat(
+                //                    (extent.MaxX + extent.MinX) / 2,
+                //                    (extent.MaxY + extent.MinY) / 2);
+                //var (minX, _) = SphericalMercator.FromLonLat(extent.MinX, extent.MinY);
+                //var (maxX, _) = SphericalMercator.FromLonLat(extent.MaxX, extent.MaxY);
+                //var (_, minY) = SphericalMercator.FromLonLat(extent.MinX, extent.MinY);
+                //var (_, maxY) = SphericalMercator.FromLonLat(extent.MaxX, extent.MaxY);
 
-                double extentW = maxX - minX;
-                double extentH = maxY - minY;
-                double controlW = _mapControl.ActualWidth;
-                double controlH = _mapControl.ActualHeight;
+                //double extentW = maxX - minX;
+                //double extentH = maxY - minY;
+                //double controlW = _mapControl.ActualWidth;
+                //double controlH = _mapControl.ActualHeight;
 
-                if (extentW <= 0 || extentH <= 0 || controlW <= 0 || controlH <= 0) return;
+                //if (extentW <= 0 || extentH <= 0 || controlW <= 0 || controlH <= 0) return;
 
-                double resolution = Math.Max(extentW / controlW, extentH / controlH) * 1.5;
-                _map.Navigator.CenterOnAndZoomTo(new MPoint(x, y), resolution);
+                //double resolution = Math.Max(extentW / controlW, extentH / controlH) * 1.5;
+                //_map.Navigator.CenterOnAndZoomTo(new MPoint(x, y), resolution);
+
+                var (x, y) = SphericalMercator.FromLonLat(zoomToCoords[0], zoomToCoords[1]);
+
+                _map.Navigator.CenterOn(x, y);
+                _map.Navigator.ZoomTo(350);
+
                 _mapControl.Refresh();
             });
         }
@@ -394,12 +411,11 @@ namespace HydroExplorer.View
 
             var factory = NetTopologySuite.Geometries.GeometryFactory.Default;
 
-            // O(1) lookup instead of FirstOrDefault on every feature
             var wselIndex = new Dictionary<string, WSELTableOxy>(StringComparer.OrdinalIgnoreCase);
             foreach (var w in wselData)
             {
                 string key = w.RiverSta?.Trim() ?? string.Empty;
-                wselIndex.TryAdd(key, w); // silently skip duplicates
+                wselIndex.TryAdd(key, w);
             }
 
             while (reader.Read())
@@ -425,8 +441,8 @@ namespace HydroExplorer.View
 
                 feature.Styles.Add(new VectorStyle
                 {
-                    Line = new Pen(lineColor, 1),
-                    Outline = new Pen(lineColor, 1),
+                    Line = new Pen(lineColor, 0),
+                    Outline = new Pen(lineColor, 0.5),
                     Fill = null,
                     Opacity = 0.85f
                 });
@@ -557,14 +573,28 @@ namespace HydroExplorer.View
 
         private async Task ExportShpXS()
         {
+            //System.Diagnostics.Debug.WriteLine($"ENTERING ExportShpXS.....");
             try
             {
                 string? hdfPath = ResolveHdfPath();
                 if (string.IsNullOrEmpty(hdfPath)) return;
-                if (string.IsNullOrEmpty(_pathXS)) return;
+                if (string.IsNullOrEmpty(_pathXS))
+                {
+                    string? parentDir = Path.GetDirectoryName(hdfPath);
+
+                    if (parentDir != null)
+                    {
+                        string newFolderPath = Path.Combine(parentDir, "Spatial");
+                        Directory.CreateDirectory(newFolderPath);
+                        _pathXS = Path.Combine(newFolderPath, "XS.shp");
+                    };
+                }
+
+                System.Diagnostics.Debug.WriteLine($"_pathXS: {_pathXS}");
+
                 if (File.Exists(_pathXS)) return;
 
-                //System.Diagnostics.Debug.WriteLine($"XS FILE DOES NOT EXIST — CREATING @ {_pathXS}");
+                System.Diagnostics.Debug.WriteLine($"XS FILE DOES NOT EXIST — CREATING @ {_pathXS}");
 
                 string projDir = Path.GetDirectoryName(hdfPath) ?? string.Empty;
 
@@ -839,9 +869,10 @@ namespace HydroExplorer.View
                         {
                             _highlightLayer.Style = new VectorStyle
                             {
-                                Line = new Pen(highlightColor, 3),
-                                Outline = new Pen(highlightColor, 3),
-                                Fill = null
+                                Line = new Pen(highlightColor, 2),
+                                Outline = new Pen(highlightColor, 2),
+                                Fill = null,
+                                Opacity = 0.6f
                             };
 
                             _highlightLayer.Clear();

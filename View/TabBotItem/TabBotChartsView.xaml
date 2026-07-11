@@ -25,12 +25,14 @@
             <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
 
-        <!-- Left plot — Charts/Info tab (Creager envelope, half-width next to LP3) -->
+        <!-- Left plot — shared across HMS Charts (paired w/ LP3) and Info
+             (paired w/ Omega): Creager envelope, half-width next to whichever
+             right-side plot is active. -->
         <oxy:PlotView x:Name="CreagerPlotView"
                   Grid.Column="0"
                   Model="{Binding ViewModel.CreagerVm.PlotModelChartsTab, ElementName=Root}"
                   Background="{StaticResource BackgroundBrushSidePanels}"
-                  Visibility="{Binding ViewModel.ShowLP3Plot, ElementName=Root,
+                  Visibility="{Binding ViewModel.ShowChartsRightPane, ElementName=Root,
                                Converter={StaticResource BoolToVisibilityConverter}}"/>
 
         <!-- Profile Plot — Main tab only. Spans through the reach-selector column
@@ -48,15 +50,23 @@
         <GridSplitter Grid.Column="1" Width="3"
                   HorizontalAlignment="Stretch"
                   Background="{StaticResource DividerBrush}"
-                  Visibility="{Binding ViewModel.ShowLP3Plot, ElementName=Root,
+                  Visibility="{Binding ViewModel.ShowChartsRightPane, ElementName=Root,
                                Converter={StaticResource BoolToVisibilityConverter}}"/>
 
-        <!-- LP3 Plot -->
+        <!-- LP3 Plot — HMS Charts bottom tab only -->
         <oxy:PlotView x:Name="LP3PlotView"
                   Grid.Column="2"
                   Model="{Binding ViewModel.LP3Vm.PlotModelLP3, ElementName=Root}"
                   Background="{StaticResource BackgroundBrushSidePanels}"
                   Visibility="{Binding ViewModel.ShowLP3Plot, ElementName=Root,
+                               Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+        <!-- Omega EM Plot — Info tab bottom chart, right side, only -->
+        <oxy:PlotView x:Name="OmegaPlotView"
+                  Grid.Column="2"
+                  Model="{Binding ViewModel.OmegaVm.PlotModelOmegaEm, ElementName=Root}"
+                  Background="{StaticResource BackgroundBrushSidePanels}"
+                  Visibility="{Binding ViewModel.ShowOmegaPlot, ElementName=Root,
                                Converter={StaticResource BoolToVisibilityConverter}}"/>
 
         <!-- Splitter before reach panel — only relevant on the Main tab, where the

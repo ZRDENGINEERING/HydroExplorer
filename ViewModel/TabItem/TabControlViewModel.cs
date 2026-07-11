@@ -33,6 +33,7 @@ namespace HydroExplorer.ViewModel.TabItem
                 if (value?.Header != null)
                 {
                     CurrentTopTab = value.Header;
+
                     EventBus.RaiseTopTabChanged(value.Header);
                 }
             }
@@ -47,7 +48,7 @@ namespace HydroExplorer.ViewModel.TabItem
             Tabs =
             [
                 new TabItemViewModel { Header = "Info",    Content = tabInfoVM },
-                new TabItemViewModel { Header = "Main",    Content = new TabMainViewModel() },
+                new TabItemViewModel { Header = "RAS Tables",    Content = new TabMainViewModel() },
                 new TabItemViewModel { Header = "HMS Charts",  Content = null },
                 new TabItemViewModel { Header = "Publish", Content = new TabPublishViewModel() },
                 new TabItemViewModel { Header = "BlankTop",  Content = new TabSettingsViewModel() }

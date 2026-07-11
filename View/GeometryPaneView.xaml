@@ -115,16 +115,19 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
+                    
                     <TextBlock Grid.Column="0"
                        Text="{Binding SelectedSectionsPath.ShpPath, Mode=OneWay}"
                        FontSize="8" TextWrapping="Wrap"
                        Foreground="{StaticResource ForegroundBrushDark}"/>
+                    
                     <Button Grid.Column="1" Content="..."
                     Command="{Binding BrowseShpCommand}"
                     CommandParameter="Sections"
                     Width="22" Height="20" Padding="0" FontSize="10"
                     VerticalAlignment="Top"
                     Background="{StaticResource BackgroundBrushSidePanels}"/>
+                    
                     <Button Grid.Column="2" Content="X"
                     Command="{Binding ClearSelectedPathCommand}"
                     CommandParameter="Sections"

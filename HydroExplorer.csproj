@@ -43,6 +43,7 @@
 
 
   <ItemGroup>
+	  <PackageReference Include="GeoAPI.CoordinateSystems" Version="1.7.5" />
 	  <PackageReference Include="Hec.Dss" Version="2.0.4" />
 	  <PackageReference Include="OpenTK" Version="3.3.1">
 		<NoWarn>NU1701</NoWarn>
@@ -89,6 +90,7 @@
 
   <ItemGroup>
     <Folder Include="Properties\" />
+    <Folder Include="Reports\" />
   </ItemGroup>
 
   <ItemGroup>

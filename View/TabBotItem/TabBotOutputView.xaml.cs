@@ -54,11 +54,6 @@ namespace HydroExplorer.View.TabBotItem
             if (e.Action != NotifyCollectionChangedAction.Add) return;
             if (OutputListBox.Items.Count == 0) return;
 
-            // Defer ScrollIntoView to after the full batch of CollectionChanged
-            // notifications has settled — firing it synchronously mid-batch (e.g.
-            // while FlushPending is still adding items and TrimToMax is removing
-            // from the front) causes the ItemsControl inconsistency exception because
-            // the control's internal snapshot doesn't yet match the collection state.
             Dispatcher.InvokeAsync(() =>
             {
                 if (OutputListBox.Items.Count > 0)

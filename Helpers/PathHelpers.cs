@@ -15,25 +15,22 @@ namespace HydroExplorer.Helpers
 
             return lastIndex <= 0 ? string.Empty : path[(lastIndex + 1)..];
         }
-
+         
         public static string NormalizeProjKey(string projPath)
         {
             if (string.IsNullOrEmpty(projPath)) return projPath;
 
-            if (projPath.EndsWith(".rasmap", StringComparison.OrdinalIgnoreCase))
-            {
-                string dir = Path.GetDirectoryName(projPath) ?? string.Empty;
-                string stem = Path.GetFileNameWithoutExtension(projPath);
+            string dir = Path.GetDirectoryName(projPath) ?? string.Empty;
+            string stem = Path.GetFileNameWithoutExtension(projPath);
 
-                string candidatePrj = Path.Combine(dir, stem + ".prj");
-                if (File.Exists(candidatePrj))
-                    return candidatePrj;
+            string candidatePrj = Path.Combine(dir, stem + ".prj");
+            if (File.Exists(candidatePrj))
+                return candidatePrj;
 
-                var anyPrj = Directory.Exists(dir)
-                    ? Directory.GetFiles(dir, "*.prj").FirstOrDefault(IsHecRasProjectFile)
-                    : null;
-                if (anyPrj != null) return anyPrj;
-            }
+            var anyPrj = Directory.Exists(dir)
+                ? Directory.GetFiles(dir, "*.prj").FirstOrDefault(IsHecRasProjectFile)
+                : null;
+            if (anyPrj != null) return anyPrj;
 
             return projPath;
         }

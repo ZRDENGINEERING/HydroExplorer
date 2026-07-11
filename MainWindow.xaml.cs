@@ -13,33 +13,35 @@ namespace HydroExplorer
         public MainWindow()
         {
             InitializeComponent();
-            
+
             LeftTabControl.SelectedIndex = 0;
             bool _firstTopTabEvent = true;
 
+
             EventBus.TopTabChanged += topTabHeader =>
             {
-                if (_firstTopTabEvent)
+                try
                 {
-                    _firstTopTabEvent = false;
-                    System.Diagnostics.Debug.WriteLine("MainWindow: ignoring first event");
-                    return;
+                    bool isChartsTab = topTabHeader == "HMS Charts" || topTabHeader == "Info";
+                    bool isRealChange = topTabHeader != _lastTopTabHeader;
+                    _lastTopTabHeader = topTabHeader;
+
+                    if (isChartsTab && isRealChange && !_hasAutoSwitchedToHydrology && _startupComplete)
+                    {
+                        _hasAutoSwitchedToHydrology = true;
+                        Dispatcher.Invoke(() => LeftTabControl.SelectedIndex = 1);
+                    }
+
+                    _startupComplete = true;
                 }
-
-                bool isChartsTab = topTabHeader == "HMS Charts" || topTabHeader == "Info";
-                bool isRealChange = topTabHeader != _lastTopTabHeader;
-                _lastTopTabHeader = topTabHeader;
-
-                if (isChartsTab && isRealChange && !_hasAutoSwitchedToHydrology && _startupComplete)
+                catch (Exception ex)
                 {
-                    _hasAutoSwitchedToHydrology = true;
-                    Dispatcher.Invoke(() => LeftTabControl.SelectedIndex = 1);
+                    System.Diagnostics.Debug.WriteLine($"MainWindow TopTabChanged handler threw: {ex}");
                 }
-
-                _startupComplete = true;
             };
-        }
 
+
+        }
         private bool _startupComplete = false;
 
 

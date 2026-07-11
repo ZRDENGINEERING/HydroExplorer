@@ -23,13 +23,11 @@ namespace HydroExplorer.ViewModel.TabItem
         private double _lossTotal;
         private double _rainfallExcessTotal;
         private double _initialLoss;
-        private double _infiltrationIndex;
 
         public double RainfallTotal { get => _rainfallTotal; set { _rainfallTotal = value; OnPropertyChanged(); } }
         public double LossTotal { get => _lossTotal; set { _lossTotal = value; OnPropertyChanged(); } }
         public double RainfallExcessTotal { get => _rainfallExcessTotal; set { _rainfallExcessTotal = value; OnPropertyChanged(); } }
         public double InitialLoss { get => _initialLoss; set { _initialLoss = value; OnPropertyChanged(); } }
-        public double InfiltrationIndex { get => _infiltrationIndex; set { _infiltrationIndex = value; OnPropertyChanged(); } }
 
         private string _header = "Chart";
         public override string Header
@@ -58,9 +56,6 @@ namespace HydroExplorer.ViewModel.TabItem
         }
 
 
-
-
-
         private PlotModel? _elevationPlot;
         private PlotModel? _hydrographPlot;
         private PlotModel? _hyetographPlot;
@@ -76,10 +71,6 @@ namespace HydroExplorer.ViewModel.TabItem
                 { old?.InvalidatePlot(false); OnPropertyChanged(); });
             }
         }
-
-
-
-
 
         public PlotModel? HydrographPlot
         {
@@ -99,15 +90,33 @@ namespace HydroExplorer.ViewModel.TabItem
             set { _hyetographPlot?.InvalidatePlot(false); _hyetographPlot = value; OnPropertyChanged(); }
         }
 
+        // Display labels for whichever runs are currently loaded into A/B —
+        // bind these in XAML next to the plots so it's clear which run is
+        // which series without needing to check the Hydrology tab.
+        private string _runNameA = string.Empty;
+        public string RunNameA { get => _runNameA; set { _runNameA = value; OnPropertyChanged(); } }
+
+        private string _runNameB = string.Empty;
+        public string RunNameB { get => _runNameB; set { _runNameB = value; OnPropertyChanged(); } }
+
         public ICommand GenerateReportCommand { get; }
+
+        // ── Cached raw records — A and B load independently (either order,
+        // either one alone), so each is cached separately and the combined
+        // Hydrograph/Elevation plots are rebuilt from whichever is currently
+        // known whenever either side updates. ─────────────────────────────
+        private List<DssHydrographReader.HydrographRecord>? _flowRecordsA;
+        private List<DssHydrographReader.HydrographRecord>? _flowCumRecordsA;
+        private List<DssHydrographReader.HydrographRecord>? _elevRecordsA;
+
+        private List<DssHydrographReader.HydrographRecord>? _flowRecordsB;
+        private List<DssHydrographReader.HydrographRecord>? _flowCumRecordsB;
+        private List<DssHydrographReader.HydrographRecord>? _elevRecordsB;
 
         // ── Constructor ──────────────────────────────────────────────────────
 
         public TabChartViewModel()
         {
-            System.Diagnostics.Debug.WriteLine($"TabChartViewModel CONSTRUCTED — instance {GetHashCode()}");
-
-
             ElevationPlot = BuildElevationPlot();
             HydrographPlot = BuildHydrographPlot();
             HyetographPlot = BuildHyetographPlot(null);
@@ -118,10 +127,13 @@ namespace HydroExplorer.ViewModel.TabItem
 
             EventBus.DssRunSelected += (dssPath, runName) =>
             {
-                System.Diagnostics.Debug.WriteLine($"DssRunSelected received by instance {GetHashCode()}");
                 LoadDssDataAsync(dssPath, runName);
             };
 
+            EventBus.DssRunBSelected += (dssPath, runName) =>
+            {
+                LoadDssDataBAsync(dssPath, runName);
+            };
         }
 
         // ── Load ─────────────────────────────────────────────────────────────
@@ -166,105 +178,170 @@ namespace HydroExplorer.ViewModel.TabItem
             }
         }
 
-
-
         private async void LoadDssDataAsync(string dssFile, string runName)
         {
-            System.Diagnostics.Debug.WriteLine($"LoadDssDataAsync: '{dssFile}' run='{runName}'");
+            System.Diagnostics.Debug.WriteLine($"LoadDssDataAsync (A): '{dssFile}' run='{runName}'");
+            RunNameA = runName;
+
+            var (precip, flow, flowCum, elev) = await ReadDssRunAsync(dssFile, runName);
+            if (flow == null) return; // error already shown to the user inside ReadDssRunAsync
+
+            _flowRecordsA = flow;
+            _flowCumRecordsA = flowCum;
+            _elevRecordsA = elev;
+
+            if (precip is { Count: > 0 })
+            {
+                RainfallTotal = precip.Sum(r => r.Value);
+                LossTotal = precip.Sum(r => r.Value * 0.05);
+                RainfallExcessTotal = RainfallTotal - LossTotal;
+                InitialLoss = 1.00;
+                var plot = BuildHyetographPlot(precip);
+                await System.Windows.Application.Current.Dispatcher.InvokeAsync(
+                    () => HyetographPlot = plot);
+            }
+            else
+            {
+                RainfallTotal = 0;
+                LossTotal = 0;
+                RainfallExcessTotal = 0;
+                var emptyPlot = BuildHyetographPlot(null);
+                await System.Windows.Application.Current.Dispatcher.InvokeAsync(
+                    () => HyetographPlot = emptyPlot);
+            }
+
+            RebuildHydrographPlot();
+            RebuildElevationPlot();
+        }
+
+        private async void LoadDssDataBAsync(string dssFile, string runName)
+        {
+            System.Diagnostics.Debug.WriteLine($"LoadDssDataAsync (B): '{dssFile}' run='{runName}'");
+            RunNameB = runName;
+
+            var (_, flow, flowCum, elev) = await ReadDssRunAsync(dssFile, runName);
+            if (flow == null) return;
+
+            _flowRecordsB = flow;
+            _flowCumRecordsB = flowCum;
+            _elevRecordsB = elev;
+
+            RebuildHydrographPlot();
+            RebuildElevationPlot();
+        }
+
+        /// <summary>
+        /// Shared read logic for A or B — opens the .dss directly (no snapshot
+        /// copy: HEC-DSS's own cooperative record-level locking already
+        /// handles concurrent access from HEC-RAS/HEC-HMS/DSSVue; a raw file
+        /// copy bypasses that and hits Windows' mandatory byte-range locks
+        /// directly instead). Reads every series, handles the two known error
+        /// cases with a MessageBox. Returns nulls on failure so callers can
+        /// bail without touching cached state.
+        /// </summary>
+        private async Task<(
+            List<DssHyetographReader.HyetographRecord>? Precip,
+            List<DssHydrographReader.HydrographRecord>? Flow,
+            List<DssHydrographReader.HydrographRecord>? FlowCum,
+            List<DssHydrographReader.HydrographRecord>? Elev)>
+            ReadDssRunAsync(string dssFile, string runName)
+        {
             try
             {
-                if (!File.Exists(dssFile)) return;
+                if (!File.Exists(dssFile)) return (null, null, null, null);
 
                 var sw = System.Diagnostics.Stopwatch.StartNew();
 
-                // One DssReader for the whole batch, held under DssGate for the
-                // entire open-through-dispose lifetime. See DssGate for why —
-                // heclib's native open-file table is a small, fixed-size, shared
-                // per-process resource; even one handle per call site can exceed it
-                // if multiple call sites fire concurrently (observed: HydrologyPaneView
-                // republishing DssRunSelected multiple times per project switch).
-                var (precipRecords, flowRecords, flowBaseRecords, flowDirectRecords,
-                     flowUGRecords, flowCumRecords, elevRecords) = await Task.Run(() =>
-                     {
-                         string? tempPath = null;
-                         Utils.DssGate.Enter();
-                         try
-                         {
-                             tempPath = Utils.DssSnapshot.Create(dssFile);
-                             using var dss = new Hec.Dss.DssReader(tempPath);
+                var (precip, flow, flowBase, flowDirect, flowUG, flowCum, elev, storage) =
+                    await Task.Run(() =>
+                    {
+                        Utils.DssGate.Enter();
+                        try
+                        {
+                            using var dss = new Hec.Dss.DssReader(dssFile);
 
-                             var precip = DssHyetographReader.ReadPrecipInc(dss, runName);
-                             var flow = DssHydrographReader.ReadByPartC(dss, "FLOW", runName);
-                             var flowBase = DssHydrographReader.ReadByPartC(dss, "FLOW-BASE", runName);
-                             var flowDirect = DssHydrographReader.ReadByPartC(dss, "FLOW-DIRECT", runName);
-                             var flowUG = DssHydrographReader.ReadByPartC(dss, "FLOW-UNIT GRAPH", runName);
-                             var flowCum = DssHydrographReader.ReadByPartC(dss, "FLOW-CUMULATIVE", runName);
-                             var elev = DssHydrographReader.ReadByPartC(dss, "ELEVATION", runName);
-                             var storage = DssHydrographReader.ReadByPartC(dss, "STORAGE", runName);
+                            var precip = DssHyetographReader.ReadPrecipInc(dss, runName);
+                            var flow = DssHydrographReader.ReadByPartC(dss, "FLOW", runName);
+                            var flowBase = DssHydrographReader.ReadByPartC(dss, "FLOW-BASE", runName);
+                            var flowDirect = DssHydrographReader.ReadByPartC(dss, "FLOW-DIRECT", runName);
+                            var flowUG = DssHydrographReader.ReadByPartC(dss, "FLOW-UNIT GRAPH", runName);
+                            var flowCum = DssHydrographReader.ReadByPartC(dss, "FLOW-CUMULATIVE", runName);
+                            var elev = DssHydrographReader.ReadByPartC(dss, "ELEVATION", runName);
+                            var storage = DssHydrographReader.ReadByPartC(dss, "STORAGE", runName);
 
-                             return (precip, flow, flowBase, flowDirect, flowUG, flowCum, elev);
-                         }
-                         finally
-                         {
-                             Utils.DssSnapshot.Cleanup(tempPath);
-                             Utils.DssGate.Exit();
-                         }
-                     });
+                            return (precip, flow, flowBase, flowDirect, flowUG, flowCum, elev, storage);
+                        }
+                        catch (Exception ex) when (Utils.DssErrorHelpers.IsUnsupportedVersion(ex))
+                        {
+                            System.Diagnostics.Debug.WriteLine($"ReadDssRunAsync: unsupported DSS version — {ex.Message}");
+                            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                                System.Windows.MessageBox.Show(
+                                    Utils.DssErrorHelpers.UnsupportedVersionMessage,
+                                    "Unsupported DSS File",
+                                    System.Windows.MessageBoxButton.OK,
+                                    System.Windows.MessageBoxImage.Warning));
+                            return (null, null, null, null, null, null, null, null)!;
+                        }
+                        catch (IOException ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"ReadDssRunAsync: DSS file access error — {ex.Message}");
+                            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+                                System.Windows.MessageBox.Show(
+                                    "Can't read this DSS file right now.\n\n" + ex.Message,
+                                    "DSS File Access Error",
+                                    System.Windows.MessageBoxButton.OK,
+                                    System.Windows.MessageBoxImage.Warning));
+                            return (null, null, null, null, null, null, null, null)!;
+                        }
+                        finally
+                        {
+                            Utils.DssGate.Exit();
+                        }
+                    });
 
                 sw.Stop();
+
+                if (flow == null) return (null, null, null, null); // error path above already notified
+
                 System.Diagnostics.Debug.WriteLine(
                     $"DSS complete in {sw.ElapsedMilliseconds}ms — " +
-                    $"precip:{precipRecords.Count} flow:{flowRecords.Count} " +
-                    $"flowBase:{flowBaseRecords.Count} flowDirect:{flowDirectRecords.Count} " +
-                    $"flowUG:{flowUGRecords.Count} flowCum:{flowCumRecords.Count} elev:{elevRecords.Count}");
+                    $"precip:{precip.Count} flow:{flow.Count} " +
+                    $"flowBase:{flowBase.Count} flowDirect:{flowDirect.Count} " +
+                    $"flowUG:{flowUG.Count} flowCum:{flowCum.Count} " +
+                    $"elev:{elev.Count} storage:{storage.Count}");
 
-                if (precipRecords.Count > 0)
-                {
-                    RainfallTotal = precipRecords.Sum(r => r.Value);
-                    LossTotal = precipRecords.Sum(r => r.Value * 0.05);
-                    RainfallExcessTotal = RainfallTotal - LossTotal;
-                    InitialLoss = 1.00;
-                    InfiltrationIndex = 0.10;
-                    var plot = BuildHyetographPlot(precipRecords);
-                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(
-                        () => HyetographPlot = plot);
-                }
-
-                if (flowRecords.Count > 0 || flowCumRecords.Count > 0)
-                {
-                    var plot = BuildHydrographPlot(
-                        flowRecords.Count > 0 ? flowRecords : flowCumRecords,
-                        flowBaseRecords, flowDirectRecords, flowUGRecords);
-                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(
-                        () => HydrographPlot = plot);
-                }
-
-                if (elevRecords.Count > 0)
-                {
-                    var plot = BuildElevationPlot(elevRecords);
-                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
-                    {
-                        ElevationPlot = plot;
-                        ElevationDataAvailable = true;
-                    });
-                }
-                else
-                {
-                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
-                    {
-                        ElevationPlot = BuildElevationPlot(null);
-                        ElevationDataAvailable = false;
-                    });
-                }
-
+                return (precip, flow, flowCum, elev);
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"LoadDssDataAsync error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"ReadDssRunAsync error: {ex.Message}");
+                return (null, null, null, null);
             }
         }
 
-        // ── Report ───────────────────────────────────────────────────────────
+        private void RebuildHydrographPlot()
+        {
+            var plot = BuildHydrographPlot(
+                _flowRecordsA is { Count: > 0 } ? _flowRecordsA : _flowCumRecordsA,
+                _flowRecordsB is { Count: > 0 } ? _flowRecordsB : _flowCumRecordsB,
+                RunNameA, RunNameB);
+
+            System.Windows.Application.Current.Dispatcher.Invoke(() => HydrographPlot = plot);
+        }
+
+        private void RebuildElevationPlot()
+        {
+            bool hasAny = (_elevRecordsA?.Count ?? 0) > 0 || (_elevRecordsB?.Count ?? 0) > 0;
+
+            var plot = BuildElevationPlot(_elevRecordsA, _elevRecordsB, RunNameA, RunNameB);
+
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                ElevationPlot = plot;
+                ElevationDataAvailable = hasAny;
+            });
+        }
+
 
         private void GenerateReport()
         {
@@ -277,8 +354,7 @@ namespace HydroExplorer.ViewModel.TabItem
                     rainfallTotal: RainfallTotal,
                     lossTotal: LossTotal,
                     rainfallExcessTotal: RainfallExcessTotal,
-                    initialLoss: InitialLoss,
-                    infiltrationIndex: InfiltrationIndex);
+                    initialLoss: InitialLoss);
 
                 System.Diagnostics.Process.Start(
                     new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
@@ -288,6 +364,7 @@ namespace HydroExplorer.ViewModel.TabItem
                 System.Diagnostics.Debug.WriteLine($"GenerateReport error: {ex.Message}");
             }
         }
+
 
         // ── Plot builders ────────────────────────────────────────────────────
 
@@ -371,11 +448,15 @@ namespace HydroExplorer.ViewModel.TabItem
             return model;
         }
 
+        /// <summary>
+        /// Flow comparison — Run A solid, Run B dashed, both on the same
+        /// hour-0-aligned time axis so they overlay even if the two runs'
+        /// actual calendar start times differ.
+        /// </summary>
         private static PlotModel BuildHydrographPlot(
-            List<DssHydrographReader.HydrographRecord>? flow = null,
-            List<DssHydrographReader.HydrographRecord>? flowBase = null,
-            List<DssHydrographReader.HydrographRecord>? flowDirect = null,
-            List<DssHydrographReader.HydrographRecord>? flowUG = null)
+            List<DssHydrographReader.HydrographRecord>? flowA = null,
+            List<DssHydrographReader.HydrographRecord>? flowB = null,
+            string labelA = "A", string labelB = "B")
         {
             var model = new PlotModel
             {
@@ -417,10 +498,8 @@ namespace HydroExplorer.ViewModel.TabItem
                 if (elapsed > maxHours) maxHours = elapsed;
             }
 
-            AddSeries(flow, "FLOW", OxyColors.SteelBlue);
-            //AddSeries(flowBase, "FLOW-BASE", OxyColors.DarkGreen, LineStyle.Dash);
-            //AddSeries(flowDirect, "FLOW-DIRECT", OxyColors.DarkRed, LineStyle.Dash);
-            AddSeries(flowUG, "FLOW-UNIT GRAPH", OxyColors.Orange, LineStyle.Dot);
+            AddSeries(flowA, string.IsNullOrEmpty(labelA) ? "FLOW (A)" : $"FLOW ({labelA})", OxyColors.SteelBlue);
+            AddSeries(flowB, string.IsNullOrEmpty(labelB) ? "FLOW (B)" : $"FLOW ({labelB})", OxyColors.OrangeRed, LineStyle.Dash);
 
             if (maxHours > 0)
             {
@@ -439,8 +518,14 @@ namespace HydroExplorer.ViewModel.TabItem
             return model;
         }
 
+        /// <summary>
+        /// Elevation comparison — same A-solid/B-dashed convention as
+        /// BuildHydrographPlot.
+        /// </summary>
         private static PlotModel BuildElevationPlot(
-            List<DssHydrographReader.HydrographRecord>? records = null)
+            List<DssHydrographReader.HydrographRecord>? recordsA = null,
+            List<DssHydrographReader.HydrographRecord>? recordsB = null,
+            string labelA = "A", string labelB = "B")
         {
             var model = new PlotModel
             {
@@ -456,39 +541,31 @@ namespace HydroExplorer.ViewModel.TabItem
             xAxis.MajorStep = 6;
 
             var yAxis = MakeAxis(AxisPosition.Left, "ELEVATION");
-            //yAxis.Minimum = 0;
 
             model.Axes.Add(xAxis);
             model.Axes.Add(yAxis);
 
-            var elevSeries = new LineSeries
-            {
-                Title = "ELEVATION",
-                Color = OxyColors.DarkGreen,
-                StrokeThickness = 2,
-            };
+            double maxHours = 0;
 
-            if (records is { Count: > 0 })
+            void AddSeries(List<DssHydrographReader.HydrographRecord>? records,
+                           string title, OxyColor color, LineStyle style = LineStyle.Solid)
             {
+                if (records is not { Count: > 0 }) return;
+                var series = new LineSeries { Title = title, Color = color, StrokeThickness = 2, LineStyle = style };
                 var startTime = records[0].Time;
                 foreach (var r in records)
-                    elevSeries.Points.Add(new DataPoint((r.Time - startTime).TotalHours, r.Value));
-                xAxis.Maximum = (records.Last().Time - records[0].Time).TotalHours;
-            }
-            else
-            {
-                // placeholder curve
-                var pts = new (double t, double e)[]
-                {
-                    (0,832),(6,833),(12,834),(18,836),(24,838),(30,840),
-                    (36,843),(40,848),(44,854),(47,856.2),(48,856),(51,853),
-                    (54,850),(60,845),(66,840),(72,836),(78,833),(84,831)
-                };
-                foreach (var (t, e) in pts)
-                    elevSeries.Points.Add(new DataPoint(t, e));
+                    series.Points.Add(new DataPoint((r.Time - startTime).TotalHours, r.Value));
+                model.Series.Add(series);
+                double elapsed = (records.Last().Time - records[0].Time).TotalHours;
+                if (elapsed > maxHours) maxHours = elapsed;
             }
 
-            model.Series.Add(elevSeries);
+            AddSeries(recordsA, string.IsNullOrEmpty(labelA) ? "ELEVATION (A)" : $"ELEVATION ({labelA})", OxyColors.DarkGreen);
+            AddSeries(recordsB, string.IsNullOrEmpty(labelB) ? "ELEVATION (B)" : $"ELEVATION ({labelB})", OxyColors.Purple, LineStyle.Dash);
+
+            if (maxHours > 0)
+                xAxis.Maximum = maxHours;
+
             model.Legends.Add(new Legend
             {
                 LegendPosition = LegendPosition.TopRight,

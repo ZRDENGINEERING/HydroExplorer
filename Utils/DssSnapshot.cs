@@ -24,14 +24,12 @@ namespace HydroExplorer.Utils
 
             string tempPath = Path.Combine(tempDir, $"snap_{Guid.NewGuid():N}.dss");
 
-            // HEC-HMS (via heclib) can hold a transient byte-range lock on part
-            // of the file mid-read/write — separate from whole-file sharing, so
-            // FileShare.ReadWrite alone doesn't avoid it. Observed: rapid combo
-            // box selections can outlast a short retry window if HMS is actively
-            // computing. 8 retries with growing backoff (200ms → 1600ms, ~7s
-            // total worst case) rides out realistic HMS operations without
-            // hanging indefinitely.
-            const int maxRetries = 8;
+            // HEC-HMS holding the .dss file open for an entire interactive
+            // session (not just a brief write) is common and won't clear
+            // with retrying — long backoff just stalls the UI for no
+            // benefit. Fail fast (3 attempts, ~450ms total) so the caller
+            // can show a clear message instead of hanging.
+            const int maxRetries = 3;
             Exception? lastError = null;
 
             for (int attempt = 1; attempt <= maxRetries; attempt++)
@@ -50,13 +48,13 @@ namespace HydroExplorer.Utils
                 {
                     lastError = ex;
                     if (attempt < maxRetries)
-                        Thread.Sleep(200 * attempt);
+                        Thread.Sleep(150 * attempt);
                 }
             }
 
             throw new IOException(
-                $"Could not snapshot '{dssFilePath}' after {maxRetries} attempts — " +
-                "file remained locked (likely HEC-HMS actively computing).", lastError);
+                $"Could not snapshot '{dssFilePath}' — file is locked, likely because " +
+                "HEC-HMS currently has it open.", lastError);
         }
 
         public static void Cleanup(string? tempPath)

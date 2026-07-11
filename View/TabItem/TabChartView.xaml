@@ -81,7 +81,7 @@
                                Foreground="{StaticResource ForegroundBrush}"
                                FontSize="10" FontWeight="Bold"
                                TextDecorations="Underline"
-                               Margin="80,0,0,6"/>
+                               Margin="10,0,0,6"/>
 
 
 
@@ -100,15 +100,13 @@
                         </Grid.RowDefinitions>
 
                         <TextBlock Grid.Row="0" Grid.Column="0" Text="RAINFALL TOTAL   ..................................................." 
-               Foreground="{StaticResource ForegroundBrushDark}" FontSize="9" Margin="85,0,0,0"/>
+               Foreground="{StaticResource ForegroundBrushDark}" FontSize="9" Margin="15,0,0,0"/>
                         <TextBlock Grid.Row="1" Grid.Column="0" Text="LOSS TOTAL   ............................................................" 
-               Foreground="{StaticResource ForegroundBrushDark}" FontSize="9" Margin="85,0,0,0"/>
+               Foreground="{StaticResource ForegroundBrushDark}" FontSize="9" Margin="15,0,0,0"/>
                         <TextBlock Grid.Row="2" Grid.Column="0" Text="RAINFALL - EXCESS TOTAL   ..............................." 
-               Foreground="{StaticResource ForegroundBrushDark}" FontSize="9" Margin="85,0,0,0"/>
+               Foreground="{StaticResource ForegroundBrushDark}" FontSize="9" Margin="15,0,0,0"/>
                         <TextBlock Grid.Row="3" Grid.Column="0" Text="INITIAL LOSS   .........................................................." 
-               Foreground="{StaticResource ForegroundBrushDark}" FontSize="9" Margin="85,0,0,0"/>
-                        <TextBlock Grid.Row="4" Grid.Column="0" Text="INFILTRATION INDEX (F.A.V.G)   ......................." 
-               Foreground="{StaticResource ForegroundBrushDark}" FontSize="9" Margin="85,0,0,0"/>
+               Foreground="{StaticResource ForegroundBrushDark}" FontSize="9" Margin="15,0,0,0"/>
 
                         <TextBlock Grid.Row="0" Grid.Column="1"
                Text="{Binding RainfallTotal, StringFormat={}{0:F2}}"
@@ -122,9 +120,8 @@
                         <TextBlock Grid.Row="3" Grid.Column="1"
                Text="{Binding InitialLoss, StringFormat={}{0:F2}}"
                Foreground="{StaticResource ForegroundBrush}" FontSize="9"/>
-                        <TextBlock Grid.Row="4" Grid.Column="1"
-               Text="{Binding InfiltrationIndex, StringFormat={}{0:F2}}"
-               Foreground="{StaticResource ForegroundBrush}" FontSize="9"/>
+                        
+                        
                     </Grid>
                     
                     

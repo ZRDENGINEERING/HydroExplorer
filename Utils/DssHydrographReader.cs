@@ -1,4 +1,5 @@
 using Hec.Dss;
+using HydroExplorer.Helpers;
 using System.IO;
 
 namespace HydroExplorer.Utils
@@ -54,6 +55,13 @@ namespace HydroExplorer.Utils
                 using var dss = new DssReader(tempPath);
                 return ReadByPartC(dss, partC, runName);
             }
+
+            catch (Exception ex) when (DssErrorHelpers.IsUnsupportedVersion(ex))
+            {
+                System.Diagnostics.Debug.WriteLine($"DssHydrographReader: unsupported DSS version — {ex.Message}");
+                EventBus.PublishProfileMismatchWarning(DssErrorHelpers.UnsupportedVersionMessage);
+                return results;
+            }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"DssHydrographReader.ReadByPartC({partC}) error: {ex.Message}");
@@ -84,7 +92,7 @@ namespace HydroExplorer.Utils
 
                 if (paths.Count == 0)
                 {
-                    System.Diagnostics.Debug.WriteLine($"DssHydrographReader: no paths for partC='{partC}'");
+                    //System.Diagnostics.Debug.WriteLine($"DssHydrographReader: no paths for partC='{partC}'");
                     return results;
                 }
 

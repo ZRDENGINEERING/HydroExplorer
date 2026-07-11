@@ -14,11 +14,17 @@ using Mapsui.Tiling.Layers;
 using Mapsui.UI.Wpf;
 using Mapsui.Widgets.InfoWidgets;
 using Microsoft.Extensions.DependencyInjection;
+using NetTopologySuite.Geometries;
+using ProjNet.IO.CoordinateSystems;
 using System.IO;
+using System.Security.Policy;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Animation;
+using ProjNet.CoordinateSystems.Transformations;
+using GeoAPI.CoordinateSystems;
+
 
 
 namespace HydroExplorer.View
@@ -227,42 +233,93 @@ namespace HydroExplorer.View
             }
         }
 
+
+        public static double[] ReprojectHelper(string _path)
+        {
+            var shapeFileProvider = new ShapeFile(_path, true);
+            string tmpcrs = shapeFileProvider.CRS;
+
+            string srcWkt = File.ReadAllText(Path.ChangeExtension(_path, ".prj"));
+
+            //string srcWkt = GISUtil.FetchWkt(2278);
+            string tgtWkt = GISUtil.FetchWkt(4326);
+            var transform = GISUtil.CreateTransformation(srcWkt, tgtWkt);
+
+            if (shapeFileProvider.GetExtent() is MRect extent)
+            {
+                double xx = (extent.MaxX + extent.MinX) / 2;
+                double yy = (extent.MaxY + extent.MinY) / 2;
+
+                return transform.MathTransform.Transform([xx, yy]);
+            }
+            return [];
+        }
+
+
         private async Task InitView()
         {
             if (Path.Exists(_pathBNDY))
             {
+                System.Diagnostics.Debug.WriteLine($"InitView: _pathRiver '{_pathBNDY}'.");
+
                 var shapeFileProvider = new ShapeFile(_pathBNDY, true);
-                if (shapeFileProvider.GetExtent() is MRect extent)
-                {
-                    double xx = (extent.MaxX + extent.MinX) / 2;
-                    double yy = (extent.MaxY + extent.MinY) / 2;
 
-                    await Application.Current.Dispatcher.InvokeAsync(() => { },
-                        System.Windows.Threading.DispatcherPriority.Loaded);
+                double[] zoomToCoords = ReprojectHelper(_pathBNDY);
 
-                    var (x, y) = SphericalMercator.FromLonLat(xx, yy);
-                    _map.Navigator.CenterOn(x, y);
-                    _map.Navigator.ZoomTo(350);
-                    return;
-                }
+                System.Diagnostics.Debug.WriteLine($"InitView: zoomToCoords '{zoomToCoords[0]} , {zoomToCoords[1]}'.");
+
+                await Application.Current.Dispatcher.InvokeAsync(() => { },
+                    System.Windows.Threading.DispatcherPriority.Loaded);
+
+                var (x, y) = SphericalMercator.FromLonLat(zoomToCoords[0], zoomToCoords[1]);
+
+                _map.Navigator.CenterOn(x, y);
+                _map.Navigator.ZoomTo(350);
+                return;
             }
 
-            else if (Path.Exists(_pathXS))
+            //else if (Path.Exists(_pathXS))
+            //{
+            //    System.Diagnostics.Debug.WriteLine($"InitView: _pathXS '{_pathXS}'.");
+
+            //    var shapeFileProvider = new ShapeFile(_pathXS, true);
+            //    if (shapeFileProvider.GetExtent() is MRect extent)
+            //    {
+            //        double xx = (extent.MaxX + extent.MinX) / 2;
+            //        double yy = (extent.MaxY + extent.MinY) / 2;
+
+            //        await Application.Current.Dispatcher.InvokeAsync(() => { },
+            //            System.Windows.Threading.DispatcherPriority.Loaded);
+
+            //        var (x, y) = SphericalMercator.FromLonLat(xx, yy);
+
+            //        System.Diagnostics.Debug.WriteLine($"InitView: xx, yy '{xx} , {yy}'.");
+            //        System.Diagnostics.Debug.WriteLine($"InitView: x, y '{x} , {y}'.");
+
+            //        _map.Navigator.CenterOn(xx, yy);
+            //        _map.Navigator.ZoomTo(350);
+            //        return;
+            //    }
+            //}
+
+            else if (Path.Exists(_pathRiver))
             {
-                var shapeFileProvider = new ShapeFile(_pathXS, true);
-                if (shapeFileProvider.GetExtent() is MRect extent)
-                {
-                    double xx = (extent.MaxX + extent.MinX) / 2;
-                    double yy = (extent.MaxY + extent.MinY) / 2;
+                System.Diagnostics.Debug.WriteLine($"InitView: _pathRiver '{_pathRiver}'.");
 
-                    await Application.Current.Dispatcher.InvokeAsync(() => { },
-                        System.Windows.Threading.DispatcherPriority.Loaded);
+                var shapeFileProvider = new ShapeFile(_pathRiver, true);
 
-                    var (x, y) = SphericalMercator.FromLonLat(xx, yy);
+                double[] zoomToCoords = ReprojectHelper(_pathRiver);
+
+                System.Diagnostics.Debug.WriteLine($"InitView: zoomToCoords '{ zoomToCoords[0] } , { zoomToCoords[1] }'.");
+
+                await Application.Current.Dispatcher.InvokeAsync(() => { },
+                    System.Windows.Threading.DispatcherPriority.Loaded);
+
+                    var (x, y) = SphericalMercator.FromLonLat(zoomToCoords[0], zoomToCoords[1]);
+
                     _map.Navigator.CenterOn(x, y);
                     _map.Navigator.ZoomTo(350);
                     return;
-                }
             }
 
             await Application.Current.Dispatcher.InvokeAsync(() => { },

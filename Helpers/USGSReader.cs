@@ -69,11 +69,20 @@ namespace HydroExplorer.Utils
                 return (cached, GageLookupStatus.Success);
             }
 
+            // A prior attempt genuinely queried the network and found nothing
+            // within range — cache that too, or every repeated call (multiple
+            // call sites can trigger this independently per project switch)
+            // re-hits the USGS API, which can trip its own rate limiting.
+            if (projSettings.GageLookupAttempted)
+                return (null, GageLookupStatus.NoGageInRange);
+
             // ── Get project centroid from BNDY.shp ───────────────────────────
             var centroid = GetProjectCentroid(projSettings);
             if (centroid is null)
             {
                 //System.Diagnostics.Debug.WriteLine("USGSReader: could not determine project centroid (BNDY.shp missing or unreadable).");
+                // NOT cached as attempted — BNDY.shp may not exist yet (still
+                // resolving), so this is worth retrying once it does.
                 return (null, GageLookupStatus.NoCentroid);
             }
 
@@ -84,6 +93,8 @@ namespace HydroExplorer.Utils
             if (result is null)
             {
                 System.Diagnostics.Debug.WriteLine($"USGSReader: no stream gage found within {SearchRadiusMiles} mi.");
+                projSettings.GageLookupAttempted = true;
+                await settingsRepo.SaveSettings(settings);
                 return (null, GageLookupStatus.NoGageInRange);
             }
 

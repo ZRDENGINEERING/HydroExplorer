@@ -16,6 +16,7 @@ namespace HydroExplorer.Utils
         private const string BasePathAV =
             "/Results/Steady/Output/Output Blocks/Base Output/Steady Profiles/Cross Sections/Additional Variables/";
 
+
         public static List<WSELTableOxy> ReadWSELTableOxy(string? hdfPathA, string? hdfPathB, string proName, out string? warning)
         {
             warning = null;
@@ -30,53 +31,49 @@ namespace HydroExplorer.Utils
             using var fileA = OpenHdf(hdfPathA!);
             using var fileB = OpenHdf(hdfPathB!);
 
-            var profileA = ReadSteadyProfileNames(fileA);
-            var profileB = ReadSteadyProfileNames(fileB);
-
-
-            if (!HasSteadyResults(fileA) || !HasSteadyResults(fileB))
+            if (!HasSteadyResults(fileA) && !HasSteadyResults(fileB))
             {
                 System.Diagnostics.Debug.WriteLine(
-                    "ReadWSELTableOxy: one or both plans have no Steady Output results, skipping.");
+                    "ReadWSELTableOxy: both plans have no Steady Output results, skipping.");
                 return [];
             }
 
             var (riverA, reachA, staA) = ReadCrossSectionAttrs(fileA);
+
             var (riverB, reachB, staB) = ReadCrossSectionAttrs(fileB);
 
-            // Guard: attrs must have content
             if (staA.Length == 0 || staB.Length == 0)
             {
                 System.Diagnostics.Debug.WriteLine("ReadWSELTableOxy: empty cross-section attrs, skipping.");
                 return [];
             }
 
+            var profileA = ReadSteadyProfileNames(fileA);
+            var profileB = ReadSteadyProfileNames(fileB);
 
-            int proNA = profileA.IndexOf(proName);
-            int proNB = profileB.IndexOf(proName);
-
-            if (proNA == -1 || proNB == -1)
-            {
-                warning = $"Plan comparison unavailable — profile '{proName}' not found in " +
-                          $"{(proNA == -1 ? "Plan A" : "Plan B")}.";
-                System.Diagnostics.Debug.WriteLine(
-                    $"ReadWSELTableOxy: {warning} A has [{string.Join(", ", profileA)}], B has [{string.Join(", ", profileB)}].");
-                return [];
-            }
-
-            // Guard: profile lists must have content
             if (profileA.Count == 0 || profileB.Count == 0)
             {
                 System.Diagnostics.Debug.WriteLine("ReadWSELTableOxy: empty profile names, skipping.");
                 return [];
             }
 
+            int proNA = profileA.IndexOf(proName);
+            int proNB = profileB.IndexOf(proName);
+
+            // Profile mismatch is now a warning, not a stoppage — fall back to each
+            // plan's first profile so the grid still populates (matching the
+            // fallback ReadWSELTableOxySingle already uses), but flag it clearly
+            // since A and B are no longer necessarily the same flow event.
             if (proNA == -1 || proNB == -1)
             {
+                warning = $"Plans reference different flow profiles — '{proName}' not found in " +
+                          $"{(proNA == -1 ? "Plan A" : "Plan B")}. Showing each plan's first profile instead; " +
+                          "comparison may not represent the same event.";
                 //System.Diagnostics.Debug.WriteLine(
-                //    $"ReadWSELTableOxy: profile '{proName}' not found in one or both plans — " +
-                //    $"A has [{string.Join(", ", profileA)}], B has [{string.Join(", ", profileB)}]. Skipping.");
-                return [];
+                //    $"ReadWSELTableOxy: {warning} A has [{string.Join(", ", profileA)}], B has [{string.Join(", ", profileB)}].");
+
+                if (proNA == -1) proNA = 0;
+                if (proNB == -1) proNB = 0;
             }
 
             var qTotalA = fileA.Dataset(BasePathAV + "Flow Total").Read<float[,]>();
@@ -109,13 +106,11 @@ namespace HydroExplorer.Utils
 
             var staBIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             for (int j = 0; j < staB.Length && j < colsB; j++)
-                //staBIndex.TryAdd(CompositeKey(riverB[j], reachB[j], staB[j]), j);
-
-
-            if (!staBIndex.TryAdd(CompositeKey(riverB[j], reachB[j], staB[j]), j))
-                System.Diagnostics.Debug.WriteLine(
-                    $"Duplicate key in Plan B: {CompositeKey(riverB[j], reachB[j], staB[j])} at j={j} (first kept)");
-
+            {
+                if (!staBIndex.TryAdd(CompositeKey(riverB[j], reachB[j], staB[j]), j))
+                    System.Diagnostics.Debug.WriteLine(
+                        $"Duplicate key in Plan B: {CompositeKey(riverB[j], reachB[j], staB[j])} at j={j} (first kept)");
+            }
 
             var results = new List<WSELTableOxy>();
 
@@ -143,9 +138,26 @@ namespace HydroExplorer.Utils
                     DELTA = Math.Round(wselB - wselA, 2)
                 });
             }
-            return results;
+
+            return results
+                .OrderBy(r => r.Reach, StringComparer.OrdinalIgnoreCase)
+                .ThenByDescending(r => ParseStation(r.RiverSta))
+                .ToList();
         }
 
+        /// <summary>
+        /// Parses a RiverSta string to a sortable numeric value, tolerating the
+        /// same formatting HEC-RAS emits (thousands separators, "*" interpolated-
+        /// section markers). Non-numeric stations sort last.
+        /// </summary>
+        private static double ParseStation(string? riverSta)
+        {
+            if (string.IsNullOrEmpty(riverSta)) return double.MinValue;
+            string cleaned = riverSta.Replace(",", "").Replace("*", "").Trim();
+            return double.TryParse(cleaned, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out double sta)
+                ? sta : double.MinValue;
+        }
 
         public static List<WSELTableOxy>? ReadWSELTableOxySingle(string planPath, string proName)
         {
@@ -212,8 +224,15 @@ namespace HydroExplorer.Utils
                 });
             }
 
-            return results;
+            return results
+                .OrderBy(r => r.Reach, StringComparer.OrdinalIgnoreCase)
+                .ThenByDescending(r => ParseStation(r.RiverSta))
+                .ToList();
         }
+
+
+
+
 
 
 

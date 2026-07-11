@@ -507,57 +507,42 @@ namespace HydroExplorer.ViewModel.TabItem
             var settings = await SettingsRepo!.GetSettingsFresh();
             string activePath = activePathOverride ?? settings.LastProjPath;
 
+            var rasKeys = settings.Projects
+                .Where(kv => (kv.Key.EndsWith(".rasmap", StringComparison.OrdinalIgnoreCase)
+                           || kv.Key.EndsWith(".prj", StringComparison.OrdinalIgnoreCase))
+                          && File.Exists(kv.Key))
+                .OrderBy(kv => kv.Value.OpenOrder)
+                .ToList();
 
-            var rasEntries = settings.Projects
-                .Where(kv => kv.Key.EndsWith(".rasmap", StringComparison.OrdinalIgnoreCase)
-                    || kv.Key.EndsWith(".prj", StringComparison.OrdinalIgnoreCase))
-                .Where(kv => File.Exists(kv.Key))
+            var rasRootDirs = rasKeys
+                .Select(kv => kv.Value.ProjRoot)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            // HMS-only entries: anything else with a live HmsPath, whose ProjRoot
+            // isn't already covered by a RAS entry (avoids showing a duplicate row
+            // for an HMS run that's actually just part of an existing RAS project).
+            var hmsOnlyKeys = settings.Projects
+                .Where(kv => !rasKeys.Any(r => r.Key.Equals(kv.Key, StringComparison.OrdinalIgnoreCase))
+                          && !string.IsNullOrEmpty(kv.Value.HmsPath)
+                          && File.Exists(kv.Value.HmsPath)
+                          && !rasRootDirs.Contains(kv.Value.ProjRoot))
+                .ToList();
+
+            var allEntries = rasKeys
+                .Concat(hmsOnlyKeys)
+                .GroupBy(kv => kv.Value.ProjRoot, StringComparer.OrdinalIgnoreCase)
+                .Select(g => g.OrderBy(kv => kv.Value.OpenOrder).First())
                 .OrderBy(kv => kv.Value.OpenOrder)
                 .Select(kv => new RecentProjectEntry
                 {
-                    Name = !string.IsNullOrEmpty(kv.Value.ProjName)
-                        ? kv.Value.ProjName
-                        : Path.GetFileNameWithoutExtension(kv.Key),
+                    Key = kv.Key,
                     ProjName = !string.IsNullOrEmpty(kv.Value.ProjName)
                         ? kv.Value.ProjName
                         : Path.GetFileNameWithoutExtension(kv.Key),
-                    FilePath = kv.Value.ProjRoot,  // ← use kv.Value not proj
-                    ProjPath = kv.Key,
                     LastOpened = kv.Value.LastOpened,
-                    OpenOrder = kv.Value.OpenOrder,
-                    ProjectType = "RAS",
-                    HmsRunFile = File.Exists(kv.Value.HmsPath) ? kv.Value.HmsPath : null
+                    IsActive = kv.Key.Equals(activePath, StringComparison.OrdinalIgnoreCase)
                 })
                 .ToList();
-
-            var rasKeys = rasEntries.Select(e => e.ProjPath).ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-            var hmsOnlyEntries = settings.Projects
-                .Where(kv => !rasKeys.Contains(kv.Key)
-                    && !string.IsNullOrEmpty(kv.Value.HmsPath)
-                    && File.Exists(kv.Value.HmsPath))
-                .Select(kv => new RecentProjectEntry
-                {
-                    Name = !string.IsNullOrEmpty(kv.Value.ProjName) ? kv.Value.ProjName : Path.GetFileNameWithoutExtension(kv.Key),
-                    ProjName = !string.IsNullOrEmpty(kv.Value.ProjName) ? kv.Value.ProjName : Path.GetFileNameWithoutExtension(kv.Key),
-                    FilePath = kv.Value.ProjRoot,
-                    ProjPath = kv.Key,
-                    LastOpened = kv.Value.LastOpened,
-                    OpenOrder = int.MaxValue,
-                    ProjectType = "HMS",
-                    HmsRunFile = kv.Value.HmsPath
-                })
-                .ToList();
-
-
-            var allEntries = rasEntries
-                .Concat(hmsOnlyEntries)
-                .GroupBy(e => e.FilePath, StringComparer.OrdinalIgnoreCase)
-                .Select(g => g.OrderBy(e => e.OpenOrder).First())
-                .ToList();
-
-            foreach (var entry in allEntries)
-                entry.IsActive = entry.ProjPath.Equals(activePath, StringComparison.OrdinalIgnoreCase);
 
             await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
             {
@@ -565,7 +550,6 @@ namespace HydroExplorer.ViewModel.TabItem
                 foreach (var entry in allEntries)
                     RecentProjects.Add(entry);
             });
-
         }
     }
 }

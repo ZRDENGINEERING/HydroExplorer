@@ -216,8 +216,8 @@ namespace HydroExplorer.ViewModel
             {
                 Position = AxisPosition.Bottom,
                 Title = "DRAINAGE AREA (sq mi)",
-                Minimum = 0.1,
-                Maximum = 100000,
+                Minimum = 0.001,
+                Maximum = 1001,
                 AxislineStyle = LineStyle.Solid,
                 AxislineColor = OxyColorPalette.Colors["DimGray"],
                 MajorGridlineStyle = LineStyle.Solid,
@@ -232,8 +232,8 @@ namespace HydroExplorer.ViewModel
             {
                 Position = AxisPosition.Left,
                 Title = "PEAK DISCHARGE (cfs)",
-                Minimum = 1,
-                Maximum = 10_000_000,
+                Minimum = 0.1,
+                Maximum = 500_001,
                 AxislineStyle = LineStyle.Solid,
                 AxislineColor = OxyColorPalette.Colors["DimGray"],
                 MajorGridlineStyle = LineStyle.Solid,

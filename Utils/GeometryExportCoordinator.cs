@@ -46,7 +46,7 @@ namespace HydroExplorer.Helpers
                 if (string.IsNullOrEmpty(pathXS)) return false;
                 if (File.Exists(pathXS)) return true;
 
-                //System.Diagnostics.Debug.WriteLine($"GeometryExportCoordinator: XS FILE DOES NOT EXIST — CREATING @ {pathXS}");
+                System.Diagnostics.Debug.WriteLine($"GeometryExportCoordinator: XS FILE DOES NOT EXIST — CREATING @ {pathXS}");
 
                 string projDir = Path.GetDirectoryName(hdfPath) ?? string.Empty;
 

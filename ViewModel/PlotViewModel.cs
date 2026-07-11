@@ -1,4 +1,5 @@
-﻿using HydroExplorer.Core;
+﻿using BruTile;
+using HydroExplorer.Core;
 using HydroExplorer.Helpers;
 using HydroExplorer.Themes;
 using HydroExplorer.Utils;
@@ -13,8 +14,8 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
-using System.Windows.Input;
 using System.Windows;
+using System.Windows.Input;
 
 
 
@@ -163,6 +164,38 @@ namespace HydroExplorer.ViewModel
                     System.Diagnostics.Debug.WriteLine($"PlotViewModel ProjPathChanged error: {ex.Message}");
                 }
             };
+
+            // Plan A/B combobox changes. Previously nothing subscribed to this
+            // at all, so WselData (what DataGridView actually renders, via
+            // ApplyReachFilter) only ever refreshed on a project change — Plan
+            // A/B selections never reached this ViewModel. hdfPathA/hdfPathB
+            // come straight from the event payload, not settings, so this
+            // can't race the debounced settings write either.
+            EventBus.HdfPathChanged += async (hdfPathA, hdfPathB) =>
+            {
+                try
+                {
+                    await ReloadDataAsync(hdfPathA, hdfPathB);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"PlotViewModel HdfPathChanged error: {ex.Message}");
+                }
+            };
+
+            // Profile combobox changes — same gap as above; nothing reloaded
+            // WselData when only the profile changed.
+            EventBus.ProfileChanged += async profile =>
+            {
+                try
+                {
+                    await ReloadDataAsync(overrideProName: profile);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"PlotViewModel ProfileChanged error: {ex.Message}");
+                }
+            };
         }
 
 
@@ -174,9 +207,18 @@ namespace HydroExplorer.ViewModel
         /// <summary>
         /// Forces a fresh HDF re-read even if data was already loaded — used
         /// when the underlying HDF file changes on disk (e.g. HdfFileMonitor
-        /// detects HEC-RAS re-ran the plan) and the project path itself hasn't
-        /// changed, so EventBus.ProjPathChanged won't fire on its own.
-        /// Reuses the same cancellation pattern as the ProjPathChanged handler.
+        /// detects HEC-RAS re-ran the plan), when Plan A/B changes via
+        /// HdfPathChanged, or when the profile changes via ProfileChanged.
+        /// The project path itself hasn't necessarily changed in any of these
+        /// cases, so EventBus.ProjPathChanged won't fire on its own.
+        ///
+        /// hdfPathAOverride/hdfPathBOverride/overrideProName, when supplied
+        /// (non-null — "" is a valid "no Plan B" value, not "unset"), come
+        /// from a live event payload and take precedence over whatever is
+        /// currently in settings, avoiding a race against the debounced
+        /// settings write. Left null for the file-changed-on-disk and
+        /// project-change call sites, which have no live override to give and
+        /// fall back to settings.
         ///
         /// Serialized via _reloadLock — hdfPathA and hdfPathB are watched by
         /// separate FileSystemWatchers with independent debounce timers, so a
@@ -187,7 +229,7 @@ namespace HydroExplorer.ViewModel
         /// while the first is still running simply waits, then runs once the
         /// first is done — cheap enough for a 3-second-debounced event.
         /// </summary>
-        public async Task ReloadDataAsync()
+        public async Task ReloadDataAsync(string? hdfPathAOverride = null, string? hdfPathBOverride = null, string? overrideProName = null)
         {
             await _reloadLock.WaitAsync();
             try
@@ -204,7 +246,11 @@ namespace HydroExplorer.ViewModel
 
                 try
                 {
-                    await LoadDataAsync(token: token).ConfigureAwait(false);
+                    await LoadDataAsync(
+                        token: token,
+                        overrideHdfPathA: hdfPathAOverride,
+                        overrideHdfPathB: hdfPathBOverride,
+                        overrideProName: overrideProName).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
@@ -221,7 +267,12 @@ namespace HydroExplorer.ViewModel
             }
         }
 
-        public async Task LoadDataAsync(string projPathOverride = "", CancellationToken token = default)
+        public async Task LoadDataAsync(
+            string projPathOverride = "",
+            CancellationToken token = default,
+            string? overrideHdfPathA = null,
+            string? overrideHdfPathB = null,
+            string? overrideProName = null)
         {
             if (_dataLoaded) return;
             _dataLoaded = true;
@@ -258,23 +309,9 @@ namespace HydroExplorer.ViewModel
                     return;
                 }
 
-                var hdfPathA = project.HdfPathA;
-                var hdfPathB = project.HdfPathB;
-                var proName = project.ProName;
-
-                //if (string.IsNullOrEmpty(hdfPathA) || !File.Exists(hdfPathA))
-                //{
-                //    System.Diagnostics.Debug.WriteLine($"LoadDataAsync: HDF Path A missing or not found: '{hdfPathA}'.");
-                //    _dataLoaded = false; // reset so retry is possible
-                //    return;
-                //}
-
-                //if (string.IsNullOrEmpty(hdfPathB) || !File.Exists(hdfPathB))
-                //{
-                //    System.Diagnostics.Debug.WriteLine($"LoadDataAsync: HDF Path B missing or not found: '{hdfPathB}'.");
-                //    _dataLoaded = false;
-                //    return;
-                //}
+                var hdfPathA = overrideHdfPathA ?? project.HdfPathA;
+                var hdfPathB = overrideHdfPathB ?? project.HdfPathB;
+                var proName = overrideProName ?? project.ProName;
 
                 token.ThrowIfCancellationRequested();
 
@@ -283,8 +320,8 @@ namespace HydroExplorer.ViewModel
 
                 if (!hasA && !hasB)
                 {
-                    //System.Diagnostics.Debug.WriteLine("LoadDataAsync: No valid HDF files found. Leaving plot blank.");
                     WselData = [];
+                    Application.Current.Dispatcher.Invoke(() => LoadFromWSELTable(null));
                     _dataLoaded = false;
                     return;
                 }
@@ -300,16 +337,14 @@ namespace HydroExplorer.ViewModel
                 string? effectiveA = hasA ? hdfPathA : null;
                 string? effectiveB = hasB ? hdfPathB : null;
 
-                // If only one exists, use it as B (primary) and leave A null
                 if (!hasA && hasB)
                 {
-                    effectiveA = null;
-                    effectiveB = hdfPathB;
+                    effectiveA = hdfPathB;
+                    effectiveB = null;
                 }
-                else if (hasA && !hasB)
+                else if (!hasB)
                 {
-                    effectiveA = null;
-                    effectiveB = hdfPathA;   // promote A to B slot so reader always gets a primary
+                    effectiveB = null;
                 }
 
                 token.ThrowIfCancellationRequested();
@@ -317,12 +352,18 @@ namespace HydroExplorer.ViewModel
                 string? profileWarning = null;
                 WselData = await Task.Run(() =>
                 {
+                    if (_plotMode != PlotMode.Both)
+                    {
+                        string singlePath = hasA ? hdfPathA : hdfPathB;
+                        var single = HecRasHdfReader.ReadWSELTableOxySingle(singlePath, proName);
+                        return single ?? [];
+                    }
+
                     var result = HecRasHdfReader.ReadWSELTableOxy(effectiveA, effectiveB, proName, out profileWarning);
                     return result;
                 }, token);
 
                 EventBus.PublishProfileMismatchWarning(profileWarning ?? string.Empty);
-
 
                 token.ThrowIfCancellationRequested();
 
@@ -358,8 +399,10 @@ namespace HydroExplorer.ViewModel
         {
             if (data == null)
             {
+                _dataByReach = [];
                 Reaches.Clear();
                 OnPropertyChanged(nameof(HasMultipleReaches));
+                RefreshPlot();
                 return;
             }
 
@@ -382,7 +425,6 @@ namespace HydroExplorer.ViewModel
             OnPropertyChanged(nameof(HasMultipleReaches));
             RefreshPlot();
         }
-
 
 
 
@@ -497,8 +539,11 @@ namespace HydroExplorer.ViewModel
             };
 
             var xAxis = MakeAxis(AxisPosition.Bottom, reversed: true);
-            xAxis.MajorStep = 1000;
-            xAxis.MinorStep = 500;
+            xAxis.MinimumMajorStep = 5000;
+            xAxis.MinimumMinorStep = 1000;
+            //xAxis.MajorStep = 1000;
+            //xAxis.MinorStep = 500;
+
             model.Axes.Add(xAxis);
             model.Axes.Add(MakeAxis(AxisPosition.Left));
 
@@ -513,13 +558,13 @@ namespace HydroExplorer.ViewModel
             {
                 Title = null,
                 Color = OxyColors.Transparent,
-                Fill = OxyColor.FromAColor(50, OxyColors.SaddleBrown),
+                Fill = OxyColor.FromAColor(35, OxyColors.SaddleBrown),
             };
 
             var seriesA = new LineSeries
             {
                 Title = mode == PlotMode.Both ? "Plan A" : "Plan",
-                Color = OxyColors.GreenYellow,
+                Color = OxyColors.Green,
                 StrokeThickness = 2,
                 MarkerSize = 4
             };
@@ -626,5 +671,9 @@ namespace HydroExplorer.ViewModel
             }
             return false;
         }
+
+
+
+
     }
 }
