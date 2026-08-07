@@ -9,7 +9,6 @@ using System.Windows;
 using System.Windows.Input;
 
 
-
 namespace HydroExplorer.ViewModel.TabItem
 {
     public abstract class TabViewModelBase : INotifyPropertyChanged
