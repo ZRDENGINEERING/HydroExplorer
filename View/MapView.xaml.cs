@@ -11,8 +11,6 @@ using Mapsui.Nts.Widgets;
 using Mapsui.Projections;
 using Mapsui.Providers;
 using Mapsui.Providers.Wms;
-using Mapsui.Rendering;
-using Mapsui.Rendering.Skia;
 using Mapsui.Styles;
 using Mapsui.Tiling.Layers;
 using Mapsui.UI.Wpf;
@@ -138,11 +136,9 @@ namespace HydroExplorer.View
                 EventBus.MapOverViewReady -= OnMapOverViewReady;
             };
 
-            // Subscribe and replay LAST — after everything is initialized
             _mapState.PathsReady += OnPathsReady;
             if (_mapState.CurrentPaths != null)
             {
-                //System.Diagnostics.Debug.WriteLine($"MapView constructor: replaying CurrentPaths='{_mapState.CurrentPaths.ProjPath}'");
                 OnPathsReady(_mapState.CurrentPaths);
             }
         }
@@ -225,7 +221,7 @@ namespace HydroExplorer.View
                 apiKey: null,
                 persistentCache: new BruTile.Cache.FileCache(_tileCachePath, "png"));
 
-            var lyr_bing = new TileLayer(tileSource) { Opacity = 0 }; // start invisible
+            var lyr_bing = new TileLayer(tileSource) { Opacity = 0 };
             _map.Layers.Add(lyr_bing);
 
             try
@@ -234,7 +230,7 @@ namespace HydroExplorer.View
                 await AddLayerShpBndy();
                 await ExportShpXS();
                 await ExportShpRiver();
-                await AddLayerShpZRD();
+                await AddLayerShpProjects();
 
                 var plotVm = App.ServiceProvider.GetRequiredService<PlotViewModel>();
                 if (plotVm.WselData != null)
@@ -255,7 +251,6 @@ namespace HydroExplorer.View
                 return;
             }
 
-            // Fade tile layer in over dark backdrop, then fade control in
             await Dispatcher.InvokeAsync(() => _mapControl.Refresh());
             await WaitForTilesAsync(token, timeoutMs: 800);
             await FadeInTileLayerAsync(token);
@@ -287,7 +282,6 @@ namespace HydroExplorer.View
             {
                 if (centerPath == null)
                 {
-                    // No geometry — return to default Texas view
                     var (cx, cy) = SphericalMercator.FromLonLat(-99.0, 31.0);
                     _map.Navigator.CenterOnAndZoomTo(new MPoint(cx, cy), 3000);
                     _mapControl.Refresh();
@@ -297,31 +291,6 @@ namespace HydroExplorer.View
                 var shapeFileProvider = new ShapeFile(centerPath, true);
 
                 double[] zoomToCoords = MapOverView.ReprojectHelper(centerPath);
-
-
-                //if (shapeFileProvider.GetExtent() is not MRect extent) return;
-
-                //System.Diagnostics.Debug.WriteLine(
-                //    $"InitView: extent from '{centerPath}' = MinX={extent.MinX} MaxX={extent.MaxX} MinY={extent.MinY} MaxY={extent.MaxY}");
-
-
-                //var (x, y) = SphericalMercator.FromLonLat(
-                //                    (extent.MaxX + extent.MinX) / 2,
-                //                    (extent.MaxY + extent.MinY) / 2);
-                //var (minX, _) = SphericalMercator.FromLonLat(extent.MinX, extent.MinY);
-                //var (maxX, _) = SphericalMercator.FromLonLat(extent.MaxX, extent.MaxY);
-                //var (_, minY) = SphericalMercator.FromLonLat(extent.MinX, extent.MinY);
-                //var (_, maxY) = SphericalMercator.FromLonLat(extent.MaxX, extent.MaxY);
-
-                //double extentW = maxX - minX;
-                //double extentH = maxY - minY;
-                //double controlW = _mapControl.ActualWidth;
-                //double controlH = _mapControl.ActualHeight;
-
-                //if (extentW <= 0 || extentH <= 0 || controlW <= 0 || controlH <= 0) return;
-
-                //double resolution = Math.Max(extentW / controlW, extentH / controlH) * 1.5;
-                //_map.Navigator.CenterOnAndZoomTo(new MPoint(x, y), resolution);
 
                 var (x, y) = SphericalMercator.FromLonLat(zoomToCoords[0], zoomToCoords[1]);
 
@@ -495,10 +464,11 @@ namespace HydroExplorer.View
 
         private Task AddLayerShpTXCnty()
         {
-            string shapefilePathCnty = "Z:\\10 DEV\\hydroExplorer\\SHP\\TX_CNTY.shp";
-            if (!Path.Exists(shapefilePathCnty)) return Task.CompletedTask;
+            string shapefilePathTXCnty = Path.Combine(AppContext.BaseDirectory, "SHP", "TX_CNTY.shp");
 
-            var shapeFileProvider = new ShapeFile(shapefilePathCnty) { CRS = "EPSG:4326" };
+            if (!Path.Exists(shapefilePathTXCnty)) return Task.CompletedTask;
+
+            var shapeFileProvider = new ShapeFile(shapefilePathTXCnty) { CRS = "EPSG:4326" };
             var dataSource = new ProjectingProvider(shapeFileProvider) { CRS = "EPSG:3857" };
 
             var shapefileLayer = new Layer("CNTY")
@@ -695,20 +665,7 @@ namespace HydroExplorer.View
                 return null;
             }
 
-            // Silenced: previously prompted the user to confirm the guessed zone via
-            // MessageBox. Now auto-accepts the guess and proceeds — kept here,
-            // commented, in case we want to re-enable confirmation later.
-            //
-            // var confirm = await Dispatcher.InvokeAsync(() => MessageBox.Show(
-            //     $"This HEC-RAS project has no projection (.prj) file. Based on its coordinates, " +
-            //     $"it's likely EPSG:{guessedEpsg}. Use this projection for {featureLabel}?",
-            //     "Unknown Projection — Confirm Guess",
-            //     MessageBoxButton.YesNo, MessageBoxImage.Question));
-            //
-            // if (confirm != MessageBoxResult.Yes) return null;
-
-            //System.Diagnostics.Debug.WriteLine(
-            //    $"ResolveSourceEpsgAsync: no .prj folder for {featureLabel} — auto-accepting guessed EPSG:{guessedEpsg} without confirmation.");
+            
 
             if (!string.IsNullOrEmpty(projKey))
             {
@@ -733,8 +690,6 @@ namespace HydroExplorer.View
                 if (string.IsNullOrEmpty(hdfPath)) return;
                 if (string.IsNullOrEmpty(_PathRiver)) return;
                 if (File.Exists(_PathRiver)) return;
-
-                //System.Diagnostics.Debug.WriteLine($"CL FILE DOES NOT EXIST — CREATING @ {_PathRiver}");
 
                 string projDir = Path.GetDirectoryName(hdfPath) ?? string.Empty;
 
@@ -897,14 +852,14 @@ namespace HydroExplorer.View
         }
 
 
-        private Task AddLayerShpZRD()
+        private Task AddLayerShpProjects()
         {
-            string shapefilePathZRD = "Z:\\10 DEV\\hydroExplorer\\SHP\\MAPOVERVIEW\\PROJ_TX_ZRD.shp";
-            var shapeFileSource = new ShapeFile(shapefilePathZRD, true);
+            string shapefilePathTXProjs = Path.Combine(AppContext.BaseDirectory, "SHP", "TX_PROJS.shp");
+            var shapeFileSource = new ShapeFile(shapefilePathTXProjs, true);
 
-            var shapefileLayer = new Layer("PROJ_TX_ZRD")
+            var shapefileLayer = new Layer()
             {
-                Name = "PROJ_TX_ZRD",
+                Name = "TX_PROJS",
                 DataSource = shapeFileSource,
                 Tag = new OverViewLayerData { IsMapInfoLayer = true },
                 Style = new StyleCollection

@@ -2,7 +2,6 @@
 using System.Windows.Controls;
 
 
-
 namespace HydroExplorer.Behaviors
 {
     public class CachedTabControl : TabControl
@@ -25,7 +24,6 @@ namespace HydroExplorer.Behaviors
                 _cache[SelectedItem] = presenter;
             }
 
-            // Swap content into the ContentPresenter without recreating the view
             var container = ItemContainerGenerator.ContainerFromItem(SelectedItem) as TabItem;
             if (container != null)
                 container.Content = presenter;

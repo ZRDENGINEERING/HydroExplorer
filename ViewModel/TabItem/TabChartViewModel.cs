@@ -2,7 +2,6 @@
 using HydroExplorer.Helpers;
 using HydroExplorer.Themes;
 using HydroExplorer.Utils;
-using HydroExplorer.View;
 using Microsoft.Extensions.DependencyInjection;
 using OxyPlot;
 using OxyPlot.Axes;
@@ -230,15 +229,8 @@ namespace HydroExplorer.ViewModel.TabItem
             RebuildElevationPlot();
         }
 
-        /// <summary>
-        /// Shared read logic for A or B — opens the .dss directly (no snapshot
-        /// copy: HEC-DSS's own cooperative record-level locking already
-        /// handles concurrent access from HEC-RAS/HEC-HMS/DSSVue; a raw file
-        /// copy bypasses that and hits Windows' mandatory byte-range locks
-        /// directly instead). Reads every series, handles the two known error
-        /// cases with a MessageBox. Returns nulls on failure so callers can
-        /// bail without touching cached state.
-        /// </summary>
+        
+
         private async Task<(
             List<DssHyetographReader.HyetographRecord>? Precip,
             List<DssHydrographReader.HydrographRecord>? Flow,

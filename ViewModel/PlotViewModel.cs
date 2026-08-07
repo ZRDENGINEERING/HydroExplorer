@@ -157,7 +157,7 @@ namespace HydroExplorer.ViewModel
                 }
                 catch (OperationCanceledException)
                 {
-                    System.Diagnostics.Debug.WriteLine("PlotViewModel LoadDataAsync cancelled.");
+                    System.Diagnostics.Debug.WriteLine("PlotViewModel Base LoadDataAsync cancelled.");
                 }
                 catch (Exception ex)
                 {

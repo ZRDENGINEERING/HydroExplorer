@@ -7,10 +7,10 @@
              d:DataContext="{d:DesignInstance Type=vm:TabInfoViewModel}"
              mc:Ignorable="d">
 
-    <Grid Background="{StaticResource BackgroundBrushDark}">
+    <Grid Background="{StaticResource BackgroundBrushMed}">
 
         <!-- Recent Projects -->
-        <GroupBox Header="PROJECT SELECTOR"
+        <GroupBox Header="PROJECTS"
                   FontSize="12" FontWeight="Bold"
                   Background="{StaticResource BackgroundBrushHeader}"
                   BorderBrush="{StaticResource BorderBrush}"

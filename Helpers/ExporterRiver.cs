@@ -13,16 +13,7 @@ namespace HydroExplorer.Helpers
     internal class ExporterRiver
     {
         private static readonly GeometryFactory GeomFactory = new();
-
-        /// <summary>
-        /// Builds a centerline shapefile from a HEC-RAS plan/geometry HDF's river
-        /// centerline polylines.
-        /// Source CRS resolution: sourceEpsgOverride (if supplied) takes priority,
-        /// otherwise resolved from the HEC-RAS project's own .prj folder. If neither
-        /// is available, returns false rather than silently guessing — callers should
-        /// resolve a CRS first (e.g. GISUtil.GuessTexasStatePlaneZone with user
-        /// confirmation) and pass it in, since the wrong zone misplaces results badly.
-        /// </summary>
+        
         public static async Task<bool> ExportRiverToShp(string projPath, string hdfPath, string outputShpPath, int? sourceEpsgOverride = null)
         {
             if (string.IsNullOrEmpty(hdfPath) || !File.Exists(hdfPath))
@@ -32,9 +23,7 @@ namespace HydroExplorer.Helpers
             }
 
             using var file = HecRasHdfReader.OpenHdf(hdfPath);
-
-            // Guard: 2D models / plans without a River Centerlines group won't have
-            // this group at all — fail gracefully rather than throwing unhandled.
+            
             if (!HasRiverCenterlines(file))
             {
                 System.Diagnostics.Debug.WriteLine(

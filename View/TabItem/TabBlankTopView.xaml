@@ -11,7 +11,7 @@
 
 
 
-    <Grid Background="{StaticResource BackgroundBrushDark}">
+    <Grid Background="{StaticResource BackgroundBrushMed}">
         <TextBlock Text="Welcome to TabBlankTop!" 
                HorizontalAlignment="Center"
                VerticalAlignment="Center"

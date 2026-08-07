@@ -19,14 +19,14 @@
                     Command="{Binding ClearAddedRunsCommand}"
                     Margin="4,0,0,0" Padding="6,2"
                     FontSize="9"
-                    Background="{StaticResource BackgroundBrushDark}"/>
+                    Background="{StaticResource BackgroundBrushMed}"/>
 
             <Button DockPanel.Dock="Right"
                     Content="Add Run"
                     Command="{Binding AddRunCommand}"
                     Margin="4,0,0,0" Padding="6,2"
                     FontSize="9"
-                    Background="{StaticResource BackgroundBrushDark}"/>
+                    Background="{StaticResource BackgroundBrushMed}"/>
 
             <ComboBox ItemsSource="{Binding AvailableRunNames}"
                       SelectedItem="{Binding SelectedRunToAdd, Mode=TwoWay}"

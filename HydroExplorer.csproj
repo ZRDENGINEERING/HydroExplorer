@@ -1,102 +1,96 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <UseWPF>true</UseWPF>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <None Remove="Images\drive.png" />
-    <None Remove="Images\file.png" />
-    <None Remove="Images\folder_closed.ico" />
-    <None Remove="Images\folder_open.ico" />
-    <None Remove="Images\hechms.png" />
-    <None Remove="Images\hecras.png" />
-    <None Remove="Images\logo_zrd.png" />
-    <None Remove="Images\shp.png" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="Images\drive.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Images\file.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Images\folder_closed.ico">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Images\folder_open.ico">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Images\logo_zrd.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-
 	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net10.0-windows</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<UseWPF>true</UseWPF>
 		<PlatformTarget>x64</PlatformTarget>
 		<NoWarn>$(NoWarn);CA1416</NoWarn>
 	</PropertyGroup>
 
+	<ItemGroup>
+		<None Remove="Images\drive.png" />
+		<None Remove="Images\file.png" />
+		<None Remove="Images\folder_closed.ico" />
+		<None Remove="Images\folder_open.ico" />
+		<None Remove="Images\hechms.png" />
+		<None Remove="Images\hecras.png" />
+		<None Remove="Images\logo_zrd.png" />
+		<None Remove="Images\shp.png" />
+	</ItemGroup>
 
-  <ItemGroup>
-	  <PackageReference Include="GeoAPI.CoordinateSystems" Version="1.7.5" />
-	  <PackageReference Include="Hec.Dss" Version="2.0.4" />
-	  <PackageReference Include="OpenTK" Version="3.3.1">
-		<NoWarn>NU1701</NoWarn>
-	</PackageReference>
-	<PackageReference Include="OpenTK.GLWpfControl" Version="3.3.0">
-		<NoWarn>NU1701</NoWarn>
-	</PackageReference>
-	<PackageReference Include="OxyPlot.SkiaSharp" Version="2.2.0" />
-	<PackageReference Include="OxyPlot.Wpf" Version="2.2.0" />
-	<PackageReference Include="QuestPDF" Version="2026.2.4" />
+	<ItemGroup>
+		<Content Include="Images\drive.png">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="Images\file.png">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="Images\folder_closed.ico">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="Images\folder_open.ico">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="Images\logo_zrd.png">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="GeoAPI.CoordinateSystems" Version="1.7.5" />
+		<PackageReference Include="Hec.Dss" Version="2.0.4" />
+		<PackageReference Include="OpenTK" Version="3.3.1">
+			<NoWarn>NU1701</NoWarn>
+		</PackageReference>
+		<PackageReference Include="OpenTK.GLWpfControl" Version="3.3.0">
+			<NoWarn>NU1701</NoWarn>
+		</PackageReference>
+		<PackageReference Include="OxyPlot.SkiaSharp" Version="2.2.0" />
+		<PackageReference Include="OxyPlot.Wpf" Version="2.2.0" />
+		<PackageReference Include="QuestPDF" Version="2026.2.4" />
 		<PackageReference Include="SkiaSharp.Views.WPF" Version="3.119.2">
-		<NoWarn>NU1701</NoWarn>
-	</PackageReference>
+			<NoWarn>NU1701</NoWarn>
+		</PackageReference>
 
-    <PackageReference Include="DotSpatial.Projections" Version="4.0.656" />
-    <PackageReference Include="DotSpatial.Projections.Forms" Version="4.0.656" />
-    <PackageReference Include="DotSpatial.Projections.NetStandard" Version="1.0.0" />
-    <PackageReference Include="DotSpatial.Serialization" Version="4.0.656" />
-    <PackageReference Include="Mapsui.Extensions" Version="5.1.0-beta.5" />
-    <PackageReference Include="Mapsui.Wpf" Version="5.1.0-beta.5" />
-    <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="5.3.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.5" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.5" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.5" />
-    <PackageReference Include="NetTopologySuite.IO.ShapeFile" Version="2.1.0" />
-    <PackageReference Include="ProjNET" Version="2.1.0" />
-    <PackageReference Include="PureHDF" Version="2.1.2" />
-  </ItemGroup>
+		<PackageReference Include="Mapsui.Extensions" Version="5.1.0-beta.5" />
+		<PackageReference Include="Mapsui.Wpf" Version="5.1.0-beta.5" />
+		<PackageReference Include="Microsoft.CodeAnalysis.Common" Version="5.3.0" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.5" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.5" />
+		<PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.5" />
+		<PackageReference Include="NetTopologySuite.IO.ShapeFile" Version="2.1.0" />
+		<PackageReference Include="ProjNET" Version="2.1.0" />
+		<PackageReference Include="PureHDF" Version="2.1.2" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <Compile Update="Core\ObservableObject.cs">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Compile>
-    <Compile Update="View\TabItem\TabMainView.xaml.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Update="View\TabItem\TabChartView.xaml.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Update="View\TabItem\TabPublishView.xaml.cs">
-      <SubType>Code</SubType>
-    </Compile>
-  </ItemGroup>
+	<ItemGroup>
+		<Compile Update="View\TabItem\TabMainView.xaml.cs">
+			<SubType>Code</SubType>
+		</Compile>
+		<Compile Update="View\TabItem\TabChartView.xaml.cs">
+			<SubType>Code</SubType>
+		</Compile>
+		<Compile Update="View\TabItem\TabPublishView.xaml.cs">
+			<SubType>Code</SubType>
+		</Compile>
+	</ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Properties\" />
-    <Folder Include="Reports\" />
-  </ItemGroup>
+	<ItemGroup>
+		<Folder Include="Properties\" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <Resource Include="Images\hechms.png" />
-    <Resource Include="Images\hecras.png" />
-    <Resource Include="Images\shp.png" />
-  </ItemGroup>
+	<ItemGroup>
+		<Resource Include="Images\hechms.png" />
+		<Resource Include="Images\hecras.png" />
+		<Resource Include="Images\shp.png" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Content Include="SHP\*.shp;SHP\*.shx;SHP\*.dbf;SHP\*.prj">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
 
 </Project>

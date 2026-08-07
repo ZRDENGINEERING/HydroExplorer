@@ -8,7 +8,7 @@
       mc:Ignorable="d">
 
 
-    <Grid Background="{StaticResource BackgroundBrushDark}">
+    <Grid Background="{StaticResource BackgroundBrushMed}">
 
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>

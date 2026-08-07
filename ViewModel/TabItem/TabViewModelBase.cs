@@ -1,8 +1,6 @@
 ﻿using HydroExplorer.Core;
 using HydroExplorer.Helpers;
 using Microsoft.Win32;
-using NetTopologySuite.Geometries;
-using NetTopologySuite.IO;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
@@ -279,6 +277,24 @@ namespace HydroExplorer.ViewModel.TabItem
             else if (string.Equals(layerType, "RasGeometry", StringComparison.OrdinalIgnoreCase))
                 initialDir = SelectedRasGeometryPath?.Directory ?? string.Empty;
 
+            // Nothing selected yet for this layer type — fall back to the active
+            // project's own folder (prefer its Spatial subfolder if one already
+            // exists) instead of leaving the dialog to open wherever it last was.
+            if (!Directory.Exists(initialDir) && SettingsRepo != null)
+            {
+                var settings = await SettingsRepo.GetSettings();
+                if (!string.IsNullOrEmpty(settings.LastProjPath) &&
+                    settings.Projects.TryGetValue(settings.LastProjPath, out var activeProj))
+                {
+                    string projDir = Path.GetDirectoryName(activeProj.ProjPath) ?? string.Empty;
+                    string spatialDir = Path.Combine(projDir, "Spatial");
+
+                    initialDir = Directory.Exists(spatialDir) ? spatialDir
+                        : Directory.Exists(projDir) ? projDir
+                        : string.Empty;
+                }
+            }
+
             var dialog = new OpenFileDialog
             {
                 Title = $"Select {layerType} file",
@@ -357,19 +373,14 @@ namespace HydroExplorer.ViewModel.TabItem
         }
 
 
-        // ── EventBus ─────────────────────────────────────────────────────────
         protected TabViewModelBase()
         {
             EventBus.GeometryPathsResolved += OnGeometryPathsResolved;
             EventBus.ShpPathSelected += OnShpPathSelected;
         }
 
-        /// <summary>
-        /// When a .shp is selected directly in the file tree, infer its Active Paths
-        /// role from the filename (BNDY → Boundary, XS → Sections, basin → Subbasins).
-        /// Files that don't match a known pattern are left alone — the tree remains
-        /// usable for general browsing without forcing every .shp into a role.
-        /// </summary>
+        
+
         private void OnShpPathSelected(string path)
         {
             if (string.IsNullOrEmpty(path) || !File.Exists(path)) return;
@@ -428,11 +439,6 @@ namespace HydroExplorer.ViewModel.TabItem
         {
             Application.Current.Dispatcher.Invoke(() =>
             {
-                // Only populate Selected*Path when the file actually exists on disk.
-                // EventBus.GeometryPathsResolved may fire with "expected" paths before
-                // export/auto-discovery has finished writing the file, or for projects
-                // that never produce one of these outputs at all.
-
                 if (!string.IsNullOrEmpty(pathSubBasins) && File.Exists(pathSubBasins))
                 {
                     SelectedSubbasinsPath = new GeometryPathEntry

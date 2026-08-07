@@ -12,16 +12,7 @@ namespace HydroExplorer.Helpers
 {
     internal static class ExporterBndy
     {
-        /// <summary>
-        /// Dissolves and reprojects a shapefile into a boundary shapefile.
-        /// CRS resolution priority: sourceEpsgOverride (if supplied) > temp dissolve
-        /// output's own .prj sidecar (if GeoDissolve managed to carry one over) >
-        /// GeometryExportCoordinator's cached/guessed EPSG for this project (shared
-        /// with XS/river export, so BNDY reuses whatever zone was already resolved
-        /// rather than guessing again or silently defaulting to a single zone).
-        /// settingsRepo/projKey are required to reach that cache — pass the same
-        /// values used for XS/river export (e.g. from MapOverView).
-        /// </summary>
+        
         public static async Task ExportBNDY(
             string pathSubBasins,
             string pathBNDY,

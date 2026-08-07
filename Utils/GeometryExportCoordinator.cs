@@ -19,12 +19,9 @@ namespace HydroExplorer.Helpers
     /// </summary>
     public static class GeometryExportCoordinator
     {
-        /// <summary>
-        /// Resolves the live HDF to export from — prefers planB, falls back to planA.
-        /// </summary>
         public static string? ResolveHdfPath(string? pathHdfA, string? pathHdfB) =>
-            !string.IsNullOrEmpty(pathHdfB) && File.Exists(pathHdfB) ? pathHdfB :
             !string.IsNullOrEmpty(pathHdfA) && File.Exists(pathHdfA) ? pathHdfA :
+            !string.IsNullOrEmpty(pathHdfB) && File.Exists(pathHdfB) ? pathHdfB :
             null;
 
         /// <summary>
@@ -97,14 +94,16 @@ namespace HydroExplorer.Helpers
             string? pathHdfB,
             string? pathRiver)
         {
+
             try
             {
                 string? hdfPath = ResolveHdfPath(pathHdfA, pathHdfB);
+
                 if (string.IsNullOrEmpty(hdfPath)) return false;
                 if (string.IsNullOrEmpty(pathRiver)) return false;
                 if (File.Exists(pathRiver)) return true;
 
-                //System.Diagnostics.Debug.WriteLine($"GeometryExportCoordinator: CL FILE DOES NOT EXIST — CREATING @ {pathRiver}");
+                System.Diagnostics.Debug.WriteLine($"GeometryExportCoordinator try: CL FILE DOES NOT EXIST — CREATING @ {pathRiver}");
 
                 string projDir = Path.GetDirectoryName(hdfPath) ?? string.Empty;
 
@@ -146,10 +145,135 @@ namespace HydroExplorer.Helpers
         }
 
         /// <summary>
-        /// Convenience: runs XS then River export in sequence (XS first, since its
-        /// guess is what gets cached for River to reuse). Call this once per project
-        /// load, after paths are known and before any UI reads the resulting .shp
-        /// files off disk.
+        /// Exports BNDY.shp by dissolving the subbasins shapefile, if BNDY
+        /// doesn't already exist or is stale relative to subbasins. Falls back
+        /// to prompting for an NHD-derived boundary when no subbasins
+        /// shapefile is available at all. Returns true if a boundary exists
+        /// on disk afterward (created just now or already present), false
+        /// otherwise.
+        /// </summary>
+        public static async Task<bool> ExportShpBndyAsync(
+            IUserSettingsRepo settingsRepo,
+            string projKey,
+            string? pathSubBasins,
+            string? pathBNDY,
+            string? pathXS)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(pathSubBasins) || !File.Exists(pathSubBasins))
+                {
+                    if (!string.IsNullOrEmpty(pathBNDY) && File.Exists(pathBNDY)) return true;
+                    if (string.IsNullOrEmpty(pathXS) || !File.Exists(pathXS)) return false;
+
+                    return await PromptForNhdBoundaryAsync(settingsRepo, projKey, pathXS, pathBNDY);
+                }
+
+                if (string.IsNullOrEmpty(pathBNDY)) return false;
+
+                if (File.Exists(pathBNDY) && File.Exists(pathSubBasins))
+                {
+                    var newer = GetNewerFile(pathBNDY, pathSubBasins);
+                    if (newer?.FullName == pathBNDY) return true; // BNDY already up to date
+                }
+
+                string pathTMP = GetTempShpPath();
+
+                try
+                {
+                    await ExporterBndy.ExportBNDY(
+                        pathSubBasins: pathSubBasins,
+                        pathTMP: pathTMP,
+                        pathBNDY: pathBNDY,
+                        settingsRepo: settingsRepo,
+                        projKey: projKey
+                    );
+                    return File.Exists(pathBNDY);
+                }
+                finally
+                {
+                    GISUtil.DeleteShapefileIfExists(pathTMP);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GeometryExportCoordinator: ExportShpBndyAsync error: {ex.Message}");
+                return false;
+            }
+        }
+
+        private static async Task<bool> PromptForNhdBoundaryAsync(
+            IUserSettingsRepo settingsRepo, string projKey, string pathXS, string? pathBNDY)
+        {
+            if (string.IsNullOrEmpty(pathBNDY)) return false;
+
+            var settings = await settingsRepo.GetSettings();
+
+            if (string.IsNullOrEmpty(projKey) ||
+                !settings.Projects.TryGetValue(projKey, out var projSettings))
+                return false;
+
+            if (projSettings.NhdBoundaryDeclined) return false;
+
+            var result = await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                System.Windows.MessageBox.Show(
+                    "No project boundary (BNDY.shp) is available for this project, and no HMS " +
+                    "subbasins shapefile was found to derive one from.\n\n" +
+                    "Would you like to fetch a watershed boundary from the USGS National Hydrography " +
+                    "Dataset based on the cross-section location?",
+                    "No Project Boundary Found",
+                    System.Windows.MessageBoxButton.YesNo,
+                    System.Windows.MessageBoxImage.Question));
+
+            if (result != System.Windows.MessageBoxResult.Yes)
+            {
+                projSettings.NhdBoundaryDeclined = true;
+                await settingsRepo.SaveSettings(settings);
+                return false;
+            }
+
+            bool success = await ExporterNhdBndy.ExportBndyFromNhd(pathXS, pathBNDY);
+
+            if (!success)
+            {
+                await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                    System.Windows.MessageBox.Show(
+                        "Could not retrieve a watershed boundary from the USGS service. " +
+                        "Check your network connection and try again, or set a boundary manually.",
+                        "NHD Boundary Fetch Failed",
+                        System.Windows.MessageBoxButton.OK,
+                        System.Windows.MessageBoxImage.Warning));
+            }
+
+            return success;
+        }
+
+        private static FileInfo? GetNewerFile(string pathA, string pathB)
+        {
+            if (pathA == "" && pathB == "") return null;
+
+            var fileA = new FileInfo(pathA);
+            var fileB = new FileInfo(pathB);
+
+            if (!fileA.Exists) throw new FileNotFoundException($"File not found: {pathA}");
+            if (!fileB.Exists) throw new FileNotFoundException($"File not found: {pathB}");
+
+            return fileA.LastWriteTime > fileB.LastWriteTime ? fileA : fileB;
+        }
+
+        private static string GetTempShpPath()
+        {
+            string tmpDir = @"C:\Temp";
+            string uniqueName = $"tmp_{Guid.NewGuid():N}.shp";
+            return Path.Combine(tmpDir, uniqueName);
+        }
+
+        /// <summary>
+        /// Convenience: runs XS, River, then BNDY export in sequence (XS
+        /// first, since its guess is what gets cached for River/BNDY to
+        /// reuse; BNDY last, since it needs XS as an NHD-fallback centroid
+        /// source). Call this once per project load, after paths are known
+        /// and before any UI reads the resulting .shp files off disk.
         /// </summary>
         public static async Task ExportAllAsync(
             IUserSettingsRepo settingsRepo,
@@ -157,10 +281,15 @@ namespace HydroExplorer.Helpers
             string? pathHdfA,
             string? pathHdfB,
             string? pathXS,
-            string? pathRiver)
+            string? pathRiver,
+            string? pathSubBasins = null,
+            string? pathBNDY = null)
         {
             await ExportShpXSAsync(settingsRepo, projKey, pathHdfA, pathHdfB, pathXS);
             await ExportShpRiverAsync(settingsRepo, projKey, pathHdfA, pathHdfB, pathRiver);
+
+            if (pathSubBasins != null || pathBNDY != null)
+                await ExportShpBndyAsync(settingsRepo, projKey, pathSubBasins, pathBNDY, pathXS);
         }
 
         /// <summary>
@@ -344,14 +473,5 @@ namespace HydroExplorer.Helpers
                 return null;
             }
         }
-
-
-
-
-
-
-
-
-
     }
 }

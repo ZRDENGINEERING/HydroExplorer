@@ -182,12 +182,7 @@ namespace HydroExplorer.ViewModel.TabItem
                     System.Windows.Application.Current.Dispatcher.Invoke(() =>
                         PopulateProjectInfo(projPath));
             };
-
-            // BNDY.shp may not exist yet when PopulateProjectInfo first runs its gage
-            // lookup (MapOverView's export can still be in progress). Once GeometryPathsResolved
-            // confirms a real, existing BNDY.shp, re-check — GetNearestGageWithStatusAsync
-            // itself is now idempotent (fetches at most once ever per project), so this
-            // is safe to call repeatedly with no risk of redundant network calls.
+            
             EventBus.GeometryPathsResolved += async (pathSubBasins, pathRiver, pathXS, pathBNDY) =>
             {
                 if (string.IsNullOrEmpty(pathBNDY) || !File.Exists(pathBNDY)) return;
@@ -269,7 +264,6 @@ namespace HydroExplorer.ViewModel.TabItem
                 var settings = await SettingsRepo!.GetSettings();
                 if (!settings.Projects.TryGetValue(entry.Key, out var proj))
                 {
-                    // Entry no longer exists — refresh the list to drop it.
                     await LoadRecentProjectsAsync();
                     return;
                 }
@@ -301,10 +295,6 @@ namespace HydroExplorer.ViewModel.TabItem
 
                 await LoadRecentProjectsAsync(entry.Key);
 
-                // HmsPath is already stored directly on this project's own
-                // ProjectSettings (set by SaveHmsPathAsync when the .hms was
-                // originally selected for this ProjRoot) — no separate lookup
-                // needed the way earlier versions searched other Projects entries.
                 if (!string.IsNullOrEmpty(proj.HmsPath) && File.Exists(proj.HmsPath))
                     EventBus.PublishRunPath(proj.HmsPath);
 
@@ -349,24 +339,6 @@ namespace HydroExplorer.ViewModel.TabItem
             settings.Projects.Clear();
             settings.LastProjPath = string.Empty;
             settings.ProjPath = string.Empty;
-            await SettingsRepo.SaveSettings(settings);
-            await LoadRecentProjectsAsync();
-        }
-
-
-        private async Task RemoveRecentProjectAsync(string dirPath)
-        {
-            var settings = await SettingsRepo!.GetSettings();
-
-            // Projects keys are full file paths — remove any whose directory matches
-            var projKeysToRemove = settings.Projects.Keys
-                .Where(k => Path.GetDirectoryName(k)
-                    ?.Equals(dirPath, StringComparison.OrdinalIgnoreCase) == true)
-                .ToList();
-
-            foreach (var key in projKeysToRemove)
-                settings.Projects.Remove(key);
-
             await SettingsRepo.SaveSettings(settings);
             await LoadRecentProjectsAsync();
         }
@@ -439,9 +411,7 @@ namespace HydroExplorer.ViewModel.TabItem
                     LoadOmegaInputs(proj);
                 });
 
-                // ── Subbasin area (sum of all Subbasin: Area: in the .hms
-                // project's first Basin: block's .basin file). Left blank
-                // (already cleared above) if no .hms is resolved.
+                
                 if (!string.IsNullOrEmpty(hmsPathResolved))
                 {
                     double? totalAreaSqMi = HecHmsBasinReader.GetTotalSubbasinAreaSqMi(hmsPathResolved);
@@ -537,12 +507,7 @@ namespace HydroExplorer.ViewModel.TabItem
             EventBus.PublishOmegaInputChanged(area, slope, precip, omega);
         }
 
-        /// <summary>
-        /// Restores saved regression inputs for the given project and, if all
-        /// four are present, recomputes immediately so the Info tab's Omega
-        /// plot reflects them without requiring the user to click Compute
-        /// again after reopening the project.
-        /// </summary>
+        
         private void LoadOmegaInputs(ProjectSettings? proj)
         {
             if (proj is null)
@@ -564,19 +529,5 @@ namespace HydroExplorer.ViewModel.TabItem
                     proj.OmegaPrecip.Value, proj.OmegaValue.Value);
             }
         }
-
-
-        private static bool IsHecRasProjectFile(string filePath)
-        {
-            try
-            {
-                using var reader = new StreamReader(filePath);
-                return reader.ReadLine()?.Trim()
-                    .StartsWith("Proj Title", StringComparison.OrdinalIgnoreCase) == true;
-            }
-            catch { return false; }
-        }
-
-
     }
 }

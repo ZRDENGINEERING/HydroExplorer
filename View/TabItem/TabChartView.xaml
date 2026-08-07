@@ -12,7 +12,7 @@
 
 
 
-    <Grid Background="{StaticResource BackgroundBrushDark}">
+    <Grid Background="{StaticResource BackgroundBrushMed}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="3*"/>
             <ColumnDefinition Width="4"/>
@@ -30,7 +30,7 @@
             <!-- Elevation plot (top) -->
             <oxy:PlotView Grid.Row="0" Model="{Binding ElevationPlot}"
                   Visibility="{Binding ElevationPlotVisibility}"
-                  Background="{StaticResource BackgroundBrushDark}"
+                  Background="{StaticResource BackgroundBrushMed}"
                   BorderThickness="0"/>
 
             <TextBlock Text="No elevation data available"
@@ -48,7 +48,7 @@
             <!-- Hydrograph plot (bottom) -->
             <oxy:PlotView Grid.Row="2"
                   Model="{Binding HydrographPlot}"
-                  Background="{StaticResource BackgroundBrushDark}"
+                  Background="{StaticResource BackgroundBrushMed}"
                   BorderThickness="0"/>
             
             
@@ -132,7 +132,7 @@
             <!-- Hyetograph bar chart -->
             <oxy:PlotView Grid.Row="1"
                           Model="{Binding HyetographPlot}"
-                          Background="{StaticResource BackgroundBrushDark}"
+                          Background="{StaticResource BackgroundBrushMed}"
                           BorderThickness="0"
                           Margin="6,4,6,4"/>
 

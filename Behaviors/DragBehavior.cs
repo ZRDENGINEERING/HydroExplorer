@@ -4,10 +4,8 @@ using System.Windows.Input;
 using System.Windows.Media;
 
 
-
 namespace HydroExplorer.Behaviors
 {
-
     public static class DragBehavior
     {
         private static Point _offset;

@@ -66,7 +66,7 @@ namespace HydroExplorer.View
         {
             InitializeComponent();
 
-            
+
 
             _mapState = App.ServiceProvider.GetRequiredService<MapStateService>();
 
@@ -133,7 +133,11 @@ namespace HydroExplorer.View
 
             try
             {
-                await ExportShpBNDY();
+                var settingsRepo = App.ServiceProvider.GetRequiredService<IUserSettingsRepo>();
+                string projKey = PathHelpers.NormalizeProjKey(_currentProjPath ?? string.Empty);
+
+                await GeometryExportCoordinator.ExportShpBndyAsync(
+                    settingsRepo, projKey, _pathSubBasins, _pathBNDY, _pathXS);
 
                 EventBus.PublishGeometryPathsResolved(
                     pathSubBasins: _pathSubBasins ?? string.Empty,
@@ -177,7 +181,7 @@ namespace HydroExplorer.View
             try
             {
                 await AddLayerShpTXCnty();
-                await AddLayerShpTXZRD();
+                await AddLayerShpTXProjects();
                 await AddLayerShpBndy();
                 await InitView();
 
@@ -260,7 +264,7 @@ namespace HydroExplorer.View
         {
             if (Path.Exists(_pathBNDY))
             {
-                System.Diagnostics.Debug.WriteLine($"InitView: _pathRiver '{_pathBNDY}'.");
+                System.Diagnostics.Debug.WriteLine($"InitView: _pathBNDY '{_pathBNDY}'.");
 
                 var shapeFileProvider = new ShapeFile(_pathBNDY, true);
 
@@ -278,29 +282,6 @@ namespace HydroExplorer.View
                 return;
             }
 
-            //else if (Path.Exists(_pathXS))
-            //{
-            //    System.Diagnostics.Debug.WriteLine($"InitView: _pathXS '{_pathXS}'.");
-
-            //    var shapeFileProvider = new ShapeFile(_pathXS, true);
-            //    if (shapeFileProvider.GetExtent() is MRect extent)
-            //    {
-            //        double xx = (extent.MaxX + extent.MinX) / 2;
-            //        double yy = (extent.MaxY + extent.MinY) / 2;
-
-            //        await Application.Current.Dispatcher.InvokeAsync(() => { },
-            //            System.Windows.Threading.DispatcherPriority.Loaded);
-
-            //        var (x, y) = SphericalMercator.FromLonLat(xx, yy);
-
-            //        System.Diagnostics.Debug.WriteLine($"InitView: xx, yy '{xx} , {yy}'.");
-            //        System.Diagnostics.Debug.WriteLine($"InitView: x, y '{x} , {y}'.");
-
-            //        _map.Navigator.CenterOn(xx, yy);
-            //        _map.Navigator.ZoomTo(350);
-            //        return;
-            //    }
-            //}
 
             else if (Path.Exists(_pathRiver))
             {
@@ -310,16 +291,16 @@ namespace HydroExplorer.View
 
                 double[] zoomToCoords = ReprojectHelper(_pathRiver);
 
-                System.Diagnostics.Debug.WriteLine($"InitView: zoomToCoords '{ zoomToCoords[0] } , { zoomToCoords[1] }'.");
+                System.Diagnostics.Debug.WriteLine($"InitView: zoomToCoords '{zoomToCoords[0]} , {zoomToCoords[1]}'.");
 
                 await Application.Current.Dispatcher.InvokeAsync(() => { },
                     System.Windows.Threading.DispatcherPriority.Loaded);
 
-                    var (x, y) = SphericalMercator.FromLonLat(zoomToCoords[0], zoomToCoords[1]);
+                var (x, y) = SphericalMercator.FromLonLat(zoomToCoords[0], zoomToCoords[1]);
 
-                    _map.Navigator.CenterOn(x, y);
-                    _map.Navigator.ZoomTo(350);
-                    return;
+                _map.Navigator.CenterOn(x, y);
+                _map.Navigator.ZoomTo(350);
+                return;
             }
 
             await Application.Current.Dispatcher.InvokeAsync(() => { },
@@ -400,7 +381,8 @@ namespace HydroExplorer.View
 
         private Task AddLayerShpTXSpz()
         {
-            string shapefilePath = "Z:\\10 DEV\\hydroExplorer\\SHP\\MAPOVERVIEW\\TX_SPZ.shp";
+            string shapefilePath = Path.Combine(AppContext.BaseDirectory, "SHP", "TX_SPZ.shp");
+
             if (!Path.Exists(shapefilePath)) return Task.CompletedTask;
 
             var shapefileSource = new ShapeFile(shapefilePath, true);
@@ -438,18 +420,15 @@ namespace HydroExplorer.View
             return Task.CompletedTask;
         }
 
-        
 
-
-
-        private Task AddLayerShpTXZRD()
+        private Task AddLayerShpTXProjects()
         {
-            string shapefilePathZRD = "Z:\\10 DEV\\hydroExplorer\\SHP\\MAPOVERVIEW\\PROJ_TX_ZRD.shp";
-            var shapeFileSource = new ShapeFile(shapefilePathZRD, true);
+            string shapefilePathTXProjs = Path.Combine(AppContext.BaseDirectory, "SHP", "TX_PROJS.shp");
+            var shapeFileSource = new ShapeFile(shapefilePathTXProjs, true);
 
-            var shapefileLayer = new Layer("PROJ_TX_ZRD")
+            var shapefileLayer = new Layer("TX_PROJS")
             {
-                Name = "PROJ_TX_ZRD",
+                Name = "TX_PROJS",
                 DataSource = shapeFileSource,
                 Tag = new OverViewLayerData { IsMapInfoLayer = true },
                 Style = new StyleCollection
@@ -502,10 +481,12 @@ namespace HydroExplorer.View
 
         private Task AddLayerShpTXCnty()
         {
-            string shapefilePathCnty = "Z:\\10 DEV\\hydroExplorer\\SHP\\MAPOVERVIEW\\TX_CNTY.shp";
-            if (!Path.Exists(shapefilePathCnty)) return Task.CompletedTask;
 
-            var shapeFileSource = new ShapeFile(shapefilePathCnty);
+            string shapefilePathTXCnty = Path.Combine(AppContext.BaseDirectory, "SHP", "TX_CNTY.shp");
+
+            if (!Path.Exists(shapefilePathTXCnty)) return Task.CompletedTask;
+
+            var shapeFileSource = new ShapeFile(shapefilePathTXCnty);
 
             var shapefileLayer = new Layer("TX_CNTY")
             {
@@ -545,7 +526,7 @@ namespace HydroExplorer.View
         {
             if (!Path.Exists(_pathBNDY)) return Task.CompletedTask;
 
-            
+
 
 
             var shapeFileProvider = new ShapeFile(_pathBNDY) { CRS = "EPSG:4326" };
@@ -578,7 +559,7 @@ namespace HydroExplorer.View
         }
 
 
-      
+
 
 
         private static List<string> GetAllLayerNames(Client.WmsServerLayer layer)
@@ -595,119 +576,6 @@ namespace HydroExplorer.View
             }
             return layerNames;
         }
-
-
-
-
-
-        public async Task ExportShpBNDY()
-        {
-            // No subbasins shapefile to dissolve — offer the NHD HU12 fallback instead
-            // of silently leaving no boundary available.
-            if (string.IsNullOrEmpty(_pathSubBasins) || !File.Exists(_pathSubBasins))
-            {
-                if (File.Exists(_pathBNDY)) return; // already have a boundary, don't overwrite
-                if (string.IsNullOrEmpty(_pathXS) || !File.Exists(_pathXS)) return; // nothing to derive a location from
-
-                await PromptForNhdBoundary();
-                return;
-            }
-
-            if (string.IsNullOrEmpty(_pathBNDY)) return;
-
-            if (File.Exists(_pathBNDY) && File.Exists(_pathSubBasins))
-            {
-                var newer = GetNewerFile(_pathBNDY, _pathSubBasins);
-                if (newer?.FullName == _pathBNDY) return;
-            }
-
-            string pathTMP = GetTempShpPath();
-
-            try
-            {
-                // Resolve the same settings repo / project key used by XS and river
-                // export, so BNDY's CRS resolution shares the ProjectSettings.SourceEpsg
-                // cache instead of guessing independently or defaulting to a fixed zone.
-                var settingsRepo = App.ServiceProvider.GetRequiredService<IUserSettingsRepo>();
-                string projKey = PathHelpers.NormalizeProjKey(_currentProjPath ?? string.Empty);
-
-                await ExporterBndy.ExportBNDY(
-                    pathSubBasins: _pathSubBasins,
-                    pathTMP: pathTMP,
-                    pathBNDY: _pathBNDY,
-                    settingsRepo: settingsRepo,
-                    projKey: projKey
-                );
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"ExportBNDY error: {ex.Message}");
-            }
-            finally
-            {
-                GISUtil.DeleteShapefileIfExists(pathTMP);
-            }
-        }
-
-
-
-
-        private async Task PromptForNhdBoundary()
-        {
-            var settingsRepo = App.ServiceProvider.GetRequiredService<IUserSettingsRepo>();
-            var settings = await settingsRepo.GetSettings();
-
-            if (string.IsNullOrEmpty(settings.ProjPath) ||
-                !settings.Projects.TryGetValue(settings.ProjPath, out var projSettings))
-                return;
-
-            if (projSettings.NhdBoundaryDeclined) return;
-
-            var result = await Dispatcher.InvokeAsync(() => MessageBox.Show(
-                "No project boundary (BNDY.shp) is available for this project, and no HMS " +
-                "subbasins shapefile was found to derive one from.\n\n" +
-                "Would you like to fetch a watershed boundary from the USGS National Hydrography " +
-                "Dataset based on the cross-section location?",
-                "No Project Boundary Found",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question));
-
-            if (result != MessageBoxResult.Yes)
-            {
-                projSettings.NhdBoundaryDeclined = true;
-                await settingsRepo.SaveSettings(settings);
-                return;
-            }
-
-            bool success = await ExporterNhdBndy.ExportBndyFromNhd(_pathXS!, _pathBNDY!);
-
-            if (!success)
-            {
-                await Dispatcher.InvokeAsync(() => MessageBox.Show(
-                    "Could not retrieve a watershed boundary from the USGS service. " +
-                    "Check your network connection and try again, or set a boundary manually.",
-                    "NHD Boundary Fetch Failed",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Warning));
-            }
-        }
-
-
-        public static FileInfo? GetNewerFile(string pathA, string pathB)
-        {
-            if (pathA == "" && pathB == "") return null;
-
-            var fileA = new FileInfo(pathA);
-            var fileB = new FileInfo(pathB);
-
-            if (!fileA.Exists) throw new FileNotFoundException($"File not found: {pathA}");
-            if (!fileB.Exists) throw new FileNotFoundException($"File not found: {pathB}");
-
-            return fileA.LastWriteTime > fileB.LastWriteTime ? fileA : fileB;
-        }
-
-
-
 
 
 
@@ -738,43 +606,54 @@ namespace HydroExplorer.View
                 }
 
 
-
-
-                string tmpPath = Path.GetFullPath(Path.Combine(projPath, ".."));
-                string spatialPath = Path.Combine(tmpPath, "Spatial");
+                // Working-copy staging folder — kept at ProjRoot (client-root
+                // level), never inside the model's own directory tree, since
+                // that folder is often transmitted whole to an agency for
+                // review. HydroExplorer's exported/copied .shp files are its
+                // own working copies, not part of the actual deliverable.
+                string spatialPath = Path.Combine(projSettings.ProjRoot, "HydroXSpatial");
 
                 if (!Directory.Exists(spatialPath))
                     Directory.CreateDirectory(spatialPath);
 
                 bool needsSave = false;
 
-               string xsPath = Path.Combine(spatialPath, "XS.shp");
-                    if (string.IsNullOrEmpty(projSettings.SpatialXsPath) && File.Exists(xsPath))
-                    {
-                        projSettings.SpatialXsPath = xsPath;
-                        needsSave = true;
-                    }
+                // Always compute the conventional target path — used as the
+                // export destination this session even if the file doesn't
+                // exist yet. Only persist to ProjectSettings once the file is
+                // confirmed real, so settings.json never carries a dead path
+                // (see earlier fix history).
+                string xsPath = Path.Combine(spatialPath, "XS.shp");
+                if (string.IsNullOrEmpty(projSettings.SpatialXsPath) && File.Exists(xsPath))
+                {
+                    projSettings.SpatialXsPath = xsPath;
+                    needsSave = true;
+                }
 
-                    string riverPath = Path.Combine(spatialPath, "River.shp");
-                    if (string.IsNullOrEmpty(projSettings.SpatialRiverPath) && File.Exists(riverPath))
-                    {
-                        projSettings.SpatialRiverPath = riverPath;
-                        needsSave = true;
-                    }
+                string riverPath = Path.Combine(spatialPath, "River.shp");
+                if (string.IsNullOrEmpty(projSettings.SpatialRiverPath) && File.Exists(riverPath))
+                {
+                    projSettings.SpatialRiverPath = riverPath;
+                    needsSave = true;
+                }
 
-                    string bndyPath = Path.Combine(spatialPath, "BNDY.shp");
-                    if (string.IsNullOrEmpty(projSettings.SpatialBndyPath) && File.Exists(bndyPath))
-                    {
-                        projSettings.SpatialBndyPath = bndyPath;
-                        needsSave = true;
-                    }
-
-
+                string bndyPath = Path.Combine(spatialPath, "BNDY.shp");
+                if (string.IsNullOrEmpty(projSettings.SpatialBndyPath) && File.Exists(bndyPath))
+                {
+                    projSettings.SpatialBndyPath = bndyPath;
+                    needsSave = true;
+                }
 
 
-                _pathXS = projSettings.SpatialXsPath;
-                _pathRiver = projSettings.SpatialRiverPath;
-                _pathBNDY = projSettings.SpatialBndyPath;
+
+
+                // Working values for this session — always the conventional
+                // path, regardless of whether the file exists yet. Exporters
+                // need a real target to write to; only the persisted
+                // ProjectSettings fields above stay conditional on existence.
+                _pathXS = xsPath;
+                _pathRiver = riverPath;
+                _pathBNDY = bndyPath;
 
                 if (needsSave)
                     await settingsRepo.SaveSettings(settings);
@@ -824,9 +703,23 @@ namespace HydroExplorer.View
                     && ((!string.IsNullOrEmpty(_pathHdfA) && File.Exists(_pathHdfA))
                      || (!string.IsNullOrEmpty(_pathHdfB) && File.Exists(_pathHdfB)));
 
+                if (!canPublish)
+                {
+                    //System.Diagnostics.Debug.WriteLine("BuildPaths: skipping publish, no valid HDF found.");
+                    return;
+                }
+
+                // Export XS.shp/River.shp here, centrally, before anything
+                // downstream (MapView) reads them off disk — replaces the
+                // duplicate export logic that used to live in MapView itself.
+                // BNDY is exported separately in ResetMapOverview, since it
+                // doesn't depend on HDF and must still run for HMS-only
+                // projects even when this canPublish gate is false.
+                await GeometryExportCoordinator.ExportAllAsync(
+                    settingsRepo, projPath, _pathHdfA, _pathHdfB, _pathXS, _pathRiver);
 
                 if (string.Equals(_lastPublishedProjPath, projPath, StringComparison.OrdinalIgnoreCase)) return;
-                
+
                 _lastPublishedProjPath = projPath;
 
                 _mapState.Publish(new ProjectPaths(
@@ -839,12 +732,6 @@ namespace HydroExplorer.View
                     PathHMS: _pathHMS ?? "",
                     PathSubBasins: _pathSubBasins ?? ""
                 ));
-
-                if (!canPublish)
-                {
-                    //System.Diagnostics.Debug.WriteLine("BuildPaths: skipping publish, no valid HDF found.");
-                    return;
-                }
 
             }
             catch (OperationCanceledException)
@@ -918,14 +805,6 @@ namespace HydroExplorer.View
             }
 
             return Path.GetFullPath(match);
-        }
-
-
-        private static string GetTempShpPath()
-        {
-            string tmpDir = @"C:\Temp";
-            string uniqueName = $"tmp_{Guid.NewGuid():N}.shp";
-            return Path.Combine(tmpDir, uniqueName);
         }
 
 

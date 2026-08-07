@@ -22,7 +22,8 @@
     <Color x:Key="CloseButtonColor">#919199</Color>
     <Color x:Key="BackgroundColorButton">#3f3f46</Color>
     <Color x:Key="BackgroundColorTable">#3f3f46</Color>
-    <Color x:Key="BackgroundColorDark">#282828</Color>
+    <Color x:Key="BackgroundColorMed">#282828</Color>
+    <Color x:Key="BackgroundColorDark">#181818</Color>
     <Color x:Key="BackgroundColorSidePanels">#1f1f1f</Color>
     <Color x:Key="BackgroundColorHeader">#282828</Color>
     <Color x:Key="BackgroundColorLight">#252526</Color>
@@ -41,6 +42,7 @@
     <SolidColorBrush x:Key="CloseButtonBrush" Color="{StaticResource CloseButtonColor}"/>
     <SolidColorBrush x:Key="BackgroundBrushButton" Color="{StaticResource BackgroundColorButton}"/>
     <SolidColorBrush x:Key="BackgroundBrushTable" Color="{StaticResource BackgroundColorTable}"/>
+    <SolidColorBrush x:Key="BackgroundBrushMed" Color="{StaticResource BackgroundColorMed}"/>
     <SolidColorBrush x:Key="BackgroundBrushDark" Color="{StaticResource BackgroundColorDark}"/>
     <SolidColorBrush x:Key="BackgroundBrushSidePanels" Color="{StaticResource BackgroundColorSidePanels}"/>
     <SolidColorBrush x:Key="BackgroundBrushHeader" Color="{StaticResource BackgroundColorHeader}"/>

@@ -78,7 +78,7 @@ namespace HydroExplorer.View
             {
                 if (!(bool)e.NewValue) return;
 
-                System.Diagnostics.Debug.WriteLine($"DataGridView.IsVisibleChanged: WselData count={PlotVm.WselData?.Count ?? 0}");
+                //System.Diagnostics.Debug.WriteLine($"DataGridView.IsVisibleChanged: WselData count={PlotVm.WselData?.Count ?? 0}");
 
                 await LoadSettingsDataGrid(fresh: true);
                 //UpdateColumnHeaders();
