@@ -1,4 +1,4 @@
-# HydroExplorer
+# HydroExplorer (BETA)
 
 
 <!-- PROJECT SHIELDS -->

@@ -78,14 +78,14 @@ namespace HydroExplorer.Utils
         // Does NOT take DssGate itself — caller must hold the gate for the full
         // batch (open through dispose). See TabChartViewModel.LoadDssDataAsync.
 
-        public static List<HydrographRecord> ReadByPartC(DssReader dss, string partC, string runName = "")
+        public static List<HydrographRecord> ReadByPartC(
+            DssReader dss, string partC, string runName = "",
+            IEnumerable<DssPath>? catalog = null)
         {
             var results = new List<HydrographRecord>();
             try
             {
-                var catalog = dss.GetCatalog();
-
-                var paths = catalog
+                var paths = (catalog ?? dss.GetCatalog())
                     .Where(p => p.FullPath.Contains($"/{partC}/",
                         StringComparison.OrdinalIgnoreCase))
                     .ToList();

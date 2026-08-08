@@ -703,21 +703,27 @@ namespace HydroExplorer.View
                     && ((!string.IsNullOrEmpty(_pathHdfA) && File.Exists(_pathHdfA))
                      || (!string.IsNullOrEmpty(_pathHdfB) && File.Exists(_pathHdfB)));
 
-                if (!canPublish)
+                // Export needs real HDF data to read from — stays gated.
+                if (canPublish)
                 {
-                    //System.Diagnostics.Debug.WriteLine("BuildPaths: skipping publish, no valid HDF found.");
-                    return;
+                    // Export XS.shp/River.shp here, centrally, before anything
+                    // downstream (MapView) reads them off disk — replaces the
+                    // duplicate export logic that used to live in MapView itself.
+                    // BNDY is exported separately in ResetMapOverview, since it
+                    // doesn't depend on HDF and must still run for HMS-only
+                    // projects even when this canPublish gate is false.
+                    await GeometryExportCoordinator.ExportAllAsync(
+                        settingsRepo, projPath, _pathHdfA, _pathHdfB, _pathXS, _pathRiver);
                 }
 
-                // Export XS.shp/River.shp here, centrally, before anything
-                // downstream (MapView) reads them off disk — replaces the
-                // duplicate export logic that used to live in MapView itself.
-                // BNDY is exported separately in ResetMapOverview, since it
-                // doesn't depend on HDF and must still run for HMS-only
-                // projects even when this canPublish gate is false.
-                await GeometryExportCoordinator.ExportAllAsync(
-                    settingsRepo, projPath, _pathHdfA, _pathHdfB, _pathXS, _pathRiver);
-
+                // Publish always fires once per distinct project — even when
+                // canPublish is false — so MapView actually finds out a switch
+                // happened and clears its stale layers from the prior project
+                // (ResetMapView already does _map.Layers.Clear() on receipt).
+                // Skipping publish entirely here was the earlier bug: a project
+                // with no computed HDF yet just silently kept showing whatever
+                // the previous project had loaded.
+                if (string.IsNullOrEmpty(projPath)) return;
                 if (string.Equals(_lastPublishedProjPath, projPath, StringComparison.OrdinalIgnoreCase)) return;
 
                 _lastPublishedProjPath = projPath;

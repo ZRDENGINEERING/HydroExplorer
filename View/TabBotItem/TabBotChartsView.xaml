@@ -30,6 +30,7 @@
              right-side plot is active. -->
         <oxy:PlotView x:Name="CreagerPlotView"
                   Grid.Column="0"
+                  Unloaded="PlotView_Unloaded"
                   Model="{Binding ViewModel.CreagerVm.PlotModelChartsTab, ElementName=Root}"
                   Background="{StaticResource BackgroundBrushSidePanels}"
                   Visibility="{Binding ViewModel.ShowChartsRightPane, ElementName=Root,
@@ -41,6 +42,7 @@
              same composition the original layout used. -->
         <oxy:PlotView x:Name="ProfilePlotView"
                   Grid.Column="0" Grid.ColumnSpan="5"
+                  Unloaded="PlotView_Unloaded"
                   Model="{Binding ViewModel.PlotVm.PlotModel, ElementName=Root}"
                   Background="{StaticResource BackgroundBrushSidePanels}"
                   Visibility="{Binding ViewModel.ShowProfilePlot, ElementName=Root,
@@ -56,6 +58,7 @@
         <!-- LP3 Plot — HMS Charts bottom tab only -->
         <oxy:PlotView x:Name="LP3PlotView"
                   Grid.Column="2"
+                  Unloaded="PlotView_Unloaded"
                   Model="{Binding ViewModel.LP3Vm.PlotModelLP3, ElementName=Root}"
                   Background="{StaticResource BackgroundBrushSidePanels}"
                   Visibility="{Binding ViewModel.ShowLP3Plot, ElementName=Root,
@@ -64,6 +67,7 @@
         <!-- Omega EM Plot — Info tab bottom chart, right side, only -->
         <oxy:PlotView x:Name="OmegaPlotView"
                   Grid.Column="2"
+                  Unloaded="PlotView_Unloaded"
                   Model="{Binding ViewModel.OmegaVm.PlotModelOmegaEm, ElementName=Root}"
                   Background="{StaticResource BackgroundBrushSidePanels}"
                   Visibility="{Binding ViewModel.ShowOmegaPlot, ElementName=Root,

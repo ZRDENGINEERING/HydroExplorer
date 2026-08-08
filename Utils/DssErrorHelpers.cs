@@ -15,6 +15,6 @@ namespace HydroExplorer.Utils
 
         public const string UnsupportedVersionMessage =
             "This project's DSS file is an older format (DSS-6) and can't be read. " +
-            "Convert it to DSS-7 in HEC-DSSVue to view charts.";
+            "Convert it to DSS-7 in HEC-HMS or HEC-DSSVue to view charts.";
     }
 }

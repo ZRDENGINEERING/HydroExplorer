@@ -48,14 +48,14 @@ namespace HydroExplorer.Utils
         /// Reads PRECIP-INC against an already-open DssReader. Does NOT take
         /// DssGate — caller must hold it for the batch.
         /// </summary>
-        public static List<HyetographRecord> ReadPrecipInc(DssReader dss, string preferredRun = "")
+        public static List<HyetographRecord> ReadPrecipInc(
+            DssReader dss, string preferredRun = "",
+            IEnumerable<DssPath>? catalog = null)
         {
             var results = new List<HyetographRecord>();
             try
             {
-                var catalog = dss.GetCatalog();
-
-                var precipPaths = catalog
+                var precipPaths = (catalog ?? dss.GetCatalog())
                     .Where(p => p.FullPath.Contains("PRECIP-INC",
                         StringComparison.OrdinalIgnoreCase))
                     .ToList();

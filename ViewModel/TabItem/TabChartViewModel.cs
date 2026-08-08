@@ -229,7 +229,7 @@ namespace HydroExplorer.ViewModel.TabItem
             RebuildElevationPlot();
         }
 
-        
+
 
         private async Task<(
             List<DssHyetographReader.HyetographRecord>? Precip,
@@ -251,15 +251,16 @@ namespace HydroExplorer.ViewModel.TabItem
                         try
                         {
                             using var dss = new Hec.Dss.DssReader(dssFile);
+                            var catalog = dss.GetCatalog().ToList(); // fetch once, share across all 8 reads
 
-                            var precip = DssHyetographReader.ReadPrecipInc(dss, runName);
-                            var flow = DssHydrographReader.ReadByPartC(dss, "FLOW", runName);
-                            var flowBase = DssHydrographReader.ReadByPartC(dss, "FLOW-BASE", runName);
-                            var flowDirect = DssHydrographReader.ReadByPartC(dss, "FLOW-DIRECT", runName);
-                            var flowUG = DssHydrographReader.ReadByPartC(dss, "FLOW-UNIT GRAPH", runName);
-                            var flowCum = DssHydrographReader.ReadByPartC(dss, "FLOW-CUMULATIVE", runName);
-                            var elev = DssHydrographReader.ReadByPartC(dss, "ELEVATION", runName);
-                            var storage = DssHydrographReader.ReadByPartC(dss, "STORAGE", runName);
+                            var precip = DssHyetographReader.ReadPrecipInc(dss, runName, catalog);
+                            var flow = DssHydrographReader.ReadByPartC(dss, "FLOW", runName, catalog);
+                            var flowBase = DssHydrographReader.ReadByPartC(dss, "FLOW-BASE", runName, catalog);
+                            var flowDirect = DssHydrographReader.ReadByPartC(dss, "FLOW-DIRECT", runName, catalog);
+                            var flowUG = DssHydrographReader.ReadByPartC(dss, "FLOW-UNIT GRAPH", runName, catalog);
+                            var flowCum = DssHydrographReader.ReadByPartC(dss, "FLOW-CUMULATIVE", runName, catalog);
+                            var elev = DssHydrographReader.ReadByPartC(dss, "ELEVATION", runName, catalog);
+                            var storage = DssHydrographReader.ReadByPartC(dss, "STORAGE", runName, catalog);
 
                             return (precip, flow, flowBase, flowDirect, flowUG, flowCum, elev, storage);
                         }

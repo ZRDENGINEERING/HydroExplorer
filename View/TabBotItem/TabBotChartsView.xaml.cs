@@ -47,5 +47,10 @@ namespace HydroExplorer.View.TabBotItem
                 LP3PlotView.Model = null;
             };
         }
+        private void PlotView_Unloaded(object sender, RoutedEventArgs e)
+        {
+            if (sender is OxyPlot.Wpf.PlotView pv)
+                pv.Model = null;
+        }
     }
 }

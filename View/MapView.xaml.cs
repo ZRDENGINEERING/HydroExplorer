@@ -60,12 +60,6 @@ namespace HydroExplorer.View
         private CancellationTokenSource? _resetMapCts;
 
 
-        private string? ResolveHdfPath() =>
-            !string.IsNullOrEmpty(_pathHdfB) && File.Exists(_pathHdfB) ? _pathHdfB :
-            !string.IsNullOrEmpty(_pathHdfA) && File.Exists(_pathHdfA) ? _pathHdfA :
-            null;
-
-
         public MapView()
         {
             InitializeComponent();
@@ -91,9 +85,12 @@ namespace HydroExplorer.View
             _highlightLayer = new WritableLayer
             {
                 Name = "Highlight",
-                Style = new VectorStyle { Outline = new Pen(Color.LightYellow, 2), 
-                    Opacity=0.1f,
-                    Fill = null }
+                Style = new VectorStyle
+                {
+                    Outline = new Pen(Color.LightYellow, 2),
+                    Opacity = 0.1f,
+                    Fill = null
+                }
             };
             _map.Layers.Add(_highlightLayer);
 
@@ -228,8 +225,6 @@ namespace HydroExplorer.View
             {
                 await AddLayerShpTXCnty();
                 await AddLayerShpBndy();
-                await ExportShpXS();
-                await ExportShpRiver();
                 await AddLayerShpProjects();
 
                 var plotVm = App.ServiceProvider.GetRequiredService<PlotViewModel>();
@@ -541,192 +536,20 @@ namespace HydroExplorer.View
         }
 
 
-        private async Task ExportShpXS()
-        {
-            //System.Diagnostics.Debug.WriteLine($"ENTERING ExportShpXS.....");
-            try
-            {
-                string? hdfPath = ResolveHdfPath();
-                if (string.IsNullOrEmpty(hdfPath)) return;
-                if (string.IsNullOrEmpty(_pathXS))
-                {
-                    string? parentDir = Path.GetDirectoryName(hdfPath);
-
-                    if (parentDir != null)
-                    {
-                        string newFolderPath = Path.Combine(parentDir, "Spatial");
-                        Directory.CreateDirectory(newFolderPath);
-                        _pathXS = Path.Combine(newFolderPath, "XS.shp");
-                    };
-                }
-
-                System.Diagnostics.Debug.WriteLine($"_pathXS: {_pathXS}");
-
-                if (File.Exists(_pathXS)) return;
-
-                System.Diagnostics.Debug.WriteLine($"XS FILE DOES NOT EXIST — CREATING @ {_pathXS}");
-
-                string projDir = Path.GetDirectoryName(hdfPath) ?? string.Empty;
-
-                bool exported = await ExporterXS.ExportXSToShp(
-                    projPath: projDir,
-                    hdfPath: hdfPath,
-                    outputShpPath: _pathXS);
-
-                if (exported) return;
-
-                // No .prj folder found for this HEC-RAS project — resolve (cached) or
-                // guess+confirm a Texas State Plane zone, same path the river export
-                // shares, so the user is only ever prompted once per project.
-                int? epsg = await ResolveSourceEpsgAsync(
-                    hdfPath,
-                    "/Geometry/Cross Sections/Polyline Points",
-                    "cross sections");
-
-                if (epsg is not > 0) return;
-
-                await ExporterXS.ExportXSToShp(
-                    projPath: projDir,
-                    hdfPath: hdfPath,
-                    outputShpPath: _pathXS,
-                    sourceEpsgOverride: epsg);
-            }
-            catch (OperationCanceledException) { System.Diagnostics.Debug.WriteLine("ExportXS cancelled."); }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"ExportXS error: {ex.Message}"); }
-        }
-
-        /// <summary>
-        /// Reads the raw (unprojected) extent of a polyline-points dataset directly
-        /// from the HDF, for CRS zone-guessing when no .prj sidecar/folder exists to
-        /// tell us what those coordinates are in. datasetPath is e.g.
-        /// "/Geometry/Cross Sections/Polyline Points" or
-        /// "/Geometry/River Centerlines/Polyline Points".
-        /// </summary>
-        private static NetTopologySuite.Geometries.Envelope? TryReadHdfPolylineExtent(string hdfPath, string datasetPath)
-        {
-            try
-            {
-                using var file = HecRasHdfReader.OpenHdf(hdfPath);
-                double[] allPoints = file.Dataset(datasetPath).Read<double[]>();
-
-                if (allPoints.Length < 2) return null;
-
-                double minX = double.MaxValue, maxX = double.MinValue;
-                double minY = double.MaxValue, maxY = double.MinValue;
-
-                for (int i = 0; i < allPoints.Length; i += 2)
-                {
-                    double x = allPoints[i];
-                    double y = allPoints[i + 1];
-                    if (x < minX) minX = x;
-                    if (x > maxX) maxX = x;
-                    if (y < minY) minY = y;
-                    if (y > maxY) maxY = y;
-                }
-
-                return new NetTopologySuite.Geometries.Envelope(minX, maxX, minY, maxY);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"TryReadHdfPolylineExtent('{datasetPath}') failed — {ex.Message}");
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// Resolves the source EPSG to use when a HEC-RAS project has no .prj sidecar
-        /// folder — checked once per project and shared across exporters (XS, river)
-        /// so the zone is guessed and confirmed by the user only once, then cached in
-        /// ProjectSettings.SourceEpsg for the lifetime of the project.
-        /// Returns null/non-positive if no project key is resolvable, no zone can be
-        /// guessed from the HDF's raw coordinates, or the user declines the prompt.
-        /// </summary>
-        private async Task<int?> ResolveSourceEpsgAsync(string hdfPath, string datasetPath, string featureLabel)
-        {
-            string projKey = PathHelpers.NormalizeProjKey(_currentProjPath ?? string.Empty);
-            var settings = await _settingsRepo.GetSettings();
-
-            if (!string.IsNullOrEmpty(projKey) &&
-                settings.Projects.TryGetValue(projKey, out var existing) &&
-                existing.SourceEpsg is > 0)
-            {
-                //System.Diagnostics.Debug.WriteLine(
-                //    $"ResolveSourceEpsgAsync: using cached EPSG:{existing.SourceEpsg} for project '{projKey}'.");
-                return existing.SourceEpsg;
-            }
-
-            var rawExtent = TryReadHdfPolylineExtent(hdfPath, datasetPath);
-            int guessedEpsg = rawExtent != null ? GISUtil.GuessTexasStatePlaneZone(rawExtent) : -1;
-
-            if (guessedEpsg <= 0)
-            {
-                System.Diagnostics.Debug.WriteLine(
-                    $"ResolveSourceEpsgAsync: no .prj folder and could not guess a Texas State Plane zone — skipping {featureLabel}.");
-                return null;
-            }
-
-            
-
-            if (!string.IsNullOrEmpty(projKey))
-            {
-                if (!settings.Projects.TryGetValue(projKey, out var proj))
-                    proj = settings.Projects[projKey] = new ProjectSettings { ProjPath = projKey };
-
-                proj.SourceEpsg = guessedEpsg;
-                await _settingsRepo.SaveSettings(settings);
-                System.Diagnostics.Debug.WriteLine(
-                    $"ResolveSourceEpsgAsync: cached EPSG:{guessedEpsg} for project '{projKey}'.");
-            }
-
-            return guessedEpsg;
-        }
-
-
-        private async Task ExportShpRiver()
-        {
-            try
-            {
-                string? hdfPath = ResolveHdfPath();
-                if (string.IsNullOrEmpty(hdfPath)) return;
-                if (string.IsNullOrEmpty(_PathRiver)) return;
-                if (File.Exists(_PathRiver)) return;
-
-                string projDir = Path.GetDirectoryName(hdfPath) ?? string.Empty;
-
-                bool exported = await ExporterRiver.ExportRiverToShp(
-                    projPath: projDir,
-                    hdfPath: hdfPath,
-                    outputShpPath: _PathRiver);
-
-                if (exported) return;
-
-                // No .prj folder found — reuse the EPSG already guessed/confirmed
-                // during XS export for this project (if any), or guess+confirm now
-                // and cache it, so a later XS export (if it runs after) reuses it too.
-                int? epsg = await ResolveSourceEpsgAsync(
-                    hdfPath,
-                    "/Geometry/River Centerlines/Polyline Points",
-                    "river centerlines");
-
-                if (epsg is not > 0) return;
-
-                await ExporterRiver.ExportRiverToShp(
-                    projPath: projDir,
-                    hdfPath: hdfPath,
-                    outputShpPath: _PathRiver,
-                    sourceEpsgOverride: epsg);
-            }
-            catch (OperationCanceledException) { System.Diagnostics.Debug.WriteLine("ExportCL cancelled."); }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"ExportCL error: {ex.Message}"); }
-        }
-
+        // ExportShpXS/ExportShpRiver and their supporting CRS-resolution
+        // helpers were removed — this duplicated GeometryExportCoordinator
+        // almost exactly. Export now happens once, centrally, in
+        // MapOverView.BuildPaths before ProjectPaths is ever published, so
+        // by the time OnPathsReady fires here, _pathXS/_PathRiver already
+        // point at files that exist (or the caller decided not to export).
 
         private async Task ExportAndReloadCLAsync(CancellationToken token)
         {
-            bool existed = File.Exists(_PathRiver);
-            await ExportShpRiver();
-
-            if (!existed && File.Exists(_PathRiver))
+            // Export already happened upstream — this just picks up the
+            // result if the River layer wasn't loaded yet when OnPathsReady/
+            // ResetMapView first ran (timing race between MapOverView and
+            // MapView initialization).
+            if (File.Exists(_PathRiver))
             {
                 await Dispatcher.InvokeAsync(async () =>
                 {
@@ -890,8 +713,8 @@ namespace HydroExplorer.View
             _map.Layers.Add(new RasterizingTileLayer(shapefileLayer));
             return Task.CompletedTask;
         }
-        
-        
+
+
 
         private static List<string> GetAllLayerNames(Client.WmsServerLayer layer)
         {
@@ -965,7 +788,7 @@ namespace HydroExplorer.View
             map.Widgets.Add(new MouseCoordinatesWidget());
         }
 
-        
+
 
 
         private static MemoryLayer CreateDarkBackdropLayer()
