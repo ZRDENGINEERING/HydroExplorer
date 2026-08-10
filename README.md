@@ -9,18 +9,10 @@
 *** for contributors-url, forks-url, etc. This is an optional, concise syntax you may use.
 *** https://www.markdownguide.org/basic-syntax/#reference-style-links
 -->
-[![Forks][forks-shield]][forks-url]
-[![Stargazers][stars-shield]][stars-url]
-[![Issues][issues-shield]][issues-url]
-[![MIT][license-shield]][license-url]
-[![LinkedIn][linkedin-shield]][linkedin-url]
 
 
 <!-- PROJECT LOGO -->
-<br />
 <div align="center">
-<h3 align="center">HydroExplorer</h3>
-
   <p align="center">
     <br />
     <a href="https://github.com/desrochesf/HydroExplorer/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
@@ -62,8 +54,9 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
- `Data explorer for hydrologic and hydraulic modeling projects. Beta release supports projects built with HEC-HMS and HEC-RAS.`
-
+<li>
+ Data explorer for hydrologic and hydraulic modeling projects. Beta release supports projects built with HEC-HMS and HEC-RAS.
+ </li>
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
@@ -82,19 +75,23 @@
 <!-- GETTING STARTED -->
 ## Getting Started
 
-HydroExplorer runs locally. Period.
-To get a local copy up and running follow these simple example steps.
+HydroExplorer runs locally. 
+To get a local copy up and running follow these simple steps.
 
 
 
 ### Installation
 Try it out Option: 
+<br />
     1. Download the latest release from the [Releases](
 
-Developer Option. Clone the repo:
+Developer Option. 
+<br />
+
+<tab />    1. Clone the repo:
    ```sh
    git clone https://github.com/desrochesf/HydroExplorer.git
-
+   2. Go to town adding features, fixing bugs, and making it your own.
    
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
