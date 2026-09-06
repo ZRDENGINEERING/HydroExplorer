@@ -149,7 +149,7 @@ By using this software, you acknowledge that it is a beta tool intended to assis
 <!-- LICENSE -->
 ## License
 
-Distributed under the MIT. 
+Distributed under the MIT License. 
 
 See `LICENSE.txt` for more information.
 
