@@ -338,10 +338,20 @@ namespace HydroExplorer.View
 
         private void UpdateModelDimensions(string? planAPath)
         {
+            // Every exit path funnels through here so subscribers (RAS Tables
+            // guard, 2D map layer) always hear about the final value, not just
+            // the "successfully resolved" case.
+            void Finish()
+            {
+                EventBus.PublishModelDimensionsChanged(_modelDims);
+                UpdateProfileWarningVisibility();
+            }
+
             if (string.IsNullOrEmpty(planAPath) || !File.Exists(planAPath))
             {
                 _modelDims = ModelDimensions.Unknown;
                 _lastModelDimsPlanPath = planAPath;
+                Finish();
                 return;
             }
 
@@ -350,6 +360,7 @@ namespace HydroExplorer.View
                 _modelDims = _lastModelDimsResult;
                 //System.Diagnostics.Debug.WriteLine(
                 //    $"UpdateModelDimensions: skipping duplicate call for '{Path.GetFileName(planAPath)}' (already {_modelDims}).");
+                Finish();
                 return;
             }
             _lastModelDimsPlanPath = planAPath;
@@ -362,6 +373,7 @@ namespace HydroExplorer.View
                 _lastModelDimsResult = _modelDims;
                 System.Diagnostics.Debug.WriteLine(
                     $"UpdateModelDimensions: could not resolve geometry HDF for '{planAPath}'.");
+                Finish();
                 return;
             }
 
@@ -378,6 +390,8 @@ namespace HydroExplorer.View
 
             //System.Diagnostics.Debug.WriteLine(
             //    $"UpdateModelDimensions: plan='{Path.GetFileName(planAPath)}' geom='{Path.GetFileName(geomHdf)}' → {_modelDims}");
+
+            Finish();
         }
 
         private DateTime _lastSaveRequest = DateTime.MinValue;
@@ -421,11 +435,26 @@ namespace HydroExplorer.View
             }
         }
 
+        private const string TwoDOnlyWarningMessage =
+            "This plan is a 2D model — RAS Tables show 1D cross-section results, which aren't " +
+            "available here. See the Map tab for 2D cell results (max WSE, depth, velocity).";
+
         private void UpdateProfileWarningVisibility()
         {
-            txtProfileWarning.Text = ViewModel.TabItem.TabControlViewModel.CurrentTopTab == "RAS Tables"
-                ? _profileWarningMessage
-                : string.Empty;
+            bool onRasTables = ViewModel.TabItem.TabControlViewModel.CurrentTopTab == "RAS Tables";
+
+            // 2D-only plans have no 1D profiles/cross-sections at all — disable the
+            // profile picker rather than let it show stale or empty 1D data, and
+            // explain why on the tab where that would otherwise be confusing.
+            if (_modelDims == ModelDimensions.TwoDOnly)
+            {
+                cboxProfiles.IsEnabled = false;
+                txtProfileWarning.Text = onRasTables ? TwoDOnlyWarningMessage : string.Empty;
+                return;
+            }
+
+            cboxProfiles.IsEnabled = true;
+            txtProfileWarning.Text = onRasTables ? _profileWarningMessage : string.Empty;
         }
 
         [GeneratedRegex(@"\.p\d+\.hdf$", RegexOptions.IgnoreCase, "en-US")]

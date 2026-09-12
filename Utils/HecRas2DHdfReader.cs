@@ -112,14 +112,13 @@ namespace HydroExplorer.Utils
             var centerPath = $"{GeomBase}{areaName}/Cells Center Coordinate";
             if (!HasDataset(geomFile, centerPath)) return [];
 
-            var centers = geomFile.Dataset(centerPath).Read<float[,]>();
+            float[,]? centers = TryReadCoordinatePairs(geomFile, centerPath);
+            if (centers == null) return [];
             int nCells = centers.GetLength(0);
 
             // Minimum terrain per cell
             var terrainPath = $"{GeomBase}{areaName}/Cells Minimum Elevation";
-            float[]? terrain = null;
-            if (HasDataset(geomFile, terrainPath))
-                terrain = geomFile.Dataset(terrainPath).Read<float[]>();
+            float[]? terrain = HasDataset(geomFile, terrainPath) ? TryReadFloat1D(geomFile, terrainPath) : null;
 
             // Max results — only if plan file available and has results
             float[]? maxWSE = null;
@@ -273,6 +272,47 @@ namespace HydroExplorer.Utils
             return File.Exists(resolved) ? resolved : raw;
         }
 
+        // ── Projection ───────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Attempts to read the project's coordinate system as a WKT string, stored
+        /// by RAS as an attribute on the geometry HDF's root or /Geometry group
+        /// (name varies by RAS version — "Projection", "Coordinate System", etc.).
+        /// Returns null if no such attribute is present; callers should fall back
+        /// to a coordinate-based guess (see GISUtil.GuessTexasStatePlaneZone).
+        /// </summary>
+        public static string? TryReadProjectionWkt(string geomHdfPath)
+        {
+            if (!File.Exists(geomHdfPath)) return null;
+
+            try
+            {
+                using var geomFile = OpenHdf(geomHdfPath);
+
+                foreach (var groupPath in new[] { "/Geometry", "/" })
+                {
+                    try
+                    {
+                        var group = geomFile.Group(groupPath);
+                        foreach (var attr in group.Attributes())
+                        {
+                            if (attr.Name.Contains("Projection", StringComparison.OrdinalIgnoreCase) ||
+                                attr.Name.Contains("Coordinate System", StringComparison.OrdinalIgnoreCase) ||
+                                attr.Name.Contains("WKT", StringComparison.OrdinalIgnoreCase))
+                            {
+                                string raw = attr.Read<string>()?.Trim() ?? string.Empty;
+                                if (!string.IsNullOrEmpty(raw)) return raw;
+                            }
+                        }
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+
+            return null;
+        }
+
         // ── 2D area names ────────────────────────────────────────────────────
 
         private static List<string> Read2DAreaNames(NativeFile geomFile)
@@ -287,7 +327,10 @@ namespace HydroExplorer.Utils
                         names.Add(link.Name);
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Read2DAreaNames: failed to enumerate 2D flow areas — {ex}");
+            }
             return names;
         }
 
@@ -296,7 +339,47 @@ namespace HydroExplorer.Utils
         private static float[]? TryReadFloat1D(NativeFile file, string path)
         {
             try { return file.Dataset(path).Read<float[]>(); }
-            catch { return null; }
+            catch
+            {
+                // RAS HDF5 output is usually float32, but isn't guaranteed to be —
+                // fall back to double before giving up, converting element-wise.
+                try
+                {
+                    var d = file.Dataset(path).Read<double[]>();
+                    var f = new float[d.Length];
+                    for (int i = 0; i < d.Length; i++) f[i] = (float)d[i];
+                    return f;
+                }
+                catch { return null; }
+            }
+        }
+
+        /// <summary>
+        /// Reads an [n, 2] coordinate dataset (e.g. "Cells Center Coordinate"),
+        /// trying float32 first and falling back to float64 — same reasoning as
+        /// TryReadFloat1D. Returns null if neither read succeeds.
+        /// </summary>
+        private static float[,]? TryReadCoordinatePairs(NativeFile file, string path)
+        {
+            try { return file.Dataset(path).Read<float[,]>(); }
+            catch
+            {
+                try
+                {
+                    var d = file.Dataset(path).Read<double[,]>();
+                    var f = new float[d.GetLength(0), d.GetLength(1)];
+                    for (int i = 0; i < d.GetLength(0); i++)
+                        for (int j = 0; j < d.GetLength(1); j++)
+                            f[i, j] = (float)d[i, j];
+                    return f;
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"TryReadCoordinatePairs: both float and double reads failed for '{path}': {ex}");
+                    return null;
+                }
+            }
         }
 
         private static bool HasDataset(NativeFile file, string path)

@@ -112,5 +112,12 @@ namespace HydroExplorer.Helpers
         public static void PublishOmegaInputChanged(double area, double slope, double precip, double omega)
             => OmegaInputChanged?.Invoke(area, slope, precip, omega);
 
+        // Fires whenever the resolved model dimensionality (1D/2D/Mixed/Unknown)
+        // for the currently-selected Plan A changes, so views that only make
+        // sense for one dimensionality (RAS Tables = 1D, 2D map layer = 2D)
+        // can guard themselves without recomputing it independently.
+        public static event Action<ModelDimensions>? ModelDimensionsChanged;
+        public static void PublishModelDimensionsChanged(ModelDimensions dims) => ModelDimensionsChanged?.Invoke(dims);
+
     }
 }

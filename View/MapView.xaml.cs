@@ -18,6 +18,7 @@ using Mapsui.Widgets.InfoWidgets;
 using Microsoft.Extensions.DependencyInjection;
 using PureHDF;
 using PureHDF.VOL.Native;
+using ProjNet.CoordinateSystems.Transformations;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -124,6 +125,25 @@ namespace HydroExplorer.View
                     _currentGage = gage;
                     AddLayerGage();
                     _mapControl.Refresh();
+                });
+            };
+
+            // Plan A drives which plan's 2D results (if any) are shown — refresh
+            // independently of a full ResetMapView so switching plans updates it.
+            EventBus.HdfPathChanged += (hdfPathA, hdfPathB) =>
+            {
+                Dispatcher.InvokeAsync(async () =>
+                {
+                    try
+                    {
+                        _pathHdfA = hdfPathA;
+                        await UpdateLayer2DResults(hdfPathA);
+                        _mapControl.Refresh();
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"MapView 2D layer refresh error:\n{ex}");
+                    }
                 });
             };
 
@@ -234,6 +254,20 @@ namespace HydroExplorer.View
                     System.Diagnostics.Debug.WriteLine("ResetMapView: WselData null — skipping XS layer.");
 
                 await AddLayerShpRiver();
+
+                // Isolated from the rest of map setup: a failure reading 2D
+                // results (untested against real files as of this patch) must
+                // never take down tiles/XS/river/gage rendering with it.
+                try
+                {
+                    await UpdateLayer2DResults(_pathHdfA);
+                }
+                catch (Exception ex2d)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"UpdateLayer2DResults (ResetMapView) failed — leaving map otherwise intact:\n{ex2d}");
+                }
+
                 AddLayerGage();
                 _map.Layers.Add(_highlightLayer);
 
@@ -497,6 +531,281 @@ namespace HydroExplorer.View
             };
             _map.Layers.Add(new RasterizingTileLayer(shapefileLayer));
             return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Renders 2D cell results (max WSE where available, else min terrain) as a
+        /// point layer, colored by value. Replaces any existing "2D_RESULTS" layer.
+        /// No-ops (removing any stale layer) when the plan has no 2D flow areas,
+        /// isn't set, or its coordinate system can't be resolved.
+        /// </summary>
+        private async Task UpdateLayer2DResults(string? planHdfPath)
+        {
+            var existing = _map.Layers.FirstOrDefault(l => l.Name == "2D_RESULTS");
+            if (existing != null)
+            {
+                _map.Layers.Remove(existing);
+                (existing as IDisposable)?.Dispose();
+            }
+
+            if (string.IsNullOrEmpty(planHdfPath) || !File.Exists(planHdfPath))
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"UpdateLayer2DResults: no plan HDF path / file missing ('{planHdfPath}') — skipping.");
+                return;
+            }
+
+            string? geomHdf = HecRasPrjReader.ResolveGeomHdf(planHdfPath);
+            if (geomHdf == null)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"UpdateLayer2DResults: could not resolve geometry HDF for '{planHdfPath}' — skipping.");
+                return;
+            }
+
+            var (has1D, has2D) = HecRasHdfReader.GetModelDimensions(geomHdf);
+            System.Diagnostics.Debug.WriteLine(
+                $"UpdateLayer2DResults: geom='{Path.GetFileName(geomHdf)}' has1D={has1D} has2D={has2D}");
+            if (!has2D) return;
+
+            // HecRas2DHdfReader.Read() calls into PureHDF, which does not appear
+            // to be safe to run concurrently with the rest of the app's own HDF
+            // reads (RAS Tables loading, shapefile export, etc. on the UI thread)
+            // — running it via Task.Run intermittently returned 0 cells for a
+            // file that read fine synchronously. Keep this call on the calling
+            // thread; only the pure-math reprojection/styling below (no shared
+            // native library state) is safe to offload.
+            var results = HecRas2DHdfReader.Read(geomHdf, planHdfPath);
+            System.Diagnostics.Debug.WriteLine(
+                $"UpdateLayer2DResults: HecRas2DHdfReader.Read returned {results.Cells.Count} cells.");
+            if (results.Cells.Count == 0) return;
+
+            // No need to render every cell for a first-pass visual read — sample
+            // every Nth one. Cuts CRS resolution, reprojection, and rendering
+            // cost by the same factor.
+            const int cellDisplayStride = 10;
+            var displayCells = cellDisplayStride > 1
+                ? results.Cells.Where((c, i) => i % cellDisplayStride == 0).ToList()
+                : results.Cells;
+            System.Diagnostics.Debug.WriteLine(
+                $"UpdateLayer2DResults: displaying {displayCells.Count} of {results.Cells.Count} cells " +
+                $"(every {cellDisplayStride}).");
+
+            string? srcWkt = await ResolveCellsSourceWktAsync(displayCells, geomHdf);
+            System.Diagnostics.Debug.WriteLine(
+                $"UpdateLayer2DResults: resolved source WKT: {(srcWkt == null ? "(none)" : "found")}");
+            if (string.IsNullOrEmpty(srcWkt))
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    "UpdateLayer2DResults: could not resolve a coordinate system for the 2D cells — skipping layer.");
+                return;
+            }
+
+            string tgtWkt = GISUtil.FetchWkt(4326);
+            if (string.IsNullOrEmpty(tgtWkt))
+            {
+                System.Diagnostics.Debug.WriteLine("UpdateLayer2DResults: FetchWkt(4326) failed — skipping.");
+                return;
+            }
+
+            var transform = GISUtil.CreateTransformation(srcWkt, tgtWkt);
+
+            // Reprojecting and styling up to 100k+ points is CPU-bound — do it
+            // off the UI thread. Only _map.Layers.Add below touches UI state.
+            var (features, hasResults) = await Task.Run(
+                () => BuildCellFeatures(displayCells, transform));
+
+            var layer2D = new MemoryLayer
+            {
+                Name = "2D_RESULTS",
+                Features = features
+            };
+
+            // 100k+ individually-styled points redrawn every frame is what was
+            // making pan/zoom slow — wrap in a RasterizingTileLayer so Mapsui
+            // renders once per tile and caches it, instead of re-drawing every
+            // point on every pan/zoom.
+            _map.Layers.Add(new RasterizingTileLayer(layer2D));
+            System.Diagnostics.Debug.WriteLine(
+                $"UpdateLayer2DResults: added 2D_RESULTS layer with {features.Count} points (colored by {(hasResults ? "Max WSE" : "Min Terrain")}).");
+        }
+
+        /// <summary>
+        /// Resolves the source coordinate system for raw 2D cell coordinates as a
+        /// WKT string: cached ProjectSettings.SourceEpsg first (shared with the
+        /// shapefile exporters), else the geometry HDF's own stored projection
+        /// used VERBATIM (RAS 2D geometry is commonly set up in a custom statewide
+        /// projection like "NAD83 / Texas Centric Albers Equal Area" that has no
+        /// EPSG code at all — forcing it through TryGetEpsgFromWkt just to look the
+        /// WKT back up again loses that projection entirely), else a Texas State
+        /// Plane guess from the cells' extent as a last resort.
+        /// </summary>
+        private async Task<string?> ResolveCellsSourceWktAsync(List<HecRas2DCell> cells, string geomHdfPath)
+        {
+            string projKey = PathHelpers.NormalizeProjKey(_currentProjPath ?? string.Empty);
+            var settings = await _settingsRepo.GetSettings();
+
+            if (!string.IsNullOrEmpty(projKey) &&
+                settings.Projects.TryGetValue(projKey, out var existing) &&
+                existing.SourceEpsg is > 0)
+            {
+                return GISUtil.FetchWkt(existing.SourceEpsg.Value);
+            }
+
+            string? wkt = HecRas2DHdfReader.TryReadProjectionWkt(geomHdfPath);
+            System.Diagnostics.Debug.WriteLine(
+                wkt == null
+                    ? "ResolveCellsSourceWktAsync: no projection attribute found on geometry HDF."
+                    : $"ResolveCellsSourceWktAsync: found projection attribute: {wkt}");
+
+            if (!string.IsNullOrEmpty(wkt))
+            {
+                // Opportunistically cache an EPSG code too, purely so the shapefile
+                // exporters can reuse it — but this WKT is authoritative regardless
+                // of whether it happens to map to one.
+                int maybeEpsg = GISUtil.TryGetEpsgFromWkt(wkt);
+                if (maybeEpsg > 0 && !string.IsNullOrEmpty(projKey))
+                {
+                    if (!settings.Projects.TryGetValue(projKey, out var proj))
+                        proj = settings.Projects[projKey] = new ProjectSettings { ProjPath = projKey };
+                    proj.SourceEpsg = maybeEpsg;
+                    await _settingsRepo.SaveSettings(settings);
+                }
+                return wkt;
+            }
+
+            var extent = new NetTopologySuite.Geometries.Envelope();
+            foreach (var c in cells)
+                extent.ExpandToInclude(c.CenterX, c.CenterY);
+            System.Diagnostics.Debug.WriteLine(
+                $"ResolveCellsSourceWktAsync: raw cell extent X[{extent.MinX:0.##}..{extent.MaxX:0.##}] " +
+                $"Y[{extent.MinY:0.##}..{extent.MaxY:0.##}], centroid=({(extent.MinX + extent.MaxX) / 2:0.##}, {(extent.MinY + extent.MaxY) / 2:0.##})");
+
+            int guessedEpsg = GISUtil.GuessTexasStatePlaneZone(extent);
+            if (guessedEpsg <= 0) return null;
+
+            if (!string.IsNullOrEmpty(projKey))
+            {
+                if (!settings.Projects.TryGetValue(projKey, out var proj2))
+                    proj2 = settings.Projects[projKey] = new ProjectSettings { ProjPath = projKey };
+                proj2.SourceEpsg = guessedEpsg;
+                await _settingsRepo.SaveSettings(settings);
+            }
+
+            return GISUtil.FetchWkt(guessedEpsg);
+        }
+
+        /// <summary>
+        /// Reprojects cells to map coordinates and builds styled point features.
+        /// Runs off the UI thread (see caller) — must not touch _map or any WPF
+        /// state. Uses a small cached palette of styles instead of allocating a
+        /// new Color/Brush/SymbolStyle per cell; with 100k+ cells that was a
+        /// meaningful chunk of both the CPU time and GC pressure.
+        /// </summary>
+        private static (List<GeometryFeature> features, bool hasResults) BuildCellFeatures(
+            List<HecRas2DCell> cells, ICoordinateTransformation transform)
+        {
+            bool hasResults = cells.Any(c => !double.IsNaN(c.MaxWSE));
+
+            double minVal = double.MaxValue, maxVal = double.MinValue;
+            foreach (var c in cells)
+            {
+                double v = hasResults ? c.MaxWSE : c.MinTerrain;
+                if (double.IsNaN(v)) continue;
+                if (v < minVal) minVal = v;
+                if (v > maxVal) maxVal = v;
+            }
+            double range = maxVal > minVal ? maxVal - minVal : 1;
+
+            const int paletteSize = 64;
+            var palette = new SymbolStyle[paletteSize];
+            for (int i = 0; i < paletteSize; i++)
+            {
+                palette[i] = new SymbolStyle
+                {
+                    SymbolType = SymbolType.Rectangle,
+                    Fill = new Brush(ValueToRampColor(i / (double)(paletteSize - 1))),
+                    Outline = null,
+                    SymbolScale = 0.04
+                };
+            }
+            var naStyle = new SymbolStyle
+            {
+                SymbolType = SymbolType.Rectangle,
+                Fill = new Brush(new Color(120, 120, 120, 160)),
+                Outline = null,
+                SymbolScale = 0.04
+            };
+
+            var features = new List<GeometryFeature>(cells.Count);
+            foreach (var cell in cells)
+            {
+                var srcCoord = new NetTopologySuite.Geometries.Coordinate(cell.CenterX, cell.CenterY);
+                var lonLat = GISUtil.Reproject(srcCoord, transform);
+                var (mx, my) = SphericalMercator.FromLonLat(lonLat.X, lonLat.Y);
+
+                double val = hasResults ? cell.MaxWSE : cell.MinTerrain;
+
+                var feature = new GeometryFeature
+                {
+                    Geometry = new NetTopologySuite.Geometries.Point(mx, my)
+                };
+                feature["label"] = hasResults
+                    ? $"{cell.AreaName} cell {cell.CellIndex}\nMax WSE: {cell.MaxWSE:0.00}\n" +
+                      $"Max Depth: {cell.MaxDepth:0.00}\nMax Vel: {cell.MaxVelMag:0.00}"
+                    : $"{cell.AreaName} cell {cell.CellIndex}\nMin Terrain: {cell.MinTerrain:0.00}";
+
+                if (double.IsNaN(val))
+                {
+                    feature.Styles.Add(naStyle);
+                }
+                else
+                {
+                    int idx = (int)Math.Round(Math.Clamp((val - minVal) / range, 0, 1) * (paletteSize - 1));
+                    feature.Styles.Add(palette[idx]);
+                }
+
+                features.Add(feature);
+            }
+
+            return (features, hasResults);
+        }
+
+        /// <summary>
+        /// Simple blue → cyan → yellow → red ramp for a normalized [0,1] value —
+        /// low = deep blue, high = red. Good enough for a first-pass 2D overlay;
+        /// swap for a proper legend/gradient control later if this needs to be
+        /// more than a quick visual read.
+        /// </summary>
+        private static Color ValueToRampColor(double t)
+        {
+            t = Math.Clamp(t, 0, 1);
+
+            (byte r, byte g, byte b) low = (0, 0, 180);
+            (byte r, byte g, byte b) midLow = (0, 200, 200);
+            (byte r, byte g, byte b) midHigh = (255, 255, 0);
+            (byte r, byte g, byte b) high = (220, 0, 0);
+
+            static byte Lerp(byte a, byte b, double f) => (byte)(a + (b - a) * f);
+
+            (byte r, byte g, byte b) c;
+            if (t < 1.0 / 3)
+            {
+                double f = t / (1.0 / 3);
+                c = (Lerp(low.r, midLow.r, f), Lerp(low.g, midLow.g, f), Lerp(low.b, midLow.b, f));
+            }
+            else if (t < 2.0 / 3)
+            {
+                double f = (t - 1.0 / 3) / (1.0 / 3);
+                c = (Lerp(midLow.r, midHigh.r, f), Lerp(midLow.g, midHigh.g, f), Lerp(midLow.b, midHigh.b, f));
+            }
+            else
+            {
+                double f = (t - 2.0 / 3) / (1.0 / 3);
+                c = (Lerp(midHigh.r, high.r, f), Lerp(midHigh.g, high.g, f), Lerp(midHigh.b, high.b, f));
+            }
+
+            return new Color(c.r, c.g, c.b, 255);
         }
 
         private void AddLayerGage()

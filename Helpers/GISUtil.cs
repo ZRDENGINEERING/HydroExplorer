@@ -226,6 +226,13 @@ namespace HydroExplorer.Helpers
                             $"GuessTexasStatePlaneZone: matched EPSG:{zone.Epsg} ({zone.Name}).");
                         return zone.Epsg;
                     }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"GuessTexasStatePlaneZone: EPSG:{zone.Epsg} ({zone.Name}) — reprojected to " +
+                            $"({result.X:0.####}, {result.Y:0.####}), outside its bounds " +
+                            $"[{zone.MinLon},{zone.MaxLon}] x [{zone.MinLat},{zone.MaxLat}].");
+                    }
                 }
                 catch (Exception ex)
                 {

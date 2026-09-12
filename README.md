@@ -15,9 +15,9 @@
 <div align="center">
   <p align="center">
     <br />
-    <a href="https://github.com/desrochesf/HydroExplorer/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
+    <a href="https://github.com/ZRDENGINEERING/HydroExplorer/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
     &middot;
-    <a href="https://github.com/desrochesf/HydroExplorer/issues/new?labels=enhancement&template=feature-request---.md">Request Feature</a>
+    <a href="https://github.com/ZRDENGINEERING/HydroExplorer/issues/new?labels=enhancement&template=feature-request---.md">Request Feature</a>
   </p>
 </div>
 
@@ -54,16 +54,14 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
-<li>
- Data explorer for hydrologic and hydraulic modeling projects. Beta release supports projects built with HEC-HMS and HEC-RAS.
- </li>
+Data explorer for hydrologic and hydraulic modeling projects. Beta release supports projects built with HEC-HMS and HEC-RAS.
+
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
 
 
 ### Built With
-
 
 * C# / DOTNET
 * WPF
@@ -75,24 +73,25 @@
 <!-- GETTING STARTED -->
 ## Getting Started
 
-HydroExplorer runs locally. 
+HydroExplorer runs locally.
 To get a local copy up and running follow these simple steps.
 
 
 
 ### Installation
-Try it out Option: 
-<br />
-    1. Download the latest release from the [Releases](
 
-Developer Option. 
-<br />
+**Try it out option:**
 
-<tab />    1. Clone the repo:
+1. Download the latest release from the [Releases](https://github.com/ZRDENGINEERING/HydroExplorer/releases) page.
+
+**Developer option:**
+
+1. Clone the repo:
    ```sh
-   git clone https://github.com/desrochesf/HydroExplorer.git
-   2. Go to town adding features, fixing bugs, and making it your own.
-   
+   git clone https://github.com/ZRDENGINEERING/HydroExplorer.git
+   ```
+2. Go to town adding features, fixing bugs, and making it your own.
+
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 
@@ -115,7 +114,7 @@ Use this space to show useful examples of how a project can be used. Additional 
 - [ ] HEC-RAS 2D
 - [ ] Feature 3
 
-See the [open issues](https://github.com/desrochesf/HydroExplorer/issues) for a full list of proposed features (and known issues).
+See the [open issues](https://github.com/ZRDENGINEERING/HydroExplorer/issues) for a full list of proposed features (and known issues).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -124,7 +123,7 @@ See the [open issues](https://github.com/desrochesf/HydroExplorer/issues) for a 
 <!-- CONTRIBUTING -->
 ## Contributing
 
-Contributions and suggestions are welcome. Reach out! 
+Contributions and suggestions are welcome. Reach out!
 You can also simply open an issue with the tag "enhancement" or "feature request" and we will review it.
 
 
@@ -149,7 +148,7 @@ By using this software, you acknowledge that it is a beta tool intended to assis
 <!-- LICENSE -->
 ## License
 
-Distributed under the MIT License. 
+Distributed under the MIT License.
 
 See `LICENSE.txt` for more information.
 
@@ -164,7 +163,7 @@ frankd@zrdeng.com
 
 https://zrdeng.com
 
-Project Link: [https://github.com/desrochesf/HydroExplorer](https://github.com/desrochesf/HydroExplorer)
+Project Link: [https://github.com/ZRDENGINEERING/HydroExplorer](https://github.com/ZRDENGINEERING/HydroExplorer)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -175,17 +174,17 @@ Project Link: [https://github.com/desrochesf/HydroExplorer](https://github.com/d
 
 <!-- MARKDOWN LINKS & IMAGES -->
 <!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[logo-shield]: https://github.com/desrochesf/HydroExplorer/blob/master/Images/logo.png
-[contributors-shield]: https://img.shields.io/github/contributors/desrochesf/HydroExplorer.svg?style=for-the-badge
-[contributors-url]: https://github.com/desrochesf/HydroExplorer/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/desrochesf/HydroExplorer.svg?style=for-the-badge
-[forks-url]: https://github.com/desrochesf/HydroExplorer/network/members
-[stars-shield]: https://img.shields.io/github/stars/desrochesf/HydroExplorer.svg?style=for-the-badge
-[stars-url]: https://github.com/desrochesf/HydroExplorer/stargazers
-[issues-shield]: https://img.shields.io/github/issues/desrochesf/HydroExplorer.svg?style=for-the-badge
-[issues-url]: https://github.com/desrochesf/HydroExplorer/issues
-[license-shield]: https://img.shields.io/github/license/desrochesf/HydroExplorer.svg?style=for-the-badge
-[license-url]: https://github.com/desrochesf/HydroExplorer/blob/master/LICENSE.txt
+[logo-shield]: https://github.com/ZRDENGINEERING/HydroExplorer/blob/master/Images/logo.png
+[contributors-shield]: https://img.shields.io/github/contributors/ZRDENGINEERING/HydroExplorer.svg?style=for-the-badge
+[contributors-url]: https://github.com/ZRDENGINEERING/HydroExplorer/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/ZRDENGINEERING/HydroExplorer.svg?style=for-the-badge
+[forks-url]: https://github.com/ZRDENGINEERING/HydroExplorer/network/members
+[stars-shield]: https://img.shields.io/github/stars/ZRDENGINEERING/HydroExplorer.svg?style=for-the-badge
+[stars-url]: https://github.com/ZRDENGINEERING/HydroExplorer/stargazers
+[issues-shield]: https://img.shields.io/github/issues/ZRDENGINEERING/HydroExplorer.svg?style=for-the-badge
+[issues-url]: https://github.com/ZRDENGINEERING/HydroExplorer/issues
+[license-shield]: https://img.shields.io/github/license/ZRDENGINEERING/HydroExplorer.svg?style=for-the-badge
+[license-url]: https://github.com/ZRDENGINEERING/HydroExplorer/blob/master/LICENSE.txt
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 [linkedin-url]: https://linkedin.com/in/frank-desroches-p-e-cfm-b5762722
 [product-screenshot]: Images/screenshot.png
@@ -205,4 +204,4 @@ Project Link: [https://github.com/desrochesf/HydroExplorer](https://github.com/d
 [Bootstrap.com]: https://img.shields.io/badge/Bootstrap-563D7C?style=for-the-badge&logo=bootstrap&logoColor=white
 [Bootstrap-url]: https://getbootstrap.com
 [JQuery.com]: https://img.shields.io/badge/jQuery-0769AD?style=for-the-badge&logo=jquery&logoColor=white
-[JQuery-url]: https://jquery.com 
+[JQuery-url]: https://jquery.com
