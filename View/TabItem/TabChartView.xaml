@@ -165,16 +165,6 @@
             </Border>
 
 
-            <Button Content="EXPORT PDF"
-        Command="{Binding GenerateReportCommand}"
-        FontSize="8"
-        Padding="6,3"
-        Margin="0,4,0,0"
-                    Height="30"
-        HorizontalAlignment="Right"
-                    VerticalAlignment="Top"/>
-
-
         </Grid>
     </Grid>
 </UserControl>

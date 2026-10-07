@@ -98,7 +98,6 @@ namespace HydroExplorer.ViewModel.TabItem
         private string _runNameB = string.Empty;
         public string RunNameB { get => _runNameB; set { _runNameB = value; OnPropertyChanged(); } }
 
-        public ICommand GenerateReportCommand { get; }
 
         // ── Cached raw records — A and B load independently (either order,
         // either one alone), so each is cached separately and the combined
@@ -119,8 +118,6 @@ namespace HydroExplorer.ViewModel.TabItem
             ElevationPlot = BuildElevationPlot();
             HydrographPlot = BuildHydrographPlot();
             HyetographPlot = BuildHyetographPlot(null);
-
-            GenerateReportCommand = new RelayCommand(_ => GenerateReport());
 
             _ = LoadFromSettingsAsync();
 
@@ -335,28 +332,6 @@ namespace HydroExplorer.ViewModel.TabItem
             });
         }
 
-
-        private void GenerateReport()
-        {
-            try
-            {
-                var path = @"C:\Temp\HydroReport.pdf";
-                HydroReportGenerator.GenerateHydrographReport(
-                    HydrographPlot!, HyetographPlot!, path,
-                    projectName: "Boggy Creek — 100YR",
-                    rainfallTotal: RainfallTotal,
-                    lossTotal: LossTotal,
-                    rainfallExcessTotal: RainfallExcessTotal,
-                    initialLoss: InitialLoss);
-
-                System.Diagnostics.Process.Start(
-                    new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"GenerateReport error: {ex.Message}");
-            }
-        }
 
 
         // ── Plot builders ────────────────────────────────────────────────────
