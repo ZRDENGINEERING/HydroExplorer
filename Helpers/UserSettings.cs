@@ -9,6 +9,11 @@ namespace HydroExplorer.Helpers
         public string ProjName { get; set; } = string.Empty;
         public string ProjPath { get; set; } = string.Empty;
 
+        // Folder whose sub-folders are treated as projects in the project tree.
+        // Empty = fall back to the legacy default (C:\Temp) if it exists.
+        // See ProjectsFolder.Resolve.
+        public string ProjectsRoot { get; set; } = string.Empty;
+
         public Dictionary<string, ProjectSettings> Projects { get; set; } = [];
         public Dictionary<string, ShpPathEntry> ShpPaths { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 

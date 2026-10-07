@@ -119,5 +119,10 @@ namespace HydroExplorer.Helpers
         public static event Action<ModelDimensions>? ModelDimensionsChanged;
         public static void PublishModelDimensionsChanged(ModelDimensions dims) => ModelDimensionsChanged?.Invoke(dims);
 
+        // Fires after the user picks a different projects folder, so every project tree
+        // (HEC-RAS, HEC-HMS, geometry) can rebuild itself against the new root.
+        public static event Action<string>? ProjectsRootChanged;
+        public static void PublishProjectsRootChanged(string path) => ProjectsRootChanged?.Invoke(path);
+
     }
 }

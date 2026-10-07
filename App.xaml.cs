@@ -102,7 +102,7 @@ namespace HydroExplorer
         {
             try
             {
-                string tempDir = @"C:\Temp";
+                string tempDir = Path.Combine(Path.GetTempPath(), "HydroExplorer");
                 if (!Directory.Exists(tempDir)) return;
 
                 string[] extensions = { ".shp", ".shx", ".dbf", ".prj", ".cpg", ".sbn", ".sbx" };

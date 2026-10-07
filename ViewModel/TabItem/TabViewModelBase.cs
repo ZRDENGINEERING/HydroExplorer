@@ -208,7 +208,7 @@ namespace HydroExplorer.ViewModel.TabItem
                 }
             }
 
-            string pathTMP = Path.Combine(@"C:\Temp", $"tmp_{Guid.NewGuid():N}.shp");
+            string pathTMP = ProjectsFolder.TempShpPath();
 
             try
             {

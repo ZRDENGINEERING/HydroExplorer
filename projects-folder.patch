@@ -1,0 +1,404 @@
+diff --git a/App.xaml.cs b/App.xaml.cs
+index ae02c4f..fb7283d 100644
+--- a/App.xaml.cs
++++ b/App.xaml.cs
+@@ -102,7 +102,7 @@ namespace HydroExplorer
+         {
+             try
+             {
+-                string tempDir = @"C:\Temp";
++                string tempDir = Path.Combine(Path.GetTempPath(), "HydroExplorer");
+                 if (!Directory.Exists(tempDir)) return;
+ 
+                 string[] extensions = { ".shp", ".shx", ".dbf", ".prj", ".cpg", ".sbn", ".sbx" };
+diff --git a/Helpers/EventBus.cs b/Helpers/EventBus.cs
+index 9e83ed1..cc7cbb0 100644
+--- a/Helpers/EventBus.cs
++++ b/Helpers/EventBus.cs
+@@ -119,5 +119,10 @@ namespace HydroExplorer.Helpers
+         public static event Action<ModelDimensions>? ModelDimensionsChanged;
+         public static void PublishModelDimensionsChanged(ModelDimensions dims) => ModelDimensionsChanged?.Invoke(dims);
+ 
++        // Fires after the user picks a different projects folder, so every project tree
++        // (HEC-RAS, HEC-HMS, geometry) can rebuild itself against the new root.
++        public static event Action<string>? ProjectsRootChanged;
++        public static void PublishProjectsRootChanged(string path) => ProjectsRootChanged?.Invoke(path);
++
+     }
+ }
+\ No newline at end of file
+diff --git a/Helpers/ExporterBndy.cs b/Helpers/ExporterBndy.cs
+index 8eaa587..5d37781 100644
+--- a/Helpers/ExporterBndy.cs
++++ b/Helpers/ExporterBndy.cs
+@@ -324,10 +324,7 @@ namespace HydroExplorer.Helpers
+         }
+         private static string GetTempShpPath()
+         {
+-            string tmpDir = @"C:\Temp";
+-            if (!Directory.Exists(tmpDir))
+-                Directory.CreateDirectory(tmpDir);
+-            return Path.Combine(tmpDir, $"tmp_{Guid.NewGuid():N}.shp");
++            return ProjectsFolder.TempShpPath();
+         }
+     }
+ }
+\ No newline at end of file
+diff --git a/Helpers/ProjectsFolder.cs b/Helpers/ProjectsFolder.cs
+new file mode 100644
+index 0000000..e6c7a64
+--- /dev/null
++++ b/Helpers/ProjectsFolder.cs
+@@ -0,0 +1,56 @@
++using System.IO;
++
++namespace HydroExplorer.Helpers
++{
++    /// <summary>
++    /// Where HydroExplorer looks for projects, and where it puts its own scratch files.
++    ///
++    /// The project tree treats each sub-folder of the "projects folder" as one project.
++    /// Historically that folder was hardcoded to C:\Temp; it is now a saved user setting
++    /// (UserSettings.ProjectsRoot), with C:\Temp kept only as a fallback so existing
++    /// installs keep working without any action.
++    /// </summary>
++    public static class ProjectsFolder
++    {
++        public const string LegacyDefault = @"C:\Temp";
++
++        /// <summary>
++        /// The folder whose sub-folders are treated as projects: the user's saved choice if
++        /// it still exists, else C:\Temp if it exists, else empty (nothing chosen yet).
++        /// </summary>
++        public static string Resolve(UserSettings settings)
++        {
++            if (!string.IsNullOrWhiteSpace(settings.ProjectsRoot) && Directory.Exists(settings.ProjectsRoot))
++                return settings.ProjectsRoot;
++
++            if (Directory.Exists(LegacyDefault))
++                return LegacyDefault;
++
++            return string.Empty;
++        }
++
++        /// <summary>True if <paramref name="path"/> is the projects folder itself.</summary>
++        public static bool IsRoot(string? path, string? root)
++        {
++            if (string.IsNullOrWhiteSpace(path) || string.IsNullOrWhiteSpace(root)) return false;
++
++            return Path.TrimEndingDirectorySeparator(path)
++                .Equals(Path.TrimEndingDirectorySeparator(root), StringComparison.OrdinalIgnoreCase);
++        }
++
++        /// <summary>
++        /// App-private scratch folder under the Windows temp directory (created on demand).
++        /// Replaces the old hardcoded C:\Temp for temporary shapefiles.
++        /// </summary>
++        public static string TempDir()
++        {
++            string dir = Path.Combine(Path.GetTempPath(), "HydroExplorer");
++            Directory.CreateDirectory(dir);
++            return dir;
++        }
++
++        /// <summary>A unique tmp_*.shp path inside <see cref="TempDir"/>.</summary>
++        public static string TempShpPath()
++            => Path.Combine(TempDir(), $"tmp_{Guid.NewGuid():N}.shp");
++    }
++}
+diff --git a/Helpers/UserSettings.cs b/Helpers/UserSettings.cs
+index 9db2489..e415905 100644
+--- a/Helpers/UserSettings.cs
++++ b/Helpers/UserSettings.cs
+@@ -9,6 +9,11 @@ namespace HydroExplorer.Helpers
+         public string ProjName { get; set; } = string.Empty;
+         public string ProjPath { get; set; } = string.Empty;
+ 
++        // Folder whose sub-folders are treated as projects in the project tree.
++        // Empty = fall back to the legacy default (C:\Temp) if it exists.
++        // See ProjectsFolder.Resolve.
++        public string ProjectsRoot { get; set; } = string.Empty;
++
+         public Dictionary<string, ProjectSettings> Projects { get; set; } = [];
+         public Dictionary<string, ShpPathEntry> ShpPaths { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+ 
+diff --git a/README.md b/README.md
+index 4151d4a..b6d9b4b 100644
+--- a/README.md
++++ b/README.md
+@@ -86,13 +86,14 @@ Some features call public web services and need an internet connection: basemap
+ 
+ ## Usage
+ 
+-1. Open a project folder containing a HEC-RAS `.prj` file or a HEC-HMS `.hms` file, or pick one from the recent-projects list.
+-2. Choose the **active paths** (Plan A, and optionally Plan B for comparison) for the HEC-RAS and/or HEC-HMS side of the project.
+-3. Work through the main areas:
++1. **Choose your projects folder.** The tree on the left lists projects found in the sub-folders of one "projects folder": each project lives in its own folder and contains a HEC-RAS `.prj` file or a HEC-HMS `.hms` file. HydroExplorer uses `C:\Temp` if it exists. To use another location, click the `...` button above the tree and pick the folder that **directly contains** your project folders. The choice is remembered between sessions. Avoid picking a very large folder (such as your whole Documents folder), since the tree scans sub-folders to find projects.
++2. Select a project in the tree, or pick one from the recent-projects list.
++3. Choose the **active paths** (Plan A, and optionally Plan B for comparison) for the HEC-RAS and/or HEC-HMS side of the project.
++4. Work through the main areas:
+    - **Hydraulics**: plan, profile, and reach selection for HEC-RAS results.
+    - **Hydrology**: DSS record browser and HEC-HMS results.
+    - **Geometry**: project map and spatial data.
+-4. Use the tabs on each pane (for example **Info**, **RAS Tables**, **HMS Charts**, **Publish**) to view tables, charts, and exports.
++5. Use the tabs on each pane (for example **Info**, **RAS Tables**, **HMS Charts**, **Publish**) to view tables, charts, and exports.
+ 
+ Automated exports (for example shapefiles in a `HydroXSpatial` folder next to the project) are working files for use inside this application. They are not part of your HEC-RAS or HEC-HMS model.
+ 
+diff --git a/Utils/GeometryExportCoordinator.cs b/Utils/GeometryExportCoordinator.cs
+index 46b66d0..3f4d217 100644
+--- a/Utils/GeometryExportCoordinator.cs
++++ b/Utils/GeometryExportCoordinator.cs
+@@ -263,9 +263,7 @@ namespace HydroExplorer.Helpers
+ 
+         private static string GetTempShpPath()
+         {
+-            string tmpDir = @"C:\Temp";
+-            string uniqueName = $"tmp_{Guid.NewGuid():N}.shp";
+-            return Path.Combine(tmpDir, uniqueName);
++            return ProjectsFolder.TempShpPath();
+         }
+ 
+         /// <summary>
+diff --git a/View/FilteredTreeView.xaml b/View/FilteredTreeView.xaml
+index 40a6963..53595b2 100644
+--- a/View/FilteredTreeView.xaml
++++ b/View/FilteredTreeView.xaml
+@@ -48,7 +48,38 @@
+         </DataTemplate>
+     </UserControl.Resources>
+ 
++    <Grid>
++        <Grid.RowDefinitions>
++            <RowDefinition Height="Auto"/>
++            <RowDefinition Height="*"/>
++        </Grid.RowDefinitions>
++
++        <!-- Projects folder: shows which folder the tree is rooted at, and lets the
++             user pick a different one. Each sub-folder of it is treated as a project. -->
++        <Grid Grid.Row="0" Margin="0,0,0,2">
++            <Grid.ColumnDefinitions>
++                <ColumnDefinition Width="*"/>
++                <ColumnDefinition Width="Auto"/>
++            </Grid.ColumnDefinitions>
++
++            <TextBlock x:Name="txtRootPath"
++                       Grid.Column="0"
++                       FontSize="9"
++                       Margin="2,0,4,0"
++                       VerticalAlignment="Center"
++                       TextTrimming="CharacterEllipsis"
++                       Foreground="{StaticResource ForegroundBrush}"/>
++
++            <Button Grid.Column="1"
++                    Content="..."
++                    FontSize="10"
++                    Padding="6,0"
++                    ToolTip="Choose projects folder"
++                    Click="BtnBrowseRoot_Click"/>
++        </Grid>
++
+     <TreeView x:Name="foldersItem"
++              Grid.Row="1"
+               HorizontalContentAlignment="Stretch"
+               SelectedItemChanged="FoldersItem_SelectedItemChanged"
+               MouseMove="FoldersItem_MouseMove"
+@@ -175,4 +206,6 @@
+ 
+     </TreeView>
+ 
++    </Grid>
++
+ </UserControl>
+diff --git a/View/FilteredTreeView.xaml.cs b/View/FilteredTreeView.xaml.cs
+index 94349bb..065ef31 100644
+--- a/View/FilteredTreeView.xaml.cs
++++ b/View/FilteredTreeView.xaml.cs
+@@ -40,6 +40,7 @@ namespace HydroExplorer.View
+         private readonly object? _dummyNode = null;
+         private readonly IUserSettingsRepo _settingsRepo;
+         private bool _initialized = false;
++        private string _rootPath = string.Empty;   // current projects folder (no trailing slash needed)
+ 
+         private FileSystemWatcher? _watcher;
+         private CancellationTokenSource? _refreshCts;
+@@ -67,6 +68,15 @@ namespace HydroExplorer.View
+ 
+             EventBus.AppLoaded += OnAppLoaded;
+ 
++            EventBus.ProjectsRootChanged += _ => Dispatcher.InvokeAsync(async () =>
++            {
++                try { await ReloadRootAsync(); }
++                catch (Exception ex)
++                {
++                    System.Diagnostics.Debug.WriteLine($"FilteredTreeView.ReloadRoot error: {ex.Message}");
++                }
++            });
++
+             EventBus.ProjPathChanged += async path =>
+             {
+                 var settings = await _settingsRepo.GetSettings();
+@@ -178,8 +188,16 @@ namespace HydroExplorer.View
+ 
+         private async Task InitializeTreeAsync(string? expandToDir)
+         {
+-            string rootPath = @"C:\Temp\";
+-            if (Directory.Exists(rootPath) && foldersItem.Items.Count == 0)
++            var settings = await _settingsRepo.GetSettings();
++            string projectsRoot = ProjectsFolder.Resolve(settings);
++            _rootPath = projectsRoot;
++            UpdateRootHeader();
++
++            string rootPath = string.IsNullOrEmpty(projectsRoot)
++                ? string.Empty
++                : projectsRoot.TrimEnd('\\') + "\\";
++
++            if (!string.IsNullOrEmpty(rootPath) && Directory.Exists(rootPath) && foldersItem.Items.Count == 0)
+             {
+                 var rootInfo = new TreeNodeInfo
+                 {
+@@ -207,6 +225,57 @@ namespace HydroExplorer.View
+ 
+ 
+ 
++        private void UpdateRootHeader()
++        {
++            bool none = string.IsNullOrEmpty(_rootPath);
++            txtRootPath.Text = none ? "No projects folder - click ... to choose" : _rootPath;
++            txtRootPath.ToolTip = none
++                ? "Choose the folder that contains your project folders"
++                : _rootPath;
++        }
++
++        /// <summary>
++        /// Rebuilds the tree against the current projects folder (after the user picks a new one).
++        /// </summary>
++        private async Task ReloadRootAsync()
++        {
++            _watcher?.Dispose();
++            _watcher = null;
++
++            foldersItem.Items.Clear();
++            await InitializeTreeAsync(null);
++
++            var settings = await _settingsRepo.GetSettings();
++            string target = ResolveTargetPath(settings);
++            if (!string.IsNullOrEmpty(target))
++                await ExpandToPath(target);
++        }
++
++        private async void BtnBrowseRoot_Click(object sender, RoutedEventArgs e)
++        {
++            try
++            {
++                var settings = await _settingsRepo.GetSettings();
++
++                var dlg = new Microsoft.Win32.OpenFolderDialog
++                {
++                    Title = "Choose the folder that contains your project folders",
++                    InitialDirectory = Directory.Exists(_rootPath) ? _rootPath : string.Empty
++                };
++                if (dlg.ShowDialog() != true) return;
++
++                settings.ProjectsRoot = dlg.FolderName;
++                await _settingsRepo.SaveSettings(settings);
++
++                // Every tree (RAS / HMS / geometry) listens for this and rebuilds itself.
++                EventBus.PublishProjectsRootChanged(dlg.FolderName);
++            }
++            catch (Exception ex)
++            {
++                System.Diagnostics.Debug.WriteLine($"FilteredTreeView.BrowseRoot error: {ex.Message}");
++            }
++        }
++
+         private void StartWatcher(string rootPath)
+         {
+             _watcher?.Dispose();
+@@ -275,7 +344,7 @@ namespace HydroExplorer.View
+             string fullPath = info.Path;
+             if (!Directory.Exists(fullPath)) return;
+ 
+-            bool isRoot = fullPath.TrimEnd('\\').Equals(@"C:\Temp", StringComparison.OrdinalIgnoreCase);
++            bool isRoot = ProjectsFolder.IsRoot(fullPath, _rootPath);
+ 
+             if (FileExtensionFilter is ".run" or ".prj")
+                 RefreshPrjRunNode(item, fullPath, isRoot);
+@@ -498,7 +567,7 @@ namespace HydroExplorer.View
+             item.Items.Clear();
+ 
+             string fullPath = item.Tag is TreeNodeInfo n ? n.Path : item.Tag?.ToString() ?? string.Empty;
+-            bool isRoot = fullPath.TrimEnd('\\').Equals(@"C:\Temp", StringComparison.OrdinalIgnoreCase);
++            bool isRoot = ProjectsFolder.IsRoot(fullPath, _rootPath);
+ 
+             if (FileExtensionFilter == ".hms" || FileExtensionFilter == ".prj")
+             {
+@@ -700,9 +769,11 @@ namespace HydroExplorer.View
+             {
+                 var settings = await _settingsRepo.GetSettingsFresh();
+ 
++                string projectsRoot = ProjectsFolder.Resolve(settings);
++
+                 var current = new DirectoryInfo(Path.GetDirectoryName(path) ?? string.Empty);
+                 while (current?.Parent != null &&
+-                       !current.Parent.FullName.Equals(@"C:\Temp", StringComparison.OrdinalIgnoreCase))
++                       !ProjectsFolder.IsRoot(current.Parent.FullName, projectsRoot))
+                     current = current.Parent;
+ 
+                 string projRoot = current?.FullName ?? string.Empty;
+@@ -742,9 +813,11 @@ namespace HydroExplorer.View
+         {
+             var settings = await _settingsRepo.GetSettingsFresh();
+ 
++            string projectsRoot = ProjectsFolder.Resolve(settings);
++
+             var current = new DirectoryInfo(Path.GetDirectoryName(runPath) ?? string.Empty);
+             while (current?.Parent != null &&
+-                   !current.Parent.FullName.Equals(@"C:\Temp", StringComparison.OrdinalIgnoreCase))
++                   !ProjectsFolder.IsRoot(current.Parent.FullName, projectsRoot))
+                 current = current.Parent;
+ 
+             string projRoot = current?.FullName ?? string.Empty;
+@@ -783,9 +856,11 @@ namespace HydroExplorer.View
+             string normalizedPath = PathHelpers.NormalizeProjKey(projPath);
+             var settings = await _settingsRepo.GetSettingsFresh();
+ 
++            string projectsRoot = ProjectsFolder.Resolve(settings);
++
+             var current = new DirectoryInfo(Path.GetDirectoryName(normalizedPath) ?? string.Empty);
+             while (current?.Parent != null &&
+-                   !current.Parent.FullName.Equals(@"C:\Temp", StringComparison.OrdinalIgnoreCase))
++                   !ProjectsFolder.IsRoot(current.Parent.FullName, projectsRoot))
+                 current = current.Parent;
+ 
+             string newProjRoot = current?.FullName ?? string.Empty;
+diff --git a/View/HydrologyPaneView.xaml.cs b/View/HydrologyPaneView.xaml.cs
+index d203499..a5dc3c8 100644
+--- a/View/HydrologyPaneView.xaml.cs
++++ b/View/HydrologyPaneView.xaml.cs
+@@ -413,9 +413,11 @@ namespace HydroExplorer.View
+             {
+                 var settings = await _settingsRepo.GetSettingsFresh();
+ 
++                string projectsRoot = ProjectsFolder.Resolve(settings);
++
+                 var current = new DirectoryInfo(Path.GetDirectoryName(path) ?? string.Empty);
+                 while (current?.Parent != null &&
+-                       !current.Parent.FullName.Equals(@"C:\Temp", StringComparison.OrdinalIgnoreCase))
++                       !ProjectsFolder.IsRoot(current.Parent.FullName, projectsRoot))
+                     current = current.Parent;
+ 
+                 string projRoot = current?.FullName ?? string.Empty;
+diff --git a/ViewModel/TabItem/TabViewModelBase.cs b/ViewModel/TabItem/TabViewModelBase.cs
+index 773f0c0..9cf85a0 100644
+--- a/ViewModel/TabItem/TabViewModelBase.cs
++++ b/ViewModel/TabItem/TabViewModelBase.cs
+@@ -208,7 +208,7 @@ namespace HydroExplorer.ViewModel.TabItem
+                 }
+             }
+ 
+-            string pathTMP = Path.Combine(@"C:\Temp", $"tmp_{Guid.NewGuid():N}.shp");
++            string pathTMP = ProjectsFolder.TempShpPath();
+ 
+             try
+             {

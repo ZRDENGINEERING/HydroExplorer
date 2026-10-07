@@ -86,13 +86,14 @@ Some features call public web services and need an internet connection: basemap 
 
 ## Usage
 
-1. Open a project folder containing a HEC-RAS `.prj` file or a HEC-HMS `.hms` file, or pick one from the recent-projects list.
-2. Choose the **active paths** (Plan A, and optionally Plan B for comparison) for the HEC-RAS and/or HEC-HMS side of the project.
-3. Work through the main areas:
+1. **Choose your projects folder.** The tree on the left lists projects found in the sub-folders of one "projects folder": each project lives in its own folder and contains a HEC-RAS `.prj` file or a HEC-HMS `.hms` file. HydroExplorer uses `C:\Temp` if it exists. To use another location, click the `...` button above the tree and pick the folder that **directly contains** your project folders. The choice is remembered between sessions. Avoid picking a very large folder (such as your whole Documents folder), since the tree scans sub-folders to find projects.
+2. Select a project in the tree, or pick one from the recent-projects list.
+3. Choose the **active paths** (Plan A, and optionally Plan B for comparison) for the HEC-RAS and/or HEC-HMS side of the project.
+4. Work through the main areas:
    - **Hydraulics**: plan, profile, and reach selection for HEC-RAS results.
    - **Hydrology**: DSS record browser and HEC-HMS results.
    - **Geometry**: project map and spatial data.
-4. Use the tabs on each pane (for example **Info**, **RAS Tables**, **HMS Charts**, **Publish**) to view tables, charts, and exports.
+5. Use the tabs on each pane (for example **Info**, **RAS Tables**, **HMS Charts**, **Publish**) to view tables, charts, and exports.
 
 Automated exports (for example shapefiles in a `HydroXSpatial` folder next to the project) are working files for use inside this application. They are not part of your HEC-RAS or HEC-HMS model.
 

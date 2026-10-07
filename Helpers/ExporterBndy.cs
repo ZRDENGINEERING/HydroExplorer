@@ -324,10 +324,7 @@ namespace HydroExplorer.Helpers
         }
         private static string GetTempShpPath()
         {
-            string tmpDir = @"C:\Temp";
-            if (!Directory.Exists(tmpDir))
-                Directory.CreateDirectory(tmpDir);
-            return Path.Combine(tmpDir, $"tmp_{Guid.NewGuid():N}.shp");
+            return ProjectsFolder.TempShpPath();
         }
     }
 }

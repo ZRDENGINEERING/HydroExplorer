@@ -40,6 +40,7 @@ namespace HydroExplorer.View
         private readonly object? _dummyNode = null;
         private readonly IUserSettingsRepo _settingsRepo;
         private bool _initialized = false;
+        private string _rootPath = string.Empty;   // current projects folder (no trailing slash needed)
 
         private FileSystemWatcher? _watcher;
         private CancellationTokenSource? _refreshCts;
@@ -66,6 +67,15 @@ namespace HydroExplorer.View
             _settingsRepo = App.ServiceProvider.GetRequiredService<IUserSettingsRepo>();
 
             EventBus.AppLoaded += OnAppLoaded;
+
+            EventBus.ProjectsRootChanged += _ => Dispatcher.InvokeAsync(async () =>
+            {
+                try { await ReloadRootAsync(); }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"FilteredTreeView.ReloadRoot error: {ex.Message}");
+                }
+            });
 
             EventBus.ProjPathChanged += async path =>
             {
@@ -178,8 +188,16 @@ namespace HydroExplorer.View
 
         private async Task InitializeTreeAsync(string? expandToDir)
         {
-            string rootPath = @"C:\Temp\";
-            if (Directory.Exists(rootPath) && foldersItem.Items.Count == 0)
+            var settings = await _settingsRepo.GetSettings();
+            string projectsRoot = ProjectsFolder.Resolve(settings);
+            _rootPath = projectsRoot;
+            UpdateRootHeader();
+
+            string rootPath = string.IsNullOrEmpty(projectsRoot)
+                ? string.Empty
+                : projectsRoot.TrimEnd('\\') + "\\";
+
+            if (!string.IsNullOrEmpty(rootPath) && Directory.Exists(rootPath) && foldersItem.Items.Count == 0)
             {
                 var rootInfo = new TreeNodeInfo
                 {
@@ -206,6 +224,57 @@ namespace HydroExplorer.View
         }
 
 
+
+        private void UpdateRootHeader()
+        {
+            bool none = string.IsNullOrEmpty(_rootPath);
+            txtRootPath.Text = none ? "No projects folder - click ... to choose" : _rootPath;
+            txtRootPath.ToolTip = none
+                ? "Choose the folder that contains your project folders"
+                : _rootPath;
+        }
+
+        /// <summary>
+        /// Rebuilds the tree against the current projects folder (after the user picks a new one).
+        /// </summary>
+        private async Task ReloadRootAsync()
+        {
+            _watcher?.Dispose();
+            _watcher = null;
+
+            foldersItem.Items.Clear();
+            await InitializeTreeAsync(null);
+
+            var settings = await _settingsRepo.GetSettings();
+            string target = ResolveTargetPath(settings);
+            if (!string.IsNullOrEmpty(target))
+                await ExpandToPath(target);
+        }
+
+        private async void BtnBrowseRoot_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var settings = await _settingsRepo.GetSettings();
+
+                var dlg = new Microsoft.Win32.OpenFolderDialog
+                {
+                    Title = "Choose the folder that contains your project folders",
+                    InitialDirectory = Directory.Exists(_rootPath) ? _rootPath : string.Empty
+                };
+                if (dlg.ShowDialog() != true) return;
+
+                settings.ProjectsRoot = dlg.FolderName;
+                await _settingsRepo.SaveSettings(settings);
+
+                // Every tree (RAS / HMS / geometry) listens for this and rebuilds itself.
+                EventBus.PublishProjectsRootChanged(dlg.FolderName);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"FilteredTreeView.BrowseRoot error: {ex.Message}");
+            }
+        }
 
         private void StartWatcher(string rootPath)
         {
@@ -275,7 +344,7 @@ namespace HydroExplorer.View
             string fullPath = info.Path;
             if (!Directory.Exists(fullPath)) return;
 
-            bool isRoot = fullPath.TrimEnd('\\').Equals(@"C:\Temp", StringComparison.OrdinalIgnoreCase);
+            bool isRoot = ProjectsFolder.IsRoot(fullPath, _rootPath);
 
             if (FileExtensionFilter is ".run" or ".prj")
                 RefreshPrjRunNode(item, fullPath, isRoot);
@@ -498,7 +567,7 @@ namespace HydroExplorer.View
             item.Items.Clear();
 
             string fullPath = item.Tag is TreeNodeInfo n ? n.Path : item.Tag?.ToString() ?? string.Empty;
-            bool isRoot = fullPath.TrimEnd('\\').Equals(@"C:\Temp", StringComparison.OrdinalIgnoreCase);
+            bool isRoot = ProjectsFolder.IsRoot(fullPath, _rootPath);
 
             if (FileExtensionFilter == ".hms" || FileExtensionFilter == ".prj")
             {
@@ -700,9 +769,11 @@ namespace HydroExplorer.View
             {
                 var settings = await _settingsRepo.GetSettingsFresh();
 
+                string projectsRoot = ProjectsFolder.Resolve(settings);
+
                 var current = new DirectoryInfo(Path.GetDirectoryName(path) ?? string.Empty);
                 while (current?.Parent != null &&
-                       !current.Parent.FullName.Equals(@"C:\Temp", StringComparison.OrdinalIgnoreCase))
+                       !ProjectsFolder.IsRoot(current.Parent.FullName, projectsRoot))
                     current = current.Parent;
 
                 string projRoot = current?.FullName ?? string.Empty;
@@ -742,9 +813,11 @@ namespace HydroExplorer.View
         {
             var settings = await _settingsRepo.GetSettingsFresh();
 
+            string projectsRoot = ProjectsFolder.Resolve(settings);
+
             var current = new DirectoryInfo(Path.GetDirectoryName(runPath) ?? string.Empty);
             while (current?.Parent != null &&
-                   !current.Parent.FullName.Equals(@"C:\Temp", StringComparison.OrdinalIgnoreCase))
+                   !ProjectsFolder.IsRoot(current.Parent.FullName, projectsRoot))
                 current = current.Parent;
 
             string projRoot = current?.FullName ?? string.Empty;
@@ -783,9 +856,11 @@ namespace HydroExplorer.View
             string normalizedPath = PathHelpers.NormalizeProjKey(projPath);
             var settings = await _settingsRepo.GetSettingsFresh();
 
+            string projectsRoot = ProjectsFolder.Resolve(settings);
+
             var current = new DirectoryInfo(Path.GetDirectoryName(normalizedPath) ?? string.Empty);
             while (current?.Parent != null &&
-                   !current.Parent.FullName.Equals(@"C:\Temp", StringComparison.OrdinalIgnoreCase))
+                   !ProjectsFolder.IsRoot(current.Parent.FullName, projectsRoot))
                 current = current.Parent;
 
             string newProjRoot = current?.FullName ?? string.Empty;

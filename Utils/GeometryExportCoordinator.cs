@@ -263,9 +263,7 @@ namespace HydroExplorer.Helpers
 
         private static string GetTempShpPath()
         {
-            string tmpDir = @"C:\Temp";
-            string uniqueName = $"tmp_{Guid.NewGuid():N}.shp";
-            return Path.Combine(tmpDir, uniqueName);
+            return ProjectsFolder.TempShpPath();
         }
 
         /// <summary>

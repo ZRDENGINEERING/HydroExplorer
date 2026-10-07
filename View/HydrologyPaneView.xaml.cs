@@ -413,9 +413,11 @@ namespace HydroExplorer.View
             {
                 var settings = await _settingsRepo.GetSettingsFresh();
 
+                string projectsRoot = ProjectsFolder.Resolve(settings);
+
                 var current = new DirectoryInfo(Path.GetDirectoryName(path) ?? string.Empty);
                 while (current?.Parent != null &&
-                       !current.Parent.FullName.Equals(@"C:\Temp", StringComparison.OrdinalIgnoreCase))
+                       !ProjectsFolder.IsRoot(current.Parent.FullName, projectsRoot))
                     current = current.Parent;
 
                 string projRoot = current?.FullName ?? string.Empty;
