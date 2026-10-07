@@ -1,135 +1,129 @@
 # HydroExplorer (BETA)
 
+A Windows desktop data explorer for hydrologic and hydraulic modeling projects. Point it at a **HEC-RAS** or **HEC-HMS** project and browse results, compare plans, plot them, and see the model on a map, without opening the modeling software.
 
-<!-- PROJECT SHIELDS -->
-<!--
-*** I'm using markdown "reference style" links for readability.
-*** Reference links are enclosed in brackets [ ] instead of parentheses ( ).
-*** See the bottom of this document for the declaration of the reference variables
-*** for contributors-url, forks-url, etc. This is an optional, concise syntax you may use.
-*** https://www.markdownguide.org/basic-syntax/#reference-style-links
--->
-
-
-<!-- PROJECT LOGO -->
 <div align="center">
-  <p align="center">
-    <br />
+  <p>
     <a href="https://github.com/ZRDENGINEERING/HydroExplorer/issues/new?labels=bug&template=bug-report---.md">Report Bug</a>
     &middot;
     <a href="https://github.com/ZRDENGINEERING/HydroExplorer/issues/new?labels=enhancement&template=feature-request---.md">Request Feature</a>
   </p>
 </div>
 
+<!-- Add a screenshot here once you have one, e.g. ![HydroExplorer](Images/screenshot.png) -->
 
-
-<!-- TABLE OF CONTENTS -->
 <details>
   <summary>Table of Contents</summary>
   <ol>
-    <li>
-      <a href="#about-the-project">About The Project</a>
-      <ul>
-        <li><a href="#built-with">Built With</a></li>
-      </ul>
-    </li>
-    <li>
-      <a href="#getting-started">Getting Started</a>
-      <ul>
-        <li><a href="#prerequisites">Prerequisites</a></li>
-        <li><a href="#installation">Installation</a></li>
-      </ul>
-    </li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#getting-started">Getting Started</a></li>
     <li><a href="#usage">Usage</a></li>
+    <li><a href="#built-with">Built With</a></li>
     <li><a href="#roadmap">Roadmap</a></li>
     <li><a href="#contributing">Contributing</a></li>
+    <li><a href="#disclaimer">Disclaimer</a></li>
     <li><a href="#license">License</a></li>
     <li><a href="#contact">Contact</a></li>
-    <li><a href="#acknowledgments">Acknowledgments</a></li>
   </ol>
 </details>
 
+## Features
 
+**HEC-RAS (reads `.p##.hdf` plan files)**
+- Side-by-side comparison of two plans (Plan A / Plan B): discharge, water surface elevation, and the delta between them, by river, reach, station, and profile.
+- Steady-flow profile selection and WSEL / flow plots.
+- Map view of the project with cross sections, river centerlines, and boundary exported as working shapefiles.
+- **2D models (experimental):** 2D and mixed 1D/2D projects are detected automatically. 1D-only views (RAS Tables, profile picker) are disabled with an explanation for 2D-only plans, and the Map tab shows a sampled overlay of 2D cell results (maximum water surface elevation, or minimum terrain if the plan has no results), colored low to high.
 
-<!-- ABOUT THE PROJECT -->
-## About The Project
+**HEC-HMS (reads `.hms` projects and `.dss` files)**
+- Browse DSS records by pathname part (basin, location, parameter, date, interval, version).
+- Hydrograph and hyetograph charts, plus rainfall excess and loss views.
+- Subbasin drainage area read from the HEC-HMS basin file.
 
-Data explorer for hydrologic and hydraulic modeling projects. Beta release supports projects built with HEC-HMS and HEC-RAS.
+**Reasonableness checks**
+- Log-Pearson III and return-period plots.
+- Creager envelope curve, plotting the project's drainage area and peak discharge against the regional envelope.
+- TxDOT Omega EM regression estimates (see the [Disclaimer](#disclaimer)).
+- USGS gage lookup shown on the map.
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+**Other**
+- Recent-projects list and per-project settings (drainage area, coordinate system, and so on).
+- Reads the coordinate system stored in the geometry HDF, including custom projections such as NAD83 / Texas Centric Albers Equal Area. If none is stored, it falls back to guessing a Texas State Plane zone.
 
-
-
-
-### Built With
-
-* C# / DOTNET
-* WPF
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-<!-- GETTING STARTED -->
 ## Getting Started
 
-HydroExplorer runs locally.
-To get a local copy up and running follow these simple steps.
+HydroExplorer runs locally on **Windows (x64)**. It is a WPF application, so it does not run on macOS or Linux.
 
+Some features call public web services and need an internet connection: basemap tiles, USGS gage lookup, and the USGS Watershed Boundary Dataset fallback used to generate a project boundary.
 
+### Option 1: Download a release
 
-### Installation
+1. Download the latest build from the [Releases](https://github.com/ZRDENGINEERING/HydroExplorer/releases) page.
+2. Unzip it and run `HydroExplorer.exe`.
 
-**Try it out option:**
+### Option 2: Build from source
 
-1. Download the latest release from the [Releases](https://github.com/ZRDENGINEERING/HydroExplorer/releases) page.
+**Prerequisites**
+- [.NET 10 SDK](https://dotnet.microsoft.com/download)
+- Optional: Visual Studio with the ".NET desktop development" workload
 
-**Developer option:**
+**Steps**
 
 1. Clone the repo:
    ```sh
    git clone https://github.com/ZRDENGINEERING/HydroExplorer.git
+   cd HydroExplorer
    ```
-2. Go to town adding features, fixing bugs, and making it your own.
+2. Build and run:
+   ```sh
+   dotnet run --project HydroExplorer.csproj
+   ```
+   Or open `hydroExplorer.slnx` in Visual Studio and press F5.
+3. To produce a self-contained build:
+   ```sh
+   dotnet publish HydroExplorer.csproj -c Release -r win-x64 --self-contained
+   ```
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-<!-- USAGE EXAMPLES -->
 ## Usage
 
-Use this space to show useful examples of how a project can be used. Additional screenshots, code examples and demos work well in this space. You may also link to more resources.
+1. Open a project folder containing a HEC-RAS `.prj` file or a HEC-HMS `.hms` file, or pick one from the recent-projects list.
+2. Choose the **active paths** (Plan A, and optionally Plan B for comparison) for the HEC-RAS and/or HEC-HMS side of the project.
+3. Work through the main areas:
+   - **Hydraulics**: plan, profile, and reach selection for HEC-RAS results.
+   - **Hydrology**: DSS record browser and HEC-HMS results.
+   - **Geometry**: project map and spatial data.
+4. Use the tabs on each pane (for example **Info**, **RAS Tables**, **HMS Charts**, **Publish**) to view tables, charts, and exports.
 
+Automated exports (for example shapefiles in a `HydroXSpatial` folder next to the project) are working files for use inside this application. They are not part of your HEC-RAS or HEC-HMS model.
 
+## Built With
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+- C# / .NET 10 / WPF
+- [PureHDF](https://github.com/Apollo3zehn/PureHDF): HEC-RAS HDF5 results
+- [Hec.Dss](https://www.nuget.org/packages/Hec.Dss): HEC-HMS DSS files
+- [Mapsui](https://mapsui.com/) and SkiaSharp: map rendering
+- [OxyPlot](https://oxyplot.github.io/): charts
+- [NetTopologySuite](https://github.com/NetTopologySuite/NetTopologySuite) and [ProjNET](https://github.com/NetTopologySuite/ProjNet4GeoAPI): shapefiles and coordinate transformations
 
-
-
-<!-- ROADMAP -->
 ## Roadmap
 
-- [ ] Beta Release
-- [ ] HEC-RAS 2D
-- [ ] Feature 3
+- [x] Beta release
+- [x] HEC-RAS 2D: detection, 1D-view guarding, basic cell-result map overlay
+- [ ] HEC-RAS 2D: full geometry and results support (mesh, per-cell and profile-line results)
+- [ ] PDF output
+- [ ] DXF / CAD output
 
-See the [open issues](https://github.com/ZRDENGINEERING/HydroExplorer/issues) for a full list of proposed features (and known issues).
+See the [open issues](https://github.com/ZRDENGINEERING/HydroExplorer/issues) for a full list of proposed features and known issues.
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-<!-- CONTRIBUTING -->
 ## Contributing
 
-Contributions and suggestions are welcome. Reach out!
-You can also simply open an issue with the tag "enhancement" or "feature request" and we will review it.
+Contributions and suggestions are welcome. Reach out, or open an issue with the `enhancement` or `feature request` tag and we will review it. Pull requests are welcome too:
 
+1. Fork the repo
+2. Create a feature branch (`git checkout -b feature/my-feature`)
+3. Commit your changes
+4. Push the branch and open a pull request
 
-
-
-<!-- DISCLAIMER -->
 ## Disclaimer
 
 **HydroExplorer is beta software provided for internal testing and workflow support only. It is not a substitute for professional engineering judgment.**
@@ -138,25 +132,15 @@ You can also simply open an issue with the tag "enhancement" or "feature request
 - Outputs (geometry exports, plots, regression estimates, GIS layers, reports, etc.) have not been independently verified or validated against industry-accepted software and should not be relied upon for design, permitting, regulatory submittal, or construction without independent review by a licensed professional engineer.
 - Automated exports (e.g., shapefiles in `HydroXSpatial`) are working files generated for use within this application and are not part of the official HEC-RAS/HEC-HMS model or project deliverable.
 - Any regression methods, coefficients, or empirical relationships (e.g., TxDOT Omega EM) implemented here should be independently verified against the source publication before use in any engineering analysis.
+- The 2D results overlay is a sampled visual aid, not a results viewer. It does not replace RAS Mapper or your model's own outputs.
 - Use of this software is at the user's own risk. The developer(s) assume no liability for damages, losses, or errors resulting from its use or misuse.
 
-By using this software, you acknowledge that it is a beta tool intended to assist — not replace — sound engineering practice and professional judgment.
+By using this software, you acknowledge that it is a beta tool intended to assist, not replace, sound engineering practice and professional judgment.
 
-
-
-
-<!-- LICENSE -->
 ## License
 
-Distributed under the MIT License.
+Distributed under the MIT License. See `LICENSE.txt` for more information.
 
-See `LICENSE.txt` for more information.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-<!-- CONTACT -->
 ## Contact
 
 frankd@zrdeng.com
@@ -164,44 +148,3 @@ frankd@zrdeng.com
 https://zrdeng.com
 
 Project Link: [https://github.com/ZRDENGINEERING/HydroExplorer](https://github.com/ZRDENGINEERING/HydroExplorer)
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
-
-
-
-
-<!-- MARKDOWN LINKS & IMAGES -->
-<!-- https://www.markdownguide.org/basic-syntax/#reference-style-links -->
-[logo-shield]: https://github.com/ZRDENGINEERING/HydroExplorer/blob/master/Images/logo.png
-[contributors-shield]: https://img.shields.io/github/contributors/ZRDENGINEERING/HydroExplorer.svg?style=for-the-badge
-[contributors-url]: https://github.com/ZRDENGINEERING/HydroExplorer/graphs/contributors
-[forks-shield]: https://img.shields.io/github/forks/ZRDENGINEERING/HydroExplorer.svg?style=for-the-badge
-[forks-url]: https://github.com/ZRDENGINEERING/HydroExplorer/network/members
-[stars-shield]: https://img.shields.io/github/stars/ZRDENGINEERING/HydroExplorer.svg?style=for-the-badge
-[stars-url]: https://github.com/ZRDENGINEERING/HydroExplorer/stargazers
-[issues-shield]: https://img.shields.io/github/issues/ZRDENGINEERING/HydroExplorer.svg?style=for-the-badge
-[issues-url]: https://github.com/ZRDENGINEERING/HydroExplorer/issues
-[license-shield]: https://img.shields.io/github/license/ZRDENGINEERING/HydroExplorer.svg?style=for-the-badge
-[license-url]: https://github.com/ZRDENGINEERING/HydroExplorer/blob/master/LICENSE.txt
-[linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
-[linkedin-url]: https://linkedin.com/in/frank-desroches-p-e-cfm-b5762722
-[product-screenshot]: Images/screenshot.png
-<!-- Shields.io badges. You can a comprehensive list with many more badges at: https://github.com/inttter/md-badges -->
-[Next.js]: https://img.shields.io/badge/next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white
-[Next-url]: https://nextjs.org/
-[React.js]: https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB
-[React-url]: https://reactjs.org/
-[Vue.js]: https://img.shields.io/badge/Vue.js-35495E?style=for-the-badge&logo=vuedotjs&logoColor=4FC08D
-[Vue-url]: https://vuejs.org/
-[Angular.io]: https://img.shields.io/badge/Angular-DD0031?style=for-the-badge&logo=angular&logoColor=white
-[Angular-url]: https://angular.io/
-[Svelte.dev]: https://img.shields.io/badge/Svelte-4A4A55?style=for-the-badge&logo=svelte&logoColor=FF3E00
-[Svelte-url]: https://svelte.dev/
-[Laravel.com]: https://img.shields.io/badge/Laravel-FF2D20?style=for-the-badge&logo=laravel&logoColor=white
-[Laravel-url]: https://laravel.com
-[Bootstrap.com]: https://img.shields.io/badge/Bootstrap-563D7C?style=for-the-badge&logo=bootstrap&logoColor=white
-[Bootstrap-url]: https://getbootstrap.com
-[JQuery.com]: https://img.shields.io/badge/jQuery-0769AD?style=for-the-badge&logo=jquery&logoColor=white
-[JQuery-url]: https://jquery.com
